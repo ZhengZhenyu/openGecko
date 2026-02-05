@@ -1,4 +1,4 @@
-import re
+import os
 import time
 
 import httpx
@@ -89,7 +89,7 @@ class WechatService:
         return str(soup)
 
     async def upload_image(self, image_path: str) -> str:
-        """Upload an image to WeChat and return the WeChat URL."""
+        """Upload an image for use inside article body. Returns a WeChat URL."""
         token = await self._get_access_token()
         async with httpx.AsyncClient() as client:
             with open(image_path, "rb") as f:
@@ -102,6 +102,22 @@ class WechatService:
             if "url" not in data:
                 raise Exception(f"Failed to upload image: {data}")
             return data["url"]
+
+    async def upload_thumb_media(self, image_path: str) -> str:
+        """Upload a permanent thumb image and return media_id for use as cover."""
+        token = await self._get_access_token()
+        filename = os.path.basename(image_path)
+        async with httpx.AsyncClient() as client:
+            with open(image_path, "rb") as f:
+                resp = await client.post(
+                    f"{self.api_base}/cgi-bin/material/add_material",
+                    params={"access_token": token, "type": "image"},
+                    files={"media": (filename, f, "image/png")},
+                )
+            data = resp.json()
+            if "media_id" not in data:
+                raise Exception(f"Failed to upload thumb media: {data}")
+            return data["media_id"]
 
     async def create_draft(self, title: str, content_html: str, author: str = "", thumb_media_id: str = "") -> dict:
         """Create a draft article in WeChat Official Account."""

@@ -12,6 +12,8 @@ from app.schemas.publish import (
     ChannelPreview,
     CopyContent,
 )
+import os
+
 from app.config import settings
 from app.services.wechat import wechat_service
 from app.services.hugo import hugo_service
@@ -44,12 +46,27 @@ async def publish_to_wechat(
     content = _get_content_or_404(content_id, db)
     wechat_html = wechat_service.convert_to_wechat_html(content.content_markdown)
 
+    # Resolve thumb_media_id: explicit param > auto-upload cover_image
+    thumb_media_id = data.thumb_media_id if data and data.thumb_media_id else ""
+    if not thumb_media_id and content.cover_image:
+        cover_path = os.path.join(settings.UPLOAD_DIR, content.cover_image.lstrip("/uploads/"))
+        if os.path.isfile(cover_path):
+            try:
+                thumb_media_id = await wechat_service.upload_thumb_media(cover_path)
+            except Exception as e:
+                raise HTTPException(502, f"封面图上传失败: {e}")
+    if not thumb_media_id:
+        raise HTTPException(
+            400,
+            "缺少封面图。请在内容编辑页设置封面图（cover_image），或在请求中提供 thumb_media_id",
+        )
+
     try:
         result = await wechat_service.create_draft(
             title=content.title,
             content_html=wechat_html,
             author=content.author,
-            thumb_media_id=data.thumb_media_id if data else "",
+            thumb_media_id=thumb_media_id,
         )
     except Exception as e:
         record = PublishRecord(
