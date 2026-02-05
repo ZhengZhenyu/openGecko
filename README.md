@@ -22,30 +22,42 @@
 | WORD 处理 | mammoth / python-docx |
 | 部署 | Docker Compose |
 
-## 快速开始
+## 快速开始 (macOS)
 
-### 开发模式
-
-**后端**:
+### 前置条件
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env  # 编辑配置
-uvicorn app.main:app --reload
+# 检查依赖是否满足
+bash scripts/check-deps.sh
 ```
 
-**前端**:
+需要: Python 3.11+, Node.js 18+。如缺少可通过 Homebrew 安装:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+brew install python@3.11 node
 ```
 
-访问 http://localhost:3000（前端开发服务器会代理 API 到后端 8000 端口）。
+### 一键启动
+
+```bash
+make setup   # 首次运行: 创建虚拟环境、安装依赖、生成 .env
+make dev     # 启动前后端开发服务器 (Ctrl+C 停止)
+```
+
+启动后访问:
+- 前端: http://localhost:3000
+- API 文档: http://localhost:8000/docs
+
+### 其他 Make 命令
+
+| 命令 | 说明 |
+|------|------|
+| `make setup` | 一键安装所有依赖 |
+| `make dev` | 同时启动前后端 |
+| `make dev-backend` | 只启动后端 |
+| `make dev-frontend` | 只启动前端 |
+| `make stop` | 停止后台服务 |
+| `make clean` | 清理构建产物 |
 
 ### Docker 部署
 
