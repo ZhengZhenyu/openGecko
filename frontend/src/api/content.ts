@@ -80,3 +80,12 @@ export async function uploadFile(file: File): Promise<Content> {
   })
   return data
 }
+
+export async function uploadCoverImage(contentId: number, file: File): Promise<Content> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await api.post(`/contents/${contentId}/cover`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
