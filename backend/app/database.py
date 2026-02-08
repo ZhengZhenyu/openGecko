@@ -25,5 +25,12 @@ def get_db():
 
 
 def init_db():
-    from app.models import content, channel, publish_record  # noqa: F401
+    from app.models import (  # noqa: F401
+        user,
+        community,
+        audit,
+        content,
+        channel,
+        publish_record,
+    )
     Base.metadata.create_all(bind=engine)

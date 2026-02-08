@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Enum as SAEnum, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -26,7 +26,15 @@ class Content(Base):
         SAEnum("draft", "reviewing", "approved", "published", name="status_enum"),
         default="draft",
     )
+    # Multi-tenancy fields
+    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Calendar/scheduling field
+    scheduled_publish_at = Column(DateTime, nullable=True, index=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     publish_records = relationship("PublishRecord", back_populates="content", cascade="all, delete-orphan")
+    community = relationship("Community", back_populates="contents")
+    creator = relationship("User", back_populates="created_contents")

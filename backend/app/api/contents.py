@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_user, get_current_community
 from app.database import get_db
-from app.models.content import Content
+from app.models import User, Content
 from app.schemas.content import (
     ContentCreate,
     ContentOut,
@@ -26,9 +27,13 @@ def list_contents(
     status: str | None = None,
     source_type: str | None = None,
     keyword: str | None = None,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Content)
+    # Filter by community
+    query = db.query(Content).filter(Content.community_id == community_id)
+
     if status:
         query = query.filter(Content.status == status)
     if source_type:
@@ -41,7 +46,12 @@ def list_contents(
 
 
 @router.post("", response_model=ContentOut, status_code=201)
-def create_content(data: ContentCreate, db: Session = Depends(get_db)):
+def create_content(
+    data: ContentCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if data.source_type not in VALID_SOURCE_TYPES:
         raise HTTPException(400, f"Invalid source_type, must be one of {VALID_SOURCE_TYPES}")
     content_html = convert_markdown_to_html(data.content_markdown) if data.content_markdown else ""
@@ -55,6 +65,8 @@ def create_content(data: ContentCreate, db: Session = Depends(get_db)):
         category=data.category,
         cover_image=data.cover_image,
         status="draft",
+        community_id=community_id,
+        created_by_user_id=current_user.id,
     )
     db.add(content)
     db.commit()
@@ -63,16 +75,33 @@ def create_content(data: ContentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{content_id}", response_model=ContentOut)
-def get_content(content_id: int, db: Session = Depends(get_db)):
-    content = db.query(Content).filter(Content.id == content_id).first()
+def get_content(
+    content_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content = db.query(Content).filter(
+        Content.id == content_id,
+        Content.community_id == community_id,
+    ).first()
     if not content:
         raise HTTPException(404, "Content not found")
     return content
 
 
 @router.put("/{content_id}", response_model=ContentOut)
-def update_content(content_id: int, data: ContentUpdate, db: Session = Depends(get_db)):
-    content = db.query(Content).filter(Content.id == content_id).first()
+def update_content(
+    content_id: int,
+    data: ContentUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content = db.query(Content).filter(
+        Content.id == content_id,
+        Content.community_id == community_id,
+    ).first()
     if not content:
         raise HTTPException(404, "Content not found")
     update_data = data.model_dump(exclude_unset=True)
@@ -86,8 +115,16 @@ def update_content(content_id: int, data: ContentUpdate, db: Session = Depends(g
 
 
 @router.delete("/{content_id}", status_code=204)
-def delete_content(content_id: int, db: Session = Depends(get_db)):
-    content = db.query(Content).filter(Content.id == content_id).first()
+def delete_content(
+    content_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content = db.query(Content).filter(
+        Content.id == content_id,
+        Content.community_id == community_id,
+    ).first()
     if not content:
         raise HTTPException(404, "Content not found")
     db.delete(content)
@@ -95,10 +132,19 @@ def delete_content(content_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{content_id}/status", response_model=ContentOut)
-def update_content_status(content_id: int, data: ContentStatusUpdate, db: Session = Depends(get_db)):
+def update_content_status(
+    content_id: int,
+    data: ContentStatusUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if data.status not in VALID_STATUSES:
         raise HTTPException(400, f"Invalid status, must be one of {VALID_STATUSES}")
-    content = db.query(Content).filter(Content.id == content_id).first()
+    content = db.query(Content).filter(
+        Content.id == content_id,
+        Content.community_id == community_id,
+    ).first()
     if not content:
         raise HTTPException(404, "Content not found")
     content.status = data.status
