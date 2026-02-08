@@ -1,0 +1,126 @@
+name: Database Migration Check
+
+on:
+  pull_request:
+    paths:
+      - 'backend/alembic/versions/**'
+      - 'backend/app/models/**'
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        pip install -r requirements.txt
+
+    - name: Check migration can run
+      working-directory: ./backend
+      run: |
+        # Set absolute path for database to ensure consistency
+        DB_PATH="$(pwd)/test_migration.db"
+        export DATABASE_URL="sqlite:///${DB_PATH}"
+
+        # Remove old database if exists
+        rm -f "${DB_PATH}"
+
+        # Run migration - it handles both fresh install and upgrade scenarios
+        alembic upgrade head
+
+        # Verify database file exists
+        if [ ! -f "${DB_PATH}" ]; then
+          echo "❌ Error: Database file not created"
+          exit 1
+        fi
+
+        # List tables after migration
+        echo "Tables after migration:"
+        sqlite3 "${DB_PATH}" ".tables"
+
+        echo "✅ Migration completed successfully"
+
+    - name: Verify migration is reversible
+      working-directory: ./backend
+      run: |
+        # Use same database path
+        DB_PATH="$(pwd)/test_migration.db"
+        export DATABASE_URL="sqlite:///${DB_PATH}"
+
+        # Test downgrade
+        alembic downgrade -1
+
+        echo "✅ Migration downgrade works"
+
+        # Re-upgrade
+        alembic upgrade head
+
+        echo "✅ Migration can be re-applied"
+
+    - name: Check for migration conflicts
+      working-directory: ./backend
+      run: |
+        # Check if there are multiple head revisions
+        HEADS=$(alembic heads | wc -l)
+
+        if [ $HEADS -gt 1 ]; then
+          echo "❌ Multiple migration heads detected. Please merge migration branches."
+          alembic heads
+          exit 1
+        fi
+
+        echo "✅ No migration conflicts"
+
+    - name: Validate migration naming
+      run: |
+        # Check if migration files follow naming convention
+        for file in backend/alembic/versions/*.py; do
+          filename=$(basename "$file")
+
+          # Should be: {revision}_{description}.py
+          if ! echo "$filename" | grep -qE '^[a-f0-9]+_[a-z0-9_]+\.py$'; then
+            echo "⚠️ Migration file $filename might not follow naming convention"
+          fi
+        done
+
+    - name: Check for data migration safety
+      working-directory: ./backend
+      run: |
+        # Look for potentially dangerous operations in migrations
+        echo "🔍 Checking for potentially dangerous operations..."
+
+        for file in alembic/versions/*.py; do
+          if grep -q "drop_table\|drop_column" "$file"; then
+            echo "⚠️ Warning: Found DROP operation in $file"
+            echo "   Make sure data is backed up or migrated before dropping!"
+          fi
+        done
+
+        echo "✅ Migration safety check complete"
+
+    - name: Generate migration summary
+      run: |
+        echo "## 📊 Migration Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        cd backend
+
+        echo "### New Migrations" >> $GITHUB_STEP_SUMMARY
+        git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "alembic/versions/" | while read file; do
+          echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+        done
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Modified Models" >> $GITHUB_STEP_SUMMARY
+        git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "app/models/" | while read file; do
+          echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+        done

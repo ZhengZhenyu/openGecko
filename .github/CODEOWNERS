@@ -1,0 +1,24 @@
+# Code Owners for OmniContent
+# These owners will be automatically requested for review when someone opens a PR
+
+# Global owners (all files)
+* @ZhengZhenyu
+
+# Backend code
+/backend/ @ZhengZhenyu
+/backend/app/models/ @ZhengZhenyu
+/backend/app/api/ @ZhengZhenyu
+/backend/alembic/ @ZhengZhenyu
+
+# Frontend code
+/frontend/ @ZhengZhenyu
+
+# Documentation
+/docs/ @ZhengZhenyu
+*.md @ZhengZhenyu
+
+# Configuration files
+/.github/ @ZhengZhenyu
+docker-compose.yml @ZhengZhenyu
+Makefile @ZhengZhenyu
+requirements.txt @ZhengZhenyu
