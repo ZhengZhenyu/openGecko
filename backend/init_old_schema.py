@@ -74,6 +74,10 @@ class OldPublishRecord(Base):
 
 def init_old_schema(database_url: str = "sqlite:///./content_hub.db"):
     """Initialize the old schema before Phase 1."""
+    # If the input is just a filename (not a full URL), convert to SQLite URL
+    if not database_url.startswith("sqlite:"):
+        database_url = f"sqlite:///./{database_url}"
+
     print(f"Creating old schema in {database_url}")
 
     engine = create_engine(database_url, connect_args={"check_same_thread": False})
