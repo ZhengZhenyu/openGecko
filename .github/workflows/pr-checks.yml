@@ -107,6 +107,9 @@ jobs:
 
   code-review-checklist:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
 
     steps:
     - name: Post review checklist
