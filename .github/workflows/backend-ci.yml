@@ -55,7 +55,10 @@ jobs:
     - name: Run database migration
       working-directory: ./backend
       run: |
-        # Create test database
+        # Initialize old schema (pre-Phase1) to simulate upgrading from existing system
+        python init_old_schema.py test_content_hub.db
+
+        # Run migration to upgrade to Phase 1
         alembic upgrade head
       env:
         DATABASE_URL: sqlite:///./test_content_hub.db

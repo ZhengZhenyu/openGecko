@@ -27,9 +27,12 @@ jobs:
     - name: Check migration can run
       working-directory: ./backend
       run: |
-        # Test migration on fresh database
+        # Test migration on database with old schema
         rm -f test_migration.db
         export DATABASE_URL=sqlite:///./test_migration.db
+
+        # Initialize old schema (pre-Phase1) to simulate upgrading from existing system
+        python init_old_schema.py test_migration.db
 
         # Run migration
         alembic upgrade head
@@ -39,6 +42,8 @@ jobs:
     - name: Verify migration is reversible
       working-directory: ./backend
       run: |
+        export DATABASE_URL=sqlite:///./test_migration.db
+
         # Test downgrade
         alembic downgrade -1
 
