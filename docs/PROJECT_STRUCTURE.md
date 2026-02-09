@@ -57,11 +57,20 @@ backend/
 │   └── main.py           # FastAPI 应用入口
 ├── tests/                # 测试文件
 │   ├── __init__.py       # 测试包初始化
-│   └── test_auth_integration.py  # 认证和多租户集成测试
+│   ├── conftest.py       # Pytest 配置和共享 fixtures
+│   ├── test_auth_api.py  # 认证 API 测试
+│   ├── test_communities_api.py  # 社区管理 API 测试
+│   ├── test_contents_api.py     # 内容管理 API 测试
+│   ├── test_publish_api.py      # 发布管理 API 测试
+│   ├── test_analytics_api.py    # 数据分析 API 测试
+│   └── test_auth_integration.py # 认证和多租户集成测试
 ├── uploads/              # 文件上传目录
 │   └── .gitkeep
 ├── .env.example          # 环境变量示例
+├── pytest.ini            # Pytest 配置文件
 ├── requirements.txt      # Python 依赖
+├── requirements-dev.txt  # 开发和测试依赖
+├── TESTING.md            # 测试指南
 └── pyproject.toml        # 项目配置（ruff、black等）
 ```
 
@@ -90,6 +99,13 @@ backend/
 - 各渠道发布逻辑
 - 内容格式转换
 - 第三方 API 集成
+
+#### `tests/` - 测试目录
+- `conftest.py`: Pytest 配置和共享 fixtures（数据库、认证、测试数据）
+- `test_*_api.py`: API 端点集成测试，覆盖所有 REST API
+- `test_auth_integration.py`: 认证和多租户功能的集成测试
+- 使用 SQLite 内存数据库进行测试，保证测试独立性
+- 详细信息请参考 [`backend/TESTING.md`](../backend/TESTING.md)
 
 ## Frontend 前端结构
 
