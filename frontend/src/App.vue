@@ -94,9 +94,11 @@ const showLayout = computed(() => {
 onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
-      const info = await getUserInfo()
-      authStore.setUser(info.user)
-      authStore.setCommunities(info.communities)
+      const userInfo = await getUserInfo()
+      // Backend returns user data directly with communities array
+      const { communities, ...userData } = userInfo
+      authStore.setUser(userData as any)
+      authStore.setCommunities(communities)
     } catch {
       // If failed to get user info, clear auth
     }

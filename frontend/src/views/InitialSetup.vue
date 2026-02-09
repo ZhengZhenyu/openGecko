@@ -169,12 +169,14 @@ const handleSetup = async () => {
 
     // Fetch new admin user info
     const userInfo = await getUserInfo()
-    authStore.setUser(userInfo.user)
-    authStore.setCommunities(userInfo.communities)
+    // Backend returns user data directly with communities array
+    const { communities, ...userData } = userInfo
+    authStore.setUser(userData as any)
+    authStore.setCommunities(communities)
 
     // Set default community if available
-    if (userInfo.communities.length > 0) {
-      communityStore.setCommunity(userInfo.communities[0].id)
+    if (communities.length > 0) {
+      communityStore.setCommunity(communities[0].id)
     }
 
     ElMessage.success('管理员账号创建成功！默认账号已自动删除。')
