@@ -38,3 +38,6 @@ Thumbs.db
 .claude/
 *.backup*
 .coverage
+
+# Local TODO
+GOVERNANCE_TODO.md
