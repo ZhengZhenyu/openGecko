@@ -212,13 +212,35 @@ def register(
 
 
 @router.get("/me", response_model=UserInfoResponse)
-def get_current_user_info(current_user: User = Depends(get_current_user)):
+def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
-    Get current user information and their accessible communities.
+    Get current user information and their accessible communities with roles.
     """
+    from app.core.dependencies import get_user_community_role
+    from app.schemas.community import CommunityWithRole
+    
+    # Build communities with roles
+    communities_with_roles = []
+    for community in current_user.communities:
+        role = get_user_community_role(current_user, community.id, db)
+        communities_with_roles.append(
+            CommunityWithRole(
+                id=community.id,
+                name=community.name,
+                slug=community.slug,
+                url=community.url,
+                logo_url=community.logo_url,
+                is_active=community.is_active,
+                role=role or "user",
+            )
+        )
+    
     return UserInfoResponse(
         user=current_user,
-        communities=current_user.communities
+        communities=communities_with_roles
     )
 
 

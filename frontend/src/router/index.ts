@@ -72,6 +72,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresSuperuser: true },
     },
     {
+      path: '/community-overview',
+      name: 'CommunityOverview',
+      component: () => import('../views/CommunityOverview.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/users',
       name: 'UserManage',
       component: () => import('../views/UserManage.vue'),
@@ -131,7 +137,8 @@ router.beforeEach(async (to, from, next) => {
       authStore.setUser(userInfo.user)
       authStore.setCommunities(userInfo.communities)
       
-      // Set default community if available and not already set
+      // Set default community if available and not already set (optional now)
+      // Users can work without a default community
       if (userInfo.communities.length > 0 && !communityStore.currentCommunityId) {
         communityStore.setCommunity(userInfo.communities[0].id)
       }

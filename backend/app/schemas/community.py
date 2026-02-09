@@ -38,6 +38,11 @@ class CommunityBrief(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CommunityWithRole(CommunityBrief):
+    """Community info with user's role in it."""
+    role: str  # 'admin' or 'user' or 'superuser' for superusers
+
+
 class CommunityOut(CommunityBase):
     id: int
     is_active: bool

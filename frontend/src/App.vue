@@ -22,6 +22,10 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>仪表板</span>
         </el-menu-item>
+        <el-menu-item index="/community-overview">
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>社区总览</span>
+        </el-menu-item>
         <el-menu-item index="/contents">
           <el-icon><Document /></el-icon>
           <span>内容管理</span>
@@ -30,6 +34,28 @@
           <el-icon><Promotion /></el-icon>
           <span>发布管理</span>
         </el-menu-item>
+        <el-sub-menu index="governance">
+          <template #title>
+            <el-icon><Stamp /></el-icon>
+            <span>社区治理</span>
+          </template>
+          <el-menu-item index="/governance">
+            <el-icon><DataLine /></el-icon>
+            <span>治理概览</span>
+          </el-menu-item>
+          <el-menu-item index="/committees">
+            <el-icon><Avatar /></el-icon>
+            <span>委员会</span>
+          </el-menu-item>
+          <el-menu-item index="/meetings">
+            <el-icon><Calendar /></el-icon>
+            <span>会议管理</span>
+          </el-menu-item>
+          <el-menu-item index="/committees/batch-manage">
+            <el-icon><Upload /></el-icon>
+            <span>批量管理</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
           <span>渠道设置</span>
@@ -73,6 +99,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { 
+  Collection, DataAnalysis, Document, Promotion, Setting, 
+  OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar, 
+  Calendar, Upload 
+} from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { getUserInfo } from './api/auth'
 import CommunitySwitcher from './components/CommunitySwitcher.vue'

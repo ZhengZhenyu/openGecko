@@ -22,9 +22,9 @@ class TokenData(BaseModel):
 
 
 class UserInfoResponse(BaseModel):
-    """Response containing user info and their communities."""
+    """Response containing user info and their communities with roles."""
     user: "UserOut"
-    communities: List["CommunityBrief"]
+    communities: List["CommunityWithRole"]
 
 
 class InitialSetupRequest(BaseModel):

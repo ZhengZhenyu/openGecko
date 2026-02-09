@@ -2,7 +2,7 @@
   <div class="community-manage">
     <div class="page-header">
       <h2>社区管理</h2>
-      <el-button type="primary" :icon="Plus" @click="showCreateDialog">新建社区</el-button>
+      <el-button v-if="isSuperuser" type="primary" :icon="Plus" @click="showCreateDialog">新建社区</el-button>
     </div>
 
     <el-row :gutter="20">
@@ -18,11 +18,11 @@
                 <el-icon class="more-icon"><MoreFilled /></el-icon>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="edit">编辑</el-dropdown-item>
                     <el-dropdown-item command="channels">渠道管理</el-dropdown-item>
-                    <el-dropdown-item command="members">成员管理</el-dropdown-item>
-                    <el-dropdown-item command="toggle">{{ community.is_active ? '停用' : '启用' }}</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided style="color: #f56c6c">删除</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser" command="members">成员管理</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="toggle">{{ community.is_active ? '停用' : '启用' }}</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser" command="delete" divided style="color: #f56c6c">删除</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -265,6 +265,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, MoreFilled, Link } from '@element-plus/icons-vue'
 import type { Community } from '../stores/auth'
+import { useAuthStore } from '../stores/auth'
 import {
   getCommunities,
   createCommunity,
@@ -285,6 +286,9 @@ import {
 } from '../api/channel'
 import { listAllUsers } from '../api/auth'
 import type { User } from '../stores/auth'
+
+const authStore = useAuthStore()
+const isSuperuser = computed(() => authStore.isSuperuser)
 
 const communities = ref<Community[]>([])
 const dialogVisible = ref(false)

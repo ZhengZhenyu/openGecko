@@ -1,8 +1,25 @@
 <template>
   <div class="settings">
-    <h2>渠道设置</h2>
+    <div class="page-header">
+      <div>
+        <h2>渠道设置</h2>
+        <p class="subtitle">
+          当前社区: <strong>{{ currentCommunityName }}</strong>
+          <span v-if="!currentCommunityId" class="hint-text">（请先选择社区）</span>
+        </p>
+      </div>
+    </div>
 
-    <el-row :gutter="20">
+    <el-alert
+      v-if="!currentCommunityId"
+      title="请先选择社区"
+      type="warning"
+      description="渠道设置需要在特定社区下进行，请先在顶部选择一个社区"
+      :closable="false"
+      style="margin-bottom: 20px"
+    />
+
+    <el-row v-else :gutter="20">
       <el-col :span="12" v-for="ch in channelList" :key="ch.key">
         <el-card style="margin-bottom: 20px">
           <template #header>
@@ -67,8 +84,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
+const communityStore = useCommunityStore()
+const authStore = useAuthStore()
+
+const currentCommunityId = computed(() => communityStore.currentCommunityId)
+const currentCommunityName = computed(() => {
+  const community = authStore.communities.find(c => c.id === currentCommunityId.value)
+  return community?.name || '未选择'
+})
+
 import { getChannelConfigs, updateChannelConfig } from '../api/publish'
 
 interface ChannelItem {
@@ -88,18 +116,46 @@ const channelList = ref<ChannelItem[]>([
 /** Check if a value is a masked placeholder from backend */
 function isSecretMasked(val: string): boolean {
   return !!val && val.startsWith('••••')
-}
+}() => {
+  loadChannels()
+})
 
-/** Clear masked value on focus so user can type a new one */
-function handleSecretFocus(ch: ChannelItem, field: string) {
-  if (isSecretMasked(ch.config[field])) {
-    ch.config[field] = ''
-  }
-}
+// Reload channels when community changes
+watch(currentCommunityId, () => {
+  loadChannels()
+})
 
-onMounted(async () => {
+async function loadChannels() {
+  if (!currentCommunityId.value) return
+  
+  // Reset to defaults
+  channelList.value.forEach(ch => {
+    ch.enabled = false
+    ch.config = getDefaultConfig(ch.key)
+  })
+  
   try {
     const configs = await getChannelConfigs()
+    for (const cfg of configs) {
+      const item = channelList.value.find(c => c.key === cfg.channel)
+      if (item) {
+  if (!currentCommunityId.value) {
+    ElMessage.warning('请先选择社区')
+    return
+  }
+
+        item.enabled = cfg.enabled
+        item.config = { ...item.config, ...cfg.config }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load channels:', error)
+  }
+}
+await loadChannels()
+  } catch (error: any) {
+    ElMessage.error(error.message || 
+}  const configs = await getChannelConfigs()
     for (const cfg of configs) {
       const item = channelList.value.find(c => c.key === cfg.channel)
       if (item) {
@@ -149,6 +205,38 @@ async function handleToggle(ch: ChannelItem) {
 <style scoped>
 .settings h2 { margin: 0 0 20px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
-.hint-text { color: #999; font-size: 13px; }
-.secret-hint { color: #909399; font-size: 12px; margin-top: 4px; }
-</style>
+.hint-text{
+  padding: 24px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  color: #606266;
+  font-size: 14px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint-text {
+  color: #999;
+  font-size: 13px;
+}
+
+.secret-hint {
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
