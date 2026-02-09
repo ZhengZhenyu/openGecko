@@ -99,8 +99,6 @@ router.beforeEach(async (to, from, next) => {
       if (userInfo.communities.length > 0 && !communityStore.currentCommunityId) {
         communityStore.setCommunity(userInfo.communities[0].id)
       }
-      
-      console.log('User info loaded:', userInfo.user.username, 'is_superuser:', userInfo.user.is_superuser)
     } catch (error) {
       // If failed to get user info, clear auth and redirect to login
       console.error('Failed to load user info:', error)
@@ -117,7 +115,6 @@ router.beforeEach(async (to, from, next) => {
     next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (requiresSuperuser && !authStore.isSuperuser) {
     // Redirect to dashboard if not superuser
-    console.warn('Access denied: requires superuser. Current user:', authStore.user)
     next({ name: 'Dashboard' })
   } else if (to.name === 'Login' && authStore.isAuthenticated) {
     // Redirect to dashboard if already logged in
