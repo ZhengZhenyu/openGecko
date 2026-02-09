@@ -102,7 +102,8 @@ const handleLogin = async () => {
 
     // Check if this is the default admin - redirect to initial setup
     if (loginResponse.is_default_admin) {
-      ElMessage.warning('请先完成系统初始化设置')
+      // Redirect to initial setup immediately without showing message
+      // The InitialSetup page will show appropriate instructions
       router.push('/initial-setup')
       return
     }
