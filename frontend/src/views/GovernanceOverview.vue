@@ -73,7 +73,7 @@
               v-for="committee in committees"
               :key="committee.id"
               class="list-item"
-              @click="$router.push(\`/committees/\${committee.id}\`)"
+              @click="$router.push('/committees/' + committee.id)"
             >
               <div class="item-content">
                 <div class="item-title">{{ committee.name }}</div>
@@ -106,7 +106,7 @@
               v-for="meeting in upcomingMeetings"
               :key="meeting.id"
               class="list-item"
-              @click="$router.push(\`/meetings/\${meeting.id}\`)"
+              @click="$router.push('/meetings/' + meeting.id)"
             >
               <div class="item-content">
                 <div class="item-title">{{ meeting.title }}</div>

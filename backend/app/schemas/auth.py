@@ -1,6 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 
 from pydantic import BaseModel, EmailStr, Field
+
+if TYPE_CHECKING:
+    from app.schemas.user import UserOut
+    from app.schemas.community import CommunityWithRole
 
 
 class LoginRequest(BaseModel):
@@ -52,7 +56,8 @@ class SystemStatusResponse(BaseModel):
     message: str
 
 
-# Avoid circular imports
-from app.schemas.user import UserOut  # noqa: E402
-from app.schemas.community import CommunityBrief  # noqa: E402
-UserInfoResponse.model_rebuild()
+# Avoid circular imports - don't call model_rebuild here
+# It will be called after all schemas are imported in __init__.py
+if not TYPE_CHECKING:
+    from app.schemas.user import UserOut  # noqa: F401
+    from app.schemas.community import CommunityWithRole  # noqa: F401

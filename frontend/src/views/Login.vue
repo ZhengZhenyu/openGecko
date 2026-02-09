@@ -102,10 +102,10 @@ const handleLogin = async () => {
 
     // Check if this is the default admin - redirect to initial setup
     if (loginResponse.is_default_admin) {
-      loading.value = false
+      console.log('[Login] Default admin detected, redirecting to initial setup...')
       // Redirect to initial setup immediately without showing message
       // The InitialSetup page will show appropriate instructions
-      await router.push('/initial-setup')
+      router.push('/initial-setup')
       return
     }
 
@@ -122,7 +122,7 @@ const handleLogin = async () => {
     ElMessage.success('登录成功')
 
     // Step 4: Redirect to dashboard
-    await router.push('/')
+    router.push('/')
   } catch (error: any) {
     console.error('Login failed:', error)
     ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')

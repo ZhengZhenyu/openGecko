@@ -10,12 +10,17 @@ from app.schemas.community import (
     CommunityUpdate,
     CommunityOut,
     CommunityBrief,
+    CommunityWithRole,
     CommunityWithMembers,
     UserBrief,
     CommunityMemberAdd,
 )
 from app.schemas.content import ContentCreate, ContentUpdate, ContentOut
 from app.schemas.publish import PublishRequest, PublishRecordOut
+
+# Rebuild models with forward references now that all types are imported
+UserInfoResponse.model_rebuild()
+CommunityWithMembers.model_rebuild()
 
 __all__ = [
     "LoginRequest",
@@ -34,6 +39,7 @@ __all__ = [
     "CommunityUpdate",
     "CommunityOut",
     "CommunityBrief",
+    "CommunityWithRole",
     "CommunityWithMembers",
     "UserBrief",
     "CommunityMemberAdd",

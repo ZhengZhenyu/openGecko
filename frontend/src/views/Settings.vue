@@ -116,9 +116,7 @@ const channelList = ref<ChannelItem[]>([
 /** Check if a value is a masked placeholder from backend */
 function isSecretMasked(val: string): boolean {
   return !!val && val.startsWith('••••')
-}() => {
-  loadChannels()
-})
+}
 
 // Reload channels when community changes
 watch(currentCommunityId, () => {
@@ -139,11 +137,6 @@ async function loadChannels() {
     for (const cfg of configs) {
       const item = channelList.value.find(c => c.key === cfg.channel)
       if (item) {
-  if (!currentCommunityId.value) {
-    ElMessage.warning('请先选择社区')
-    return
-  }
-
         item.enabled = cfg.enabled
         item.config = { ...item.config, ...cfg.config }
       }
@@ -152,19 +145,6 @@ async function loadChannels() {
     console.error('Failed to load channels:', error)
   }
 }
-await loadChannels()
-  } catch (error: any) {
-    ElMessage.error(error.message || 
-}  const configs = await getChannelConfigs()
-    for (const cfg of configs) {
-      const item = channelList.value.find(c => c.key === cfg.channel)
-      if (item) {
-        item.enabled = cfg.enabled
-        item.config = { ...item.config, ...cfg.config }
-      }
-    }
-  } catch { /* empty */ }
-})
 
 async function handleSave(ch: ChannelItem) {
   // Build the config to send — skip masked values (means user didn't change them)

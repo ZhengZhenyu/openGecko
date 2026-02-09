@@ -203,7 +203,6 @@ import {
   CircleCloseFilled
 } from '@element-plus/icons-vue'
 import { listCommittees, getCommittee, type Committee, type CommitteeWithMembers } from '@/api/governance'
-import request from '@/api/request'
 
 const router = useRouter()
 
