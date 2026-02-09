@@ -107,6 +107,8 @@ jobs:
 
   code-review-checklist:
     runs-on: ubuntu-latest
+    # Only run when PR is opened, not on subsequent pushes
+    if: github.event.action == 'opened'
     permissions:
       pull-requests: write
       issues: write
@@ -116,8 +118,7 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
-          const checklist = `
-          ## 🔍 Code Review Checklist
+          const checklist = `## 🔍 Code Review Checklist
 
           Please ensure the following before merging:
 
@@ -161,12 +162,9 @@ jobs:
           - [ ] Proper pagination for lists
           `;
 
-          // Only post on PR open, not on every sync
-          if (context.payload.action === 'opened') {
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: checklist
-            });
-          }
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: checklist
+          });
