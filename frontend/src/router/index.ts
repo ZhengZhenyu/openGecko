@@ -90,6 +90,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/committees/batch-manage',
+      name: 'CommitteeMemberManage',
+      component: () => import('../views/CommitteeMemberManage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/governance',
       name: 'GovernanceOverview',
       component: () => import('../views/GovernanceOverview.vue'),

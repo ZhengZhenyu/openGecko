@@ -603,3 +603,339 @@ class TestMemberCount:
         )
         assert response.status_code == 200
         assert response.json()["member_count"] == 1
+
+
+# ==================== CSV Import/Export Tests ====================
+
+class TestCommitteeCSVExport:
+    """Test CSV export functionality."""
+
+    def test_export_members_success(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+        _create_member(
+            db_session,
+            committee.id,
+            name="张三",
+            email="zhangsan@example.com",
+            phone="13800138000",
+            wechat="zhangsan_wx",
+            organization="测试公司",
+            roles=["主席", "秘书"],
+            term_start="2024-01-01",
+            term_end="2025-12-31",
+            is_active=True,
+            bio="测试成员简介",
+        )
+        _create_member(
+            db_session,
+            committee.id,
+            name="李四",
+            email="lisi@example.com",
+            roles=["成员"],
+        )
+
+        response = client.get(
+            f"/api/committees/{committee.id}/members/export",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert "attachment" in response.headers.get("content-disposition", "")
+
+        # Check CSV content
+        csv_content = response.text
+        lines = csv_content.strip().split("\n")
+        assert len(lines) == 3  # header + 2 members
+
+        # Check header
+        header = lines[0]
+        assert "name" in header
+        assert "email" in header
+        assert "roles" in header
+
+        # Check first member data
+        assert "张三" in lines[1]
+        assert "zhangsan@example.com" in lines[1]
+        assert "13800138000" in lines[1]
+        assert "测试公司" in lines[1]
+
+    def test_export_empty_committee(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        response = client.get(
+            f"/api/committees/{committee.id}/members/export",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        csv_content = response.text
+        lines = csv_content.strip().split("\n")
+        assert len(lines) == 1  # only header
+
+    def test_export_nonexistent_committee(
+        self, client: TestClient, auth_headers: dict
+    ):
+        response = client.get(
+            "/api/committees/99999/members/export",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+
+class TestCommitteeCSVImport:
+    """Test CSV import functionality."""
+
+    def test_import_members_success(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        # Create CSV file
+        csv_content = """name,email,phone,wechat,organization,roles,term_start,term_end,is_active,bio
+张三,zhangsan@example.com,13800138000,zhangsan_wx,测试公司,"主席,秘书",2024-01-01,2025-12-31,true,测试成员
+李四,lisi@example.com,13900139000,,另一家公司,成员,2024-01-01,,true,
+王五,wangwu@example.com,,,,观察员,2024-01-01,2024-12-31,false,临时成员"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 3
+        assert data["error_count"] == 0
+        assert len(data["errors"]) == 0
+
+        # Verify members were created
+        members = db_session.query(CommitteeMember).filter_by(
+            committee_id=committee.id
+        ).all()
+        assert len(members) == 3
+
+        # Check first member
+        zhang = next(m for m in members if m.name == "张三")
+        assert zhang.email == "zhangsan@example.com"
+        assert zhang.phone == "13800138000"
+        assert zhang.wechat == "zhangsan_wx"
+        assert zhang.organization == "测试公司"
+        assert "主席" in zhang.roles
+        assert "秘书" in zhang.roles
+        assert zhang.is_active is True
+
+    def test_import_invalid_file_type(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        # Create non-CSV file
+        txt_file = tmp_path / "members.txt"
+        txt_file.write_text("not a csv")
+
+        with open(txt_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.txt", f, "text/plain")},
+            )
+
+        assert response.status_code == 400
+        assert "Only CSV files" in response.json()["detail"]
+
+    def test_import_missing_required_field(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        # CSV without name field
+        csv_content = """email,phone,organization
+test@example.com,13800138000,测试公司"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 400
+        assert "name" in response.json()["detail"].lower()
+
+    def test_import_invalid_date_format(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        csv_content = """name,email,term_start
+张三,zhangsan@example.com,2024/01/01"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 0
+        assert data["error_count"] == 1
+        assert len(data["errors"]) > 0
+        assert "Row 2" in data["errors"][0]
+
+    def test_import_duplicate_names(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        # Pre-existing member
+        _create_member(db_session, committee.id, name="张三")
+
+        csv_content = """name,email
+张三,zhangsan@example.com
+李四,lisi@example.com"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 1
+        assert data["error_count"] == 1
+        assert any("already exists" in err for err in data["errors"])
+
+    def test_import_partial_success(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        committee = _create_committee(db_session, test_community.id)
+
+        # Mix of valid and invalid rows
+        csv_content = """name,email,term_start
+张三,zhangsan@example.com,2024-01-01
+,lisi@example.com,2024-01-01
+王五,wangwu@example.com,invalid-date"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 1  # Only 张三 succeeded
+        assert data["error_count"] == 2
+        assert len(data["errors"]) == 2
+
+    def test_import_utf8_bom(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        auth_headers: dict,
+        tmp_path,
+    ):
+        """Test that UTF-8 BOM is handled correctly (Excel compatibility)."""
+        committee = _create_committee(db_session, test_community.id)
+
+        csv_content = """name,email
+张三,zhangsan@example.com"""
+
+        csv_file = tmp_path / "members_bom.csv"
+        # Write with BOM
+        csv_file.write_bytes(b"\xef\xbb\xbf" + csv_content.encode("utf-8"))
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                f"/api/committees/{committee.id}/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 1
+        assert data["error_count"] == 0
+
+    def test_import_nonexistent_committee(
+        self, client: TestClient, auth_headers: dict, tmp_path
+    ):
+        csv_content = """name,email
+张三,zhangsan@example.com"""
+
+        csv_file = tmp_path / "members.csv"
+        csv_file.write_text(csv_content, encoding="utf-8")
+
+        with open(csv_file, "rb") as f:
+            response = client.post(
+                "/api/committees/99999/members/import",
+                headers=auth_headers,
+                files={"file": ("members.csv", f, "text/csv")},
+            )
+
+        assert response.status_code == 404
