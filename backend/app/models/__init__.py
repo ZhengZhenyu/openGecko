@@ -5,6 +5,8 @@ from app.models.content import Content
 from app.models.channel import ChannelConfig
 from app.models.publish_record import PublishRecord
 from app.models.password_reset import PasswordResetToken
+from app.models.committee import Committee, CommitteeMember
+from app.models.meeting import Meeting, MeetingReminder
 
 __all__ = [
     "User",
@@ -15,4 +17,8 @@ __all__ = [
     "PublishRecord",
     "PasswordResetToken",
     "community_users",
+    "Committee",
+    "CommitteeMember",
+    "Meeting",
+    "MeetingReminder",
 ]

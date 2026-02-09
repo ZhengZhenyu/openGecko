@@ -29,3 +29,4 @@ class Community(Base):
     contents = relationship("Content", back_populates="community", cascade="all, delete-orphan")
     channel_configs = relationship("ChannelConfig", back_populates="community", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="community", cascade="all, delete-orphan")
+    committees = relationship("Committee", back_populates="community", cascade="all, delete-orphan")

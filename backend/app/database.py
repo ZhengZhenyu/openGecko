@@ -33,6 +33,8 @@ def init_db():
         channel,
         publish_record,
         password_reset,
+        committee,
+        meeting,
     )
     Base.metadata.create_all(bind=engine)
     seed_default_admin()
