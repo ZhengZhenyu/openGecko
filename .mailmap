@@ -1,0 +1,7 @@
+# Git mailmap file
+# This ensures all contributions are correctly attributed
+
+# Map any Claude-related commits to the main author
+Zhenyu Zheng <zheng.zhenyu@outlook.com> Claude <noreply@anthropic.com>
+Zhenyu Zheng <zheng.zhenyu@outlook.com> Claude Sonnet 4.5 <noreply@anthropic.com>
+Zhenyu Zheng <zheng.zhenyu@outlook.com> claude <noreply@anthropic.com>
