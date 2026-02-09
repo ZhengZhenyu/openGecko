@@ -3,11 +3,26 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"check_same_thread": False},  # SQLite specific
-    echo=settings.DEBUG,
-)
+# Database connection pool configuration
+# For SQLite, we need check_same_thread=False
+# For PostgreSQL/MySQL, use connection pooling settings
+if settings.DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        settings.DATABASE_URL,
+        connect_args={"check_same_thread": False},  # SQLite specific
+        echo=settings.DB_ECHO or settings.DEBUG,
+    )
+else:
+    # For PostgreSQL/MySQL with connection pooling
+    engine = create_engine(
+        settings.DATABASE_URL,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_recycle=settings.DB_POOL_RECYCLE,
+        pool_pre_ping=True,  # Verify connections before using
+        echo=settings.DB_ECHO or settings.DEBUG,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
