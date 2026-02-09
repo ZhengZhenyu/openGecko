@@ -6,6 +6,9 @@ import os
 import tempfile
 from typing import Generator
 
+# Set shorter JWT_SECRET_KEY for testing (to avoid bcrypt 72 byte limit)
+os.environ["JWT_SECRET_KEY"] = "test-secret-key"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -44,13 +47,19 @@ def test_engine(test_db_file):
 @pytest.fixture(scope="function")
 def db_session(test_engine) -> Generator[Session, None, None]:
     """Create a new database session for a test."""
-    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    # Start a transaction
+    connection = test_engine.connect()
+    transaction = connection.begin()
+
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=connection)
     session = TestSessionLocal()
+
     try:
         yield session
     finally:
-        session.rollback()
         session.close()
+        transaction.rollback()  # Roll back all changes
+        connection.close()
 
 
 @pytest.fixture(scope="function")

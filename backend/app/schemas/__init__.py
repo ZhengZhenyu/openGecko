@@ -10,7 +10,7 @@ from app.schemas.community import (
     CommunityMemberAdd,
 )
 from app.schemas.content import ContentCreate, ContentUpdate, ContentOut
-from app.schemas.publish import PublishRequest, PublishResponse
+from app.schemas.publish import PublishRequest, PublishRecordOut
 
 __all__ = [
     "LoginRequest",
@@ -32,5 +32,5 @@ __all__ = [
     "ContentUpdate",
     "ContentOut",
     "PublishRequest",
-    "PublishResponse",
+    "PublishRecordOut",
 ]
