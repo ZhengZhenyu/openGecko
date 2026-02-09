@@ -1,5 +1,9 @@
 # OmniContent - 项目设计文档
 
+<div align="center">
+<img src="../logo.svg" alt="OmniContent Logo" width="100" height="100" />
+</div>
+
 本目录包含 OmniContent 企业级全域内容管理平台的完整设计文档。
 
 **品牌定位**: 全域内容管理平台 (Manage All, Publish Everywhere)

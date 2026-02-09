@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="logo.svg" alt="OmniContent Logo" width="120" height="120" />
+
 **全域内容管理平台 - Manage All, Publish Everywhere**
 
 企业级多社区全渠道内容编排与发布系统
