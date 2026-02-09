@@ -11,12 +11,12 @@ os.environ["JWT_SECRET_KEY"] = "test-secret-key"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database import Base, get_db
 from app.main import app
-from app.models.user import User
+from app.models.user import User, community_users
 from app.models.community import Community
 from app.core.security import get_password_hash, create_access_token
 
@@ -105,8 +105,16 @@ def test_user(db_session: Session, test_community: Community) -> User:
         is_active=True,
         is_superuser=False,
     )
-    user.communities.append(test_community)
     db_session.add(user)
+    db_session.flush()
+    
+    # Add user to community with 'admin' role (to pass existing tests)
+    stmt = insert(community_users).values(
+        user_id=user.id,
+        community_id=test_community.id,
+        role='admin'  # Changed from default to admin to maintain test compatibility
+    )
+    db_session.execute(stmt)
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -123,8 +131,16 @@ def test_superuser(db_session: Session, test_community: Community) -> User:
         is_active=True,
         is_superuser=True,
     )
-    user.communities.append(test_community)
     db_session.add(user)
+    db_session.flush()
+    
+    # Add superuser to community with 'admin' role
+    stmt = insert(community_users).values(
+        user_id=user.id,
+        community_id=test_community.id,
+        role='admin'
+    )
+    db_session.execute(stmt)
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -156,8 +172,16 @@ def test_another_user(db_session: Session, test_another_community: Community) ->
         is_active=True,
         is_superuser=False,
     )
-    user.communities.append(test_another_community)
     db_session.add(user)
+    db_session.flush()
+    
+    # Add user to community with 'admin' role
+    stmt = insert(community_users).values(
+        user_id=user.id,
+        community_id=test_another_community.id,
+        role='admin'
+    )
+    db_session.execute(stmt)
     db_session.commit()
     db_session.refresh(user)
     return user
