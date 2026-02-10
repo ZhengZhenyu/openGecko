@@ -39,7 +39,14 @@
     <!-- 日历主体 -->
     <div v-else class="calendar-wrapper">
       <!-- 左侧未排期内容面板 -->
-      <div class="unscheduled-panel" :class="{ collapsed: panelCollapsed }">
+      <div
+        ref="unscheduledPanelRef"
+        class="unscheduled-panel"
+        :class="{ collapsed: panelCollapsed, 'drop-target-active': isDraggingOverPanel }"
+        @dragover.prevent="isDraggingOverPanel = true"
+        @dragleave="isDraggingOverPanel = false"
+        @drop="isDraggingOverPanel = false"
+      >
         <div class="panel-header" @click="panelCollapsed = !panelCollapsed">
           <span v-if="!panelCollapsed">
             <el-icon><Collection /></el-icon>
@@ -49,14 +56,13 @@
             <ArrowLeft />
           </el-icon>
         </div>
-        <div v-if="!panelCollapsed" class="panel-body">
+        <div v-if="!panelCollapsed" ref="unscheduledContainerRef" class="panel-body">
           <div
             v-for="item in unscheduledEvents"
             :key="item.id"
             class="unscheduled-item"
             :class="'status-' + item.status"
-            draggable="true"
-            @dragstart="handleExternalDragStart($event, item)"
+            :data-event="JSON.stringify({ id: item.id, title: item.title, status: item.status, source_type: item.source_type, author: item.author, category: item.category })"
           >
             <div class="item-dot" :style="{ backgroundColor: getStatusColor(item.status) }" />
             <div class="item-info">
@@ -177,14 +183,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Collection, ArrowLeft } from '@element-plus/icons-vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import interactionPlugin, { Draggable } from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import type { CalendarOptions, EventInput, EventDropArg, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import { useCommunityStore } from '../stores/community'
@@ -199,6 +205,10 @@ const router = useRouter()
 const communityStore = useCommunityStore()
 
 const calendarRef = ref()
+const unscheduledContainerRef = ref<HTMLElement>()
+const unscheduledPanelRef = ref<HTMLElement>()
+const isDraggingOverPanel = ref(false)
+let draggableInstance: InstanceType<typeof Draggable> | null = null
 const statusFilter = ref('')
 const panelCollapsed = ref(false)
 const loading = ref(false)
@@ -328,12 +338,14 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   datesSet: handleDatesSet,
   // 拖拽移动事件
   eventDrop: handleEventDrop,
+  // 拖拽结束（检测是否拖回未排期面板）
+  eventDragStop: handleEventDragStop,
   // 点击事件
   eventClick: handleEventClick,
   // 选择日期范围
   select: handleDateSelect,
   // 外部拖入
-  drop: handleExternalDrop,
+  eventReceive: handleEventReceive,
   // 事件渲染
   eventContent: renderEventContent,
 
@@ -390,6 +402,30 @@ async function handleEventDrop(info: EventDropArg) {
   }
 }
 
+async function handleEventDragStop(info: any) {
+  // 检测事件是否被拖到了未排期面板区域
+  const panelEl = unscheduledPanelRef.value
+  if (!panelEl) return
+
+  const rect = panelEl.getBoundingClientRect()
+  const { clientX, clientY } = info.jsEvent
+  const isOverPanel =
+    clientX >= rect.left && clientX <= rect.right &&
+    clientY >= rect.top && clientY <= rect.bottom
+
+  if (isOverPanel) {
+    const contentId = Number(info.event.extendedProps.content_id || info.event.id)
+    try {
+      await updateContentSchedule(contentId, null)
+      ElMessage.success(`"${info.event.title}" 已取消排期`)
+      await refetchEvents()
+    } catch (err: any) {
+      ElMessage.error('取消排期失败: ' + (err?.response?.data?.detail || err.message))
+    }
+  }
+  isDraggingOverPanel.value = false
+}
+
 function handleEventClick(info: EventClickArg) {
   selectedEvent.value = {
     id: info.event.id,
@@ -408,36 +444,41 @@ function handleDateSelect(info: DateSelectArg) {
   createDialogVisible.value = true
 }
 
-function handleExternalDragStart(event: DragEvent, item: ContentCalendarItem) {
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('text/plain', JSON.stringify({
-      id: item.id,
-      title: item.title,
-      status: item.status,
-    }))
-    event.dataTransfer.effectAllowed = 'move'
+function initDraggable() {
+  if (draggableInstance) {
+    draggableInstance.destroy()
+    draggableInstance = null
   }
+  if (!unscheduledContainerRef.value) return
+  draggableInstance = new Draggable(unscheduledContainerRef.value, {
+    itemSelector: '.unscheduled-item',
+    eventData: (el) => {
+      const data = JSON.parse(el.getAttribute('data-event') || '{}')
+      return {
+        id: String(data.id),
+        title: data.title,
+        backgroundColor: getStatusColor(data.status),
+        borderColor: getStatusColor(data.status),
+        textColor: '#fff',
+        extendedProps: { ...data },
+      }
+    },
+  })
 }
 
-async function handleExternalDrop(info: any) {
-  // 从外部面板拖入日历
-  const rawData = info.draggedEl?.getAttribute('data-event') ||
-    info.draggedEl?.textContent
-  
-  // We use the dataTransfer or the DOM-based approach
-  // FullCalendar's drop event gives us info.dateStr
+async function handleEventReceive(info: any) {
+  const contentId = Number(info.event.extendedProps.id || info.event.id)
+  const newDate = info.event.start
+  if (!newDate) {
+    info.revert()
+    return
+  }
   try {
-    const jsonStr = info.draggedEl?.querySelector('.item-title')?.textContent
-    // Find the unscheduled item by title match
-    const item = unscheduledEvents.value.find(
-      (e) => info.draggedEl?.textContent?.includes(e.title)
-    )
-    if (item) {
-      await updateContentSchedule(item.id, new Date(info.dateStr).toISOString())
-      ElMessage.success(`"${item.title}" 已排期`)
-      await refetchEvents()
-    }
+    await updateContentSchedule(contentId, newDate.toISOString())
+    ElMessage.success(`"${info.event.title}" 已排期`)
+    await refetchEvents()
   } catch (err: any) {
+    info.revert()
     ElMessage.error('排期失败: ' + (err?.response?.data?.detail || err.message))
   }
 }
@@ -530,8 +571,30 @@ watch(
   }
 )
 
+// 当未排期内容列表变化时重新初始化 Draggable
+watch(
+  () => unscheduledEvents.value,
+  () => {
+    nextTick(() => initDraggable())
+  }
+)
+
+// 面板展开/收起时重新初始化
+watch(panelCollapsed, (collapsed) => {
+  if (!collapsed) {
+    nextTick(() => initDraggable())
+  }
+})
+
 onMounted(() => {
-  // Initial load happens via datesSet callback
+  nextTick(() => initDraggable())
+})
+
+onBeforeUnmount(() => {
+  if (draggableInstance) {
+    draggableInstance.destroy()
+    draggableInstance = null
+  }
 })
 </script>
 
@@ -589,6 +652,12 @@ onMounted(() => {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
+
+  &.drop-target-active {
+    background: #ecf5ff;
+    border: 2px dashed #409eff;
+    box-shadow: 0 0 12px rgba(64, 158, 255, 0.2);
+  }
 
   &.collapsed {
     width: 40px;
@@ -650,9 +719,11 @@ onMounted(() => {
     transform: translateY(-1px);
   }
 
-  &:active {
+  &:active,
+  &.fc-dragging {
     cursor: grabbing;
-    opacity: 0.7;
+    opacity: 0.4;
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
   }
 
   &.status-draft { border-left-color: #909399; }
