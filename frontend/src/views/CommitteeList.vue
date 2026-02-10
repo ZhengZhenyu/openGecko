@@ -217,9 +217,20 @@ const rules: FormRules = {
 }
 
 onMounted(() => {
-  if (!communityStore.currentCommunityId) return
-  loadCommittees()
+  if (communityStore.currentCommunityId) {
+    loadCommittees()
+  }
 })
+
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  (newId) => {
+    if (newId) {
+      loadCommittees()
+    }
+  }
+)
 
 async function loadCommittees() {
   loading.value = true

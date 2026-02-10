@@ -119,12 +119,22 @@ const channels = [
 ]
 
 onMounted(async () => {
-  if (!communityStore.currentCommunityId) return
-  if (contentId.value) {
+  if (communityStore.currentCommunityId && contentId.value) {
     content.value = await fetchContent(contentId.value)
     records.value = await getPublishRecords(contentId.value)
   }
 })
+
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  async (newId) => {
+    if (newId && contentId.value) {
+      content.value = await fetchContent(contentId.value)
+      records.value = await getPublishRecords(contentId.value)
+    }
+  }
+)
 
 async function selectChannel(ch: string) {
   activeChannel.value = ch

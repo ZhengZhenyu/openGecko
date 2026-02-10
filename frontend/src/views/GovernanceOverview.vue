@@ -184,9 +184,20 @@ const stats = computed(() => {
 })
 
 onMounted(() => {
-  if (!communityStore.currentCommunityId) return
-  loadData()
+  if (communityStore.currentCommunityId) {
+    loadData()
+  }
 })
+
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  (newId) => {
+    if (newId) {
+      loadData()
+    }
+  }
+)
 
 async function loadData() {
   await Promise.all([loadCommittees(), loadMeetings()])

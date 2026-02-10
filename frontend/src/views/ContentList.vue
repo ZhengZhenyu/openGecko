@@ -161,9 +161,20 @@ function formatDate(d: string) {
 }
 
 onMounted(() => {
-  if (!communityStore.currentCommunityId) return
-  loadData()
+  if (communityStore.currentCommunityId) {
+    loadData()
+  }
 })
+
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  (newId) => {
+    if (newId) {
+      loadData()
+    }
+  }
+)
 </script>
 
 <style scoped>

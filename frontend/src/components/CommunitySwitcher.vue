@@ -25,10 +25,12 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
 
@@ -58,8 +60,10 @@ const handleCommunityChange = (communityId: number) => {
   if (community) {
     communityStore.setCommunity(communityId)
     ElMessage.success(`已切换到社区: ${community.name}`)
-    // Reload page to refresh data for new community
-    window.location.reload()
+    
+    // Navigate to community overview instead of reloading
+    // This allows the app to handle data refresh internally
+    router.push('/community-overview')
   }
 }
 </script>

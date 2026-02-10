@@ -99,9 +99,23 @@ onMounted(async () => {
     }
   }
 
-  // Only load data when a community is selected
-  if (!communityStore.currentCommunityId) return
+  // Load data when a community is selected
+  if (communityStore.currentCommunityId) {
+    await loadDashboardData()
+  }
+})
 
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  async (newId) => {
+    if (newId) {
+      await loadDashboardData()
+    }
+  }
+)
+
+async function loadDashboardData() {
   try {
     overview.value = await getAnalyticsOverview()
   } catch { /* empty */ }
@@ -109,7 +123,7 @@ onMounted(async () => {
     const res = await fetchContents({ page: 1, page_size: 5 })
     recentContents.value = res.items
   } catch { /* empty */ }
-})
+}
 
 function channelLabel(ch: string) {
   const map: Record<string, string> = { wechat: '微信公众号', hugo: 'Hugo 博客', csdn: 'CSDN', zhihu: '知乎' }

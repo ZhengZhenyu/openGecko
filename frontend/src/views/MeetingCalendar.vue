@@ -324,14 +324,26 @@ const sortedMeetings = computed(() => {
 })
 
 onMounted(() => {
-  if (!communityStore.currentCommunityId) return
-  loadCommittees()
-  loadMeetings()
+  if (communityStore.currentCommunityId) {
+    loadCommittees()
+    loadMeetings()
+  }
 
   if (route.query.action === 'create') {
     showCreateDialog.value = true
   }
 })
+
+// Watch for community changes
+watch(
+  () => communityStore.currentCommunityId,
+  (newId) => {
+    if (newId) {
+      loadCommittees()
+      loadMeetings()
+    }
+  }
+)
 
 async function loadCommittees() {
   try {
