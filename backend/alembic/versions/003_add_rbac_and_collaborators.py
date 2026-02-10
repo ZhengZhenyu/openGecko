@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '003'
-down_revision = '002'
+down_revision = '993d1f15fe95'
 branch_labels = None
 depends_on = None
 
@@ -20,8 +20,9 @@ def upgrade():
     # Add owner_id column to contents table
     op.add_column('contents', sa.Column('owner_id', sa.Integer(), nullable=True))
     op.create_index(op.f('ix_contents_owner_id'), 'contents', ['owner_id'], unique=False)
-    op.create_foreign_key('fk_contents_owner_id', 'contents', 'users', ['owner_id'], ['id'], ondelete='SET NULL')
-    
+    # Note: SQLite doesn't support adding foreign keys via ALTER TABLE
+    # Foreign key will be enforced at application level
+
     # Create content_collaborators table
     op.create_table('content_collaborators',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -40,8 +41,7 @@ def upgrade():
 def downgrade():
     # Drop content_collaborators table
     op.drop_table('content_collaborators')
-    
+
     # Remove owner_id column from contents table
-    op.drop_constraint('fk_contents_owner_id', 'contents', type_='foreignkey')
     op.drop_index(op.f('ix_contents_owner_id'), table_name='contents')
     op.drop_column('contents', 'owner_id')

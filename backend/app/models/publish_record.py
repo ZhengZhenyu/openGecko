@@ -24,8 +24,15 @@ class PublishRecord(Base):
     published_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    community_id = Column(
+        Integer,
+        ForeignKey("communities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
 
     content = relationship("Content", back_populates="publish_records")
+    community = relationship("Community")
     analytics = relationship("ContentAnalytics", back_populates="publish_record", cascade="all, delete-orphan")
 
 
