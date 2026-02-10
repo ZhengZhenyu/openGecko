@@ -1,173 +1,157 @@
 <template>
   <div class="committee-list">
-    <div class="page-header">
-      <div class="header-title">
-        <h2>委员会管理</h2>
-        <p>管理社区的各类委员会及其成员</p>
-      </div>
-      <el-button
-        v-if="isAdmin"
-        type="primary"
-        @click="showCreateDialog = true"
-      >
-        <el-icon><Plus /></el-icon>
-        创建委员会
-      </el-button>
-    </div>
-
-    <div class="filter-bar">
-      <el-radio-group v-model="filterActive" @change="loadCommittees">
-        <el-radio-button :value="undefined">全部</el-radio-button>
-        <el-radio-button :value="true">活跃</el-radio-button>
-        <el-radio-button :value="false">已归档</el-radio-button>
-      </el-radio-group>
-    </div>
-
-    <el-row v-loading="loading" :gutter="16" class="committee-grid">
-      <el-col
-        v-for="committee in committees"
-        :key="committee.id"
-        :xs="24"
-        :sm="12"
-        :md="8"
-        :lg="6"
-      >
-        <el-card class="committee-card" shadow="hover" @click="goToDetail(committee.id)">
-          <div class="card-header">
-            <h3>{{ committee.name }}</h3>
-            <el-tag :type="committee.is_active ? 'success' : 'info'" size="small">
-              {{ committee.is_active ? '活跃' : '已归档' }}
-            </el-tag>
-          </div>
-
-          <div v-if="committee.description" class="card-description">
-            {{ committee.description }}
-          </div>
-
-          <div class="card-meta">
-            <div class="meta-item">
-              <el-icon><UserFilled /></el-icon>
-              <span>{{ committee.member_count }} 名成员</span>
-            </div>
-            <div v-if="committee.meeting_frequency" class="meta-item">
-              <el-icon><Calendar /></el-icon>
-              <span>{{ committee.meeting_frequency }}</span>
-            </div>
-            <div v-if="committee.established_at" class="meta-item">
-              <el-icon><Clock /></el-icon>
-              <span>成立于 {{ formatDate(committee.established_at) }}</span>
-            </div>
-          </div>
-
-          <div v-if="isAdmin" class="card-actions" @click.stop>
-            <el-button
-              type="primary"
-              size="small"
-              link
-              @click="editCommittee(committee)"
-            >
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button
-              type="danger"
-              size="small"
-              link
-              @click="confirmDelete(committee)"
-            >
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-empty v-if="!loading && committees.length === 0" description="暂无委员会" />
-
-    <!-- Create/Edit Dialog -->
-    <el-dialog
-      v-model="showCreateDialog"
-      :title="editingCommittee ? '编辑委员会' : '创建委员会'"
-      width="600px"
+    <el-empty v-if="!communityStore.currentCommunityId"
+      description="请先选择一个社区"
+      :image-size="150"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="120px"
-      >
-        <el-form-item label="委员会名称" prop="name">
-          <el-input v-model="form.name" placeholder="如：技术委员会" />
-        </el-form-item>
+      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
+    </el-empty>
 
-        <el-form-item label="标识符" prop="slug">
-          <el-input
-            v-model="form.slug"
-            placeholder="如：technical-committee"
-            :disabled="!!editingCommittee"
-          >
-            <template #append>.committee</template>
-          </el-input>
-          <div class="form-tip">仅可包含小写字母、数字和连字符，创建后不可修改</div>
-        </el-form-item>
-
-        <el-form-item label="委员会简介" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="3"
-            placeholder="简要描述委员会的职责和目标"
-          />
-        </el-form-item>
-
-        <el-form-item label="会议频率" prop="meeting_frequency">
-          <el-input
-            v-model="form.meeting_frequency"
-            placeholder="如：每月第一个周三"
-          />
-        </el-form-item>
-
-        <el-form-item label="通知邮箱" prop="notification_email">
-          <el-input
-            v-model="form.notification_email"
-            placeholder="用于接收会议通知的邮箱"
-          />
-        </el-form-item>
-
-        <el-form-item label="微信通知" prop="notification_wechat">
-          <el-input
-            v-model="form.notification_wechat"
-            placeholder="企业微信群ID或其他标识"
-          />
-        </el-form-item>
-
-        <el-form-item label="成立时间" prop="established_at">
-          <el-date-picker
-            v-model="form.established_at"
-            type="datetime"
-            placeholder="选择成立日期"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DDTHH:mm:ss"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="editingCommittee" label="状态" prop="is_active">
-          <el-switch
-            v-model="form.is_active"
-            active-text="活跃"
-            inactive-text="已归档"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">
-          {{ editingCommittee ? '更新' : '创建' }}
+    <template v-else>
+      <div class="page-header">
+        <div class="header-title">
+          <h2>委员会管理</h2>
+          <p>管理社区的各类委员会及其成员</p>
+        </div>
+        <el-button
+          v-if="isAdmin"
+          type="primary"
+          @click="showCreateDialog = true"
+        >
+          <el-icon><Plus /></el-icon>
+          创建委员会
         </el-button>
-      </template>
-    </el-dialog>
+      </div>
+
+      <div class="filter-bar">
+        <el-radio-group v-model="filterActive" @change="loadCommittees">
+          <el-radio-button :value="undefined">全部</el-radio-button>
+          <el-radio-button :value="true">活跃</el-radio-button>
+          <el-radio-button :value="false">已归档</el-radio-button>
+        </el-radio-group>
+      </div>
+
+      <el-row v-loading="loading" :gutter="16" class="committee-grid">
+        <el-col
+          v-for="committee in committees"
+          :key="committee.id"
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+        >
+          <el-card class="committee-card" shadow="hover" @click="goToDetail(committee.id)">
+            <div class="card-header">
+              <h3>{{ committee.name }}</h3>
+              <el-tag :type="committee.is_active ? 'success' : 'info'" size="small">
+                {{ committee.is_active ? '活跃' : '已归档' }}
+              </el-tag>
+            </div>
+
+            <div v-if="committee.description" class="card-description">
+              {{ committee.description }}
+            </div>
+
+            <div class="card-meta">
+              <div class="meta-item">
+                <el-icon><UserFilled /></el-icon>
+                <span>{{ committee.member_count }} 名成员</span>
+              </div>
+            </div>
+
+            <div v-if="isAdmin" class="card-actions" @click.stop>
+              <el-button
+                type="primary"
+                size="small"
+                link
+                @click="editCommittee(committee)"
+              >
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button
+                type="danger"
+                size="small"
+                link
+                @click="confirmDelete(committee)"
+              >
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-empty v-if="!loading && committees.length === 0" description="暂无委员会" />
+
+      <!-- Create/Edit Dialog -->
+      <el-dialog
+        v-model="showCreateDialog"
+        :title="editingCommittee ? '编辑委员会' : '创建委员会'"
+        width="600px"
+      >
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-width="120px"
+        >
+          <el-form-item label="委员会名称" prop="name">
+            <el-input v-model="form.name" placeholder="如：技术委员会" />
+          </el-form-item>
+
+          <el-form-item label="标识符" prop="slug">
+            <el-input
+              v-model="form.slug"
+              placeholder="如：technical-committee"
+              :disabled="!!editingCommittee"
+            >
+              <template #append>.committee</template>
+            </el-input>
+            <div class="form-tip">仅可包含小写字母、数字和连字符，创建后不可修改</div>
+          </el-form-item>
+
+          <el-form-item label="委员会简介" prop="description">
+            <el-input
+              v-model="form.description"
+              type="textarea"
+              :rows="3"
+              placeholder="简要描述委员会的职责和目标"
+            />
+          </el-form-item>
+
+          <el-form-item label="通知邮箱" prop="notification_email">
+            <el-input
+              v-model="form.notification_email"
+              placeholder="用于接收会议通知的邮箱"
+            />
+          </el-form-item>
+
+          <el-form-item label="微信通知" prop="notification_wechat">
+            <el-input
+              v-model="form.notification_wechat"
+              placeholder="企业微信群ID或其他标识"
+            />
+          </el-form-item>
+
+          <el-form-item v-if="editingCommittee" label="状态" prop="is_active">
+            <el-switch
+              v-model="form.is_active"
+              active-text="活跃"
+              inactive-text="已归档"
+            />
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitForm">
+            {{ editingCommittee ? '更新' : '创建' }}
+          </el-button>
+        </template>
+      </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -175,7 +159,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, UserFilled, Calendar, Clock, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, UserFilled, Edit, Delete } from '@element-plus/icons-vue'
 import {
   listCommittees,
   createCommittee,
@@ -186,9 +170,11 @@ import {
   type CommitteeUpdate
 } from '@/api/governance'
 import { useUserStore } from '@/stores/user'
+import { useCommunityStore } from '@/stores/community'
 
 const router = useRouter()
 const userStore = useUserStore()
+const communityStore = useCommunityStore()
 
 const isAdmin = computed(() => userStore.isCommunityAdmin)
 
@@ -205,10 +191,8 @@ interface CommitteeForm {
   name: string
   slug: string
   description?: string
-  meeting_frequency?: string
   notification_email?: string
   notification_wechat?: string
-  established_at?: string
   is_active?: boolean
 }
 
@@ -216,10 +200,8 @@ const form = ref<CommitteeForm>({
   name: '',
   slug: '',
   description: '',
-  meeting_frequency: '',
   notification_email: '',
   notification_wechat: '',
-  established_at: '',
   is_active: true
 })
 
@@ -235,6 +217,7 @@ const rules: FormRules = {
 }
 
 onMounted(() => {
+  if (!communityStore.currentCommunityId) return
   loadCommittees()
 })
 
@@ -260,10 +243,8 @@ function editCommittee(committee: Committee) {
     name: committee.name,
     slug: committee.slug,
     description: committee.description,
-    meeting_frequency: committee.meeting_frequency,
     notification_email: committee.notification_email,
     notification_wechat: committee.notification_wechat,
-    established_at: committee.established_at,
     is_active: committee.is_active
   }
   showCreateDialog.value = true
@@ -302,10 +283,8 @@ async function submitForm() {
         const updateData: CommitteeUpdate = {
           name: form.value.name,
           description: form.value.description,
-          meeting_frequency: form.value.meeting_frequency,
           notification_email: form.value.notification_email,
           notification_wechat: form.value.notification_wechat,
-          established_at: form.value.established_at,
           is_active: form.value.is_active
         }
         await updateCommittee(editingCommittee.value.id, updateData)
@@ -315,10 +294,8 @@ async function submitForm() {
           name: form.value.name,
           slug: form.value.slug,
           description: form.value.description,
-          meeting_frequency: form.value.meeting_frequency,
           notification_email: form.value.notification_email,
-          notification_wechat: form.value.notification_wechat,
-          established_at: form.value.established_at
+          notification_wechat: form.value.notification_wechat
         }
         await createCommittee(createData)
         ElMessage.success('创建成功')
@@ -335,10 +312,6 @@ async function submitForm() {
   })
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('zh-CN')
-}
 </script>
 
 <style scoped>

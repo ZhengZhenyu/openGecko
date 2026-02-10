@@ -1,80 +1,89 @@
 <template>
   <div class="publish-view">
-    <div class="page-header">
-      <h2>发布管理 {{ content ? `- ${content.title}` : '' }}</h2>
-      <el-button @click="$router.back()">返回</el-button>
-    </div>
-
-    <div v-if="!contentId" class="select-hint">
-      <el-empty description="请从内容列表选择要发布的文章" />
-    </div>
+    <el-empty v-if="!communityStore.currentCommunityId"
+      description="请先选择一个社区"
+      :image-size="150"
+    >
+      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
+    </el-empty>
 
     <template v-else>
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-card>
-            <template #header>选择发布渠道</template>
-            <div class="channel-list">
-              <div
-                v-for="ch in channels"
-                :key="ch.key"
-                class="channel-item"
-                :class="{ active: activeChannel === ch.key }"
-                @click="selectChannel(ch.key)"
-              >
-                <div class="channel-info">
-                  <el-icon :size="20"><component :is="ch.icon" /></el-icon>
-                  <div>
-                    <div class="channel-name">{{ ch.name }}</div>
-                    <div class="channel-mode">{{ ch.mode }}</div>
+      <div class="page-header">
+        <h2>发布管理 {{ content ? `- ${content.title}` : '' }}</h2>
+        <el-button @click="$router.back()">返回</el-button>
+      </div>
+
+      <div v-if="!contentId" class="select-hint">
+        <el-empty description="请从内容列表选择要发布的文章" />
+      </div>
+
+      <template v-else>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-card>
+              <template #header>选择发布渠道</template>
+              <div class="channel-list">
+                <div
+                  v-for="ch in channels"
+                  :key="ch.key"
+                  class="channel-item"
+                  :class="{ active: activeChannel === ch.key }"
+                  @click="selectChannel(ch.key)"
+                >
+                  <div class="channel-info">
+                    <el-icon :size="20"><component :is="ch.icon" /></el-icon>
+                    <div>
+                      <div class="channel-name">{{ ch.name }}</div>
+                      <div class="channel-mode">{{ ch.mode }}</div>
+                    </div>
                   </div>
+                  <el-button
+                    v-if="ch.action === 'api'"
+                    size="small"
+                    type="primary"
+                    :loading="publishing"
+                    @click.stop="handlePublish(ch.key)"
+                  >
+                    发布
+                  </el-button>
+                  <el-button
+                    v-else
+                    size="small"
+                    @click.stop="handleCopy(ch.key)"
+                  >
+                    复制内容
+                  </el-button>
                 </div>
-                <el-button
-                  v-if="ch.action === 'api'"
-                  size="small"
-                  type="primary"
-                  :loading="publishing"
-                  @click.stop="handlePublish(ch.key)"
-                >
-                  发布
-                </el-button>
-                <el-button
-                  v-else
-                  size="small"
-                  @click.stop="handleCopy(ch.key)"
-                >
-                  复制内容
-                </el-button>
               </div>
-            </div>
-          </el-card>
+            </el-card>
 
-          <el-card style="margin-top: 16px" v-if="records.length">
-            <template #header>发布记录</template>
-            <div v-for="rec in records" :key="rec.id" class="record-item">
-              <el-tag :type="rec.status === 'published' ? 'success' : rec.status === 'failed' ? 'danger' : 'warning'" size="small">
-                {{ rec.status }}
-              </el-tag>
-              <span class="record-channel">{{ channelLabel(rec.channel) }}</span>
-              <span class="record-time">{{ formatDate(rec.created_at) }}</span>
-            </div>
-          </el-card>
-        </el-col>
+            <el-card style="margin-top: 16px" v-if="records.length">
+              <template #header>发布记录</template>
+              <div v-for="rec in records" :key="rec.id" class="record-item">
+                <el-tag :type="rec.status === 'published' ? 'success' : rec.status === 'failed' ? 'danger' : 'warning'" size="small">
+                  {{ rec.status }}
+                </el-tag>
+                <span class="record-channel">{{ channelLabel(rec.channel) }}</span>
+                <span class="record-time">{{ formatDate(rec.created_at) }}</span>
+              </div>
+            </el-card>
+          </el-col>
 
-        <el-col :span="12">
-          <el-card>
-            <template #header>
-              {{ activeChannel ? channelLabel(activeChannel) + ' 预览' : '渠道预览' }}
-            </template>
-            <div v-if="previewLoading" v-loading="true" style="min-height: 300px" />
-            <div v-else-if="previewContent" class="preview-area">
-              <div v-if="previewFormat === 'html'" v-html="previewContent" class="wechat-preview" />
-              <pre v-else class="markdown-preview">{{ previewContent }}</pre>
-            </div>
-            <el-empty v-else description="点击左侧渠道查看预览" />
-          </el-card>
-        </el-col>
-      </el-row>
+          <el-col :span="12">
+            <el-card>
+              <template #header>
+                {{ activeChannel ? channelLabel(activeChannel) + ' 预览' : '渠道预览' }}
+              </template>
+              <div v-if="previewLoading" v-loading="true" style="min-height: 300px" />
+              <div v-else-if="previewContent" class="preview-area">
+                <div v-if="previewFormat === 'html'" v-html="previewContent" class="wechat-preview" />
+                <pre v-else class="markdown-preview">{{ previewContent }}</pre>
+              </div>
+              <el-empty v-else description="点击左侧渠道查看预览" />
+            </el-card>
+          </el-col>
+        </el-row>
+      </template>
     </template>
   </div>
 </template>
@@ -89,8 +98,10 @@ import {
   getPreview, getCopyContent, publishToWechat, publishToHugo,
   getPublishRecords, type PublishRecord, type ChannelPreview,
 } from '../api/publish'
+import { useCommunityStore } from '../stores/community'
 
 const route = useRoute()
+const communityStore = useCommunityStore()
 const contentId = computed(() => route.params.id ? Number(route.params.id) : null)
 const content = ref<Content | null>(null)
 const activeChannel = ref('')
@@ -108,6 +119,7 @@ const channels = [
 ]
 
 onMounted(async () => {
+  if (!communityStore.currentCommunityId) return
   if (contentId.value) {
     content.value = await fetchContent(contentId.value)
     records.value = await getPublishRecords(contentId.value)

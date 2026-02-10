@@ -19,10 +19,12 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    // Get current community ID from localStorage
-    const communityId = localStorage.getItem('current_community_id')
-    if (communityId && config.headers) {
-      config.headers['X-Community-Id'] = communityId
+    // Get current community ID from localStorage (only if not already set per-request)
+    if (config.headers && !config.headers['X-Community-Id']) {
+      const communityId = localStorage.getItem('current_community_id')
+      if (communityId) {
+        config.headers['X-Community-Id'] = communityId
+      }
     }
 
     return config

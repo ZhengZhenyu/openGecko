@@ -153,11 +153,7 @@ router.beforeEach(async (to, from, next) => {
       authStore.setUser(userInfo.user)
       authStore.setCommunities(userInfo.communities)
       
-      // Set default community if available and not already set (optional now)
-      // Users can work without a default community
-      if (userInfo.communities.length > 0 && !communityStore.currentCommunityId) {
-        communityStore.setCommunity(userInfo.communities[0].id)
-      }
+      // Do not auto-select community - pages handle empty state individually
       console.log('[Router Guard] User info loaded successfully')
     } catch (error) {
       // If failed to get user info, clear auth and redirect to login

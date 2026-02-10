@@ -1,145 +1,154 @@
 <template>
   <div class="governance-overview">
-    <div class="page-header">
-      <h2>社区治理</h2>
-      <p>管理委员会、会议和成员</p>
-    </div>
+    <el-empty v-if="!communityStore.currentCommunityId"
+      description="请先选择一个社区"
+      :image-size="150"
+    >
+      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
+    </el-empty>
 
-    <el-row :gutter="24" class="stats-row">
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card">
-          <div class="stat-icon committee">
-            <el-icon><OfficeBuilding /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.committeeCount }}</div>
-            <div class="stat-label">委员会</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card">
-          <div class="stat-icon member">
-            <el-icon><UserFilled /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.memberCount }}</div>
-            <div class="stat-label">成员</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card">
-          <div class="stat-icon meeting">
-            <el-icon><Calendar /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.upcomingMeetings }}</div>
-            <div class="stat-label">即将召开</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card">
-          <div class="stat-icon history">
-            <el-icon><Clock /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.totalMeetings }}</div>
-            <div class="stat-label">历史会议</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="24" class="content-row">
-      <el-col :xs="24" :md="12">
-        <el-card class="section-card">
-          <template #header>
-            <div class="card-header">
-              <span>委员会</span>
-              <el-button type="primary" link @click="$router.push('/committees')">
-                查看全部
-                <el-icon><ArrowRight /></el-icon>
-              </el-button>
-            </div>
-          </template>
-
-          <div v-loading="loadingCommittees">
-            <div
-              v-for="committee in committees"
-              :key="committee.id"
-              class="list-item"
-              @click="$router.push('/committees/' + committee.id)"
-            >
-              <div class="item-content">
-                <div class="item-title">{{ committee.name }}</div>
-                <div class="item-meta">
-                  <span>{{ committee.member_count }} 名成员</span>
-                  <el-tag v-if="!committee.is_active" type="info" size="small">已归档</el-tag>
-                </div>
-              </div>
-              <el-icon class="item-arrow"><ArrowRight /></el-icon>
-            </div>
-            <el-empty v-if="committees.length === 0" description="暂无委员会" :image-size="80" />
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :md="12">
-        <el-card class="section-card">
-          <template #header>
-            <div class="card-header">
-              <span>近期会议</span>
-              <el-button type="primary" link @click="$router.push('/meetings')">
-                查看日历
-                <el-icon><ArrowRight /></el-icon>
-              </el-button>
-            </div>
-          </template>
-
-          <div v-loading="loadingMeetings">
-            <div
-              v-for="meeting in upcomingMeetings"
-              :key="meeting.id"
-              class="list-item"
-              @click="$router.push('/meetings/' + meeting.id)"
-            >
-              <div class="item-content">
-                <div class="item-title">{{ meeting.title }}</div>
-                <div class="item-meta">
-                  <span>{{ formatDateTime(meeting.scheduled_at) }}</span>
-                  <el-tag :type="getMeetingStatusType(meeting.status)" size="small">
-                    {{ getMeetingStatusText(meeting.status) }}
-                  </el-tag>
-                </div>
-              </div>
-              <el-icon class="item-arrow"><ArrowRight /></el-icon>
-            </div>
-            <el-empty v-if="upcomingMeetings.length === 0" description="暂无即将召开的会议" :image-size="80" />
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-card v-if="isAdmin" class="actions-card">
-      <template #header>
-        <span>快捷操作</span>
-      </template>
-      <div class="quick-actions">
-        <el-button type="primary" @click="$router.push('/committees?action=create')">
-          <el-icon><Plus /></el-icon>
-          创建委员会
-        </el-button>
-        <el-button type="success" @click="$router.push('/meetings?action=create')">
-          <el-icon><Plus /></el-icon>
-          创建会议
-        </el-button>
+    <template v-else>
+      <div class="page-header">
+        <h2>社区治理</h2>
+        <p>管理委员会、会议和成员</p>
       </div>
-    </el-card>
+
+      <el-row :gutter="24" class="stats-row">
+        <el-col :xs="24" :sm="12" :md="6">
+          <el-card class="stat-card">
+            <div class="stat-icon committee">
+              <el-icon><OfficeBuilding /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.committeeCount }}</div>
+              <div class="stat-label">委员会</div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="24" :sm="12" :md="6">
+          <el-card class="stat-card">
+            <div class="stat-icon member">
+              <el-icon><UserFilled /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.memberCount }}</div>
+              <div class="stat-label">成员</div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="24" :sm="12" :md="6">
+          <el-card class="stat-card">
+            <div class="stat-icon meeting">
+              <el-icon><Calendar /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.upcomingMeetings }}</div>
+              <div class="stat-label">即将召开</div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="24" :sm="12" :md="6">
+          <el-card class="stat-card">
+            <div class="stat-icon history">
+              <el-icon><Clock /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.totalMeetings }}</div>
+              <div class="stat-label">历史会议</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="24" class="content-row">
+        <el-col :xs="24" :md="12">
+          <el-card class="section-card">
+            <template #header>
+              <div class="card-header">
+                <span>委员会</span>
+                <el-button type="primary" link @click="$router.push('/committees')">
+                  查看全部
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </div>
+            </template>
+
+            <div v-loading="loadingCommittees">
+              <div
+                v-for="committee in committees"
+                :key="committee.id"
+                class="list-item"
+                @click="$router.push('/committees/' + committee.id)"
+              >
+                <div class="item-content">
+                  <div class="item-title">{{ committee.name }}</div>
+                  <div class="item-meta">
+                    <span>{{ committee.member_count }} 名成员</span>
+                    <el-tag v-if="!committee.is_active" type="info" size="small">已归档</el-tag>
+                  </div>
+                </div>
+                <el-icon class="item-arrow"><ArrowRight /></el-icon>
+              </div>
+              <el-empty v-if="committees.length === 0" description="暂无委员会" :image-size="80" />
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="24" :md="12">
+          <el-card class="section-card">
+            <template #header>
+              <div class="card-header">
+                <span>近期会议</span>
+                <el-button type="primary" link @click="$router.push('/meetings')">
+                  查看日历
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </div>
+            </template>
+
+            <div v-loading="loadingMeetings">
+              <div
+                v-for="meeting in upcomingMeetings"
+                :key="meeting.id"
+                class="list-item"
+                @click="$router.push('/meetings/' + meeting.id)"
+              >
+                <div class="item-content">
+                  <div class="item-title">{{ meeting.title }}</div>
+                  <div class="item-meta">
+                    <span>{{ formatDateTime(meeting.scheduled_at) }}</span>
+                    <el-tag :type="getMeetingStatusType(meeting.status)" size="small">
+                      {{ getMeetingStatusText(meeting.status) }}
+                    </el-tag>
+                  </div>
+                </div>
+                <el-icon class="item-arrow"><ArrowRight /></el-icon>
+              </div>
+              <el-empty v-if="upcomingMeetings.length === 0" description="暂无即将召开的会议" :image-size="80" />
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-card v-if="isAdmin" class="actions-card">
+        <template #header>
+          <span>快捷操作</span>
+        </template>
+        <div class="quick-actions">
+          <el-button type="primary" @click="$router.push('/committees?action=create')">
+            <el-icon><Plus /></el-icon>
+            创建委员会
+          </el-button>
+          <el-button type="success" @click="$router.push('/meetings?action=create')">
+            <el-icon><Plus /></el-icon>
+            创建会议
+          </el-button>
+        </div>
+      </el-card>
+    </template>
   </div>
 </template>
 
@@ -150,9 +159,11 @@ import { OfficeBuilding, UserFilled, Calendar, Clock, ArrowRight, Plus } from '@
 import { ElMessage } from 'element-plus'
 import { listCommittees, listMeetings, type Committee, type Meeting } from '@/api/governance'
 import { useUserStore } from '@/stores/user'
+import { useCommunityStore } from '@/stores/community'
 
 const router = useRouter()
 const userStore = useUserStore()
+const communityStore = useCommunityStore()
 const isAdmin = computed(() => userStore.isCommunityAdmin)
 const loadingCommittees = ref(false)
 const loadingMeetings = ref(false)
@@ -173,6 +184,7 @@ const stats = computed(() => {
 })
 
 onMounted(() => {
+  if (!communityStore.currentCommunityId) return
   loadData()
 })
 

@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import update, select
+from sqlalchemy import update, select, insert
 
 from app.core.dependencies import get_current_user, get_current_active_superuser
 from app.database import get_db
@@ -90,6 +90,16 @@ def create_community(
     # Create new community
     new_community = Community(**community_create.model_dump())
     db.add(new_community)
+    db.flush()
+
+    # Auto-add creator as community admin
+    stmt = insert(community_users).values(
+        user_id=current_user.id,
+        community_id=new_community.id,
+        role='admin'
+    )
+    db.execute(stmt)
+
     db.commit()
     db.refresh(new_community)
 

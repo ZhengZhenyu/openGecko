@@ -1,85 +1,84 @@
 <template>
   <div class="settings">
-    <div class="page-header">
-      <div>
-        <h2>渠道设置</h2>
-        <p class="subtitle">
-          当前社区: <strong>{{ currentCommunityName }}</strong>
-          <span v-if="!currentCommunityId" class="hint-text">（请先选择社区）</span>
-        </p>
+    <el-empty v-if="!communityStore.currentCommunityId"
+      description="请先选择一个社区"
+      :image-size="150"
+    >
+      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
+    </el-empty>
+
+    <template v-else>
+      <div class="page-header">
+        <div>
+          <h2>渠道设置</h2>
+          <p class="subtitle">
+            当前社区: <strong>{{ currentCommunityName }}</strong>
+          </p>
+        </div>
       </div>
-    </div>
 
-    <el-alert
-      v-if="!currentCommunityId"
-      title="请先选择社区"
-      type="warning"
-      description="渠道设置需要在特定社区下进行，请先在顶部选择一个社区"
-      :closable="false"
-      style="margin-bottom: 20px"
-    />
+      <el-row :gutter="20">
+        <el-col :span="12" v-for="ch in channelList" :key="ch.key">
+          <el-card style="margin-bottom: 20px">
+            <template #header>
+              <div class="card-header">
+                <span>{{ ch.label }}</span>
+                <el-switch v-model="ch.enabled" @change="handleToggle(ch)" />
+              </div>
+            </template>
 
-    <el-row v-else :gutter="20">
-      <el-col :span="12" v-for="ch in channelList" :key="ch.key">
-        <el-card style="margin-bottom: 20px">
-          <template #header>
-            <div class="card-header">
-              <span>{{ ch.label }}</span>
-              <el-switch v-model="ch.enabled" @change="handleToggle(ch)" />
-            </div>
-          </template>
+            <template v-if="ch.key === 'wechat'">
+              <el-form label-width="100px" size="default">
+                <el-form-item label="AppID">
+                  <el-input v-model="ch.config.app_id" placeholder="微信公众号 AppID" />
+                </el-form-item>
+                <el-form-item label="AppSecret">
+                  <el-input
+                    v-model="ch.config.app_secret"
+                    type="password"
+                    show-password
+                    placeholder="微信公众号 AppSecret"
+                    @focus="handleSecretFocus(ch, 'app_secret')"
+                  />
+                  <div v-if="isSecretMasked(ch.config.app_secret)" class="secret-hint">已配置，留空则保持不变</div>
+                </el-form-item>
+              </el-form>
+            </template>
 
-          <template v-if="ch.key === 'wechat'">
-            <el-form label-width="100px" size="default">
-              <el-form-item label="AppID">
-                <el-input v-model="ch.config.app_id" placeholder="微信公众号 AppID" />
-              </el-form-item>
-              <el-form-item label="AppSecret">
-                <el-input
-                  v-model="ch.config.app_secret"
-                  type="password"
-                  show-password
-                  placeholder="微信公众号 AppSecret"
-                  @focus="handleSecretFocus(ch, 'app_secret')"
-                />
-                <div v-if="isSecretMasked(ch.config.app_secret)" class="secret-hint">已配置，留空则保持不变</div>
-              </el-form-item>
-            </el-form>
-          </template>
+            <template v-else-if="ch.key === 'hugo'">
+              <el-form label-width="100px" size="default">
+                <el-form-item label="仓库路径">
+                  <el-input v-model="ch.config.repo_path" placeholder="Hugo 仓库本地路径" />
+                </el-form-item>
+                <el-form-item label="内容目录">
+                  <el-input v-model="ch.config.content_dir" placeholder="如 content/posts" />
+                </el-form-item>
+              </el-form>
+            </template>
 
-          <template v-else-if="ch.key === 'hugo'">
-            <el-form label-width="100px" size="default">
-              <el-form-item label="仓库路径">
-                <el-input v-model="ch.config.repo_path" placeholder="Hugo 仓库本地路径" />
-              </el-form-item>
-              <el-form-item label="内容目录">
-                <el-input v-model="ch.config.content_dir" placeholder="如 content/posts" />
-              </el-form-item>
-            </el-form>
-          </template>
+            <template v-else-if="ch.key === 'csdn'">
+              <el-form label-width="100px" size="default">
+                <el-form-item label="说明">
+                  <span class="hint-text">CSDN 使用复制粘贴方式发布，无需额外配置</span>
+                </el-form-item>
+              </el-form>
+            </template>
 
-          <template v-else-if="ch.key === 'csdn'">
-            <el-form label-width="100px" size="default">
-              <el-form-item label="说明">
-                <span class="hint-text">CSDN 使用复制粘贴方式发布，无需额外配置</span>
-              </el-form-item>
-            </el-form>
-          </template>
+            <template v-else-if="ch.key === 'zhihu'">
+              <el-form label-width="100px" size="default">
+                <el-form-item label="说明">
+                  <span class="hint-text">知乎使用复制粘贴方式发布，无需额外配置</span>
+                </el-form-item>
+              </el-form>
+            </template>
 
-          <template v-else-if="ch.key === 'zhihu'">
-            <el-form label-width="100px" size="default">
-              <el-form-item label="说明">
-                <span class="hint-text">知乎使用复制粘贴方式发布，无需额外配置</span>
-              </el-form-item>
-            </el-form>
-          </template>
-
-          <el-button v-if="['wechat', 'hugo'].includes(ch.key)" type="primary" size="small" @click="handleSave(ch)">
-            保存配置
-          </el-button>
-        </el-card>
-      </el-col>
-    </el-row>
+            <el-button v-if="['wechat', 'hugo'].includes(ch.key)" type="primary" size="small" @click="handleSave(ch)">
+              保存配置
+            </el-button>
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
   </div>
 </template>
 

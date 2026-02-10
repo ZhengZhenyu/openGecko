@@ -203,6 +203,7 @@ import {
   CircleCloseFilled
 } from '@element-plus/icons-vue'
 import { listCommittees, getCommittee, type Committee, type CommitteeWithMembers } from '@/api/governance'
+import apiClient from '@/api/index'
 
 const router = useRouter()
 
@@ -257,14 +258,12 @@ async function exportMembers() {
 
   exporting.value = true
   try {
-    const response = await request({
-      url: `/api/committees/${selectedCommitteeId.value}/members/export`,
-      method: 'get',
+    const response = await apiClient.get(`/committees/${selectedCommitteeId.value}/members/export`, {
       responseType: 'blob'
     })
 
     // Create download link
-    const url = window.URL.createObjectURL(new Blob([response]))
+    const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
     const committee = committees.value.find(c => c.id === selectedCommitteeId.value)
@@ -301,10 +300,7 @@ async function importMembers() {
     const formData = new FormData()
     formData.append('file', file)
 
-    const result = await request<ImportResult>({
-      url: `/api/committees/${selectedCommitteeId.value}/members/import`,
-      method: 'post',
-      data: formData,
+    const { data: result } = await apiClient.post<ImportResult>(`/committees/${selectedCommitteeId.value}/members/import`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

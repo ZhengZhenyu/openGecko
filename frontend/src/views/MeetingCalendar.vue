@@ -1,224 +1,233 @@
 <template>
   <div class="meeting-calendar">
-    <div class="page-header">
-      <div class="header-title">
-        <h2>会议日历</h2>
-        <p>查看和管理委员会会议</p>
-      </div>
-      <el-button
-        v-if="isAdmin"
-        type="primary"
-        @click="showCreateDialog = true"
-      >
-        <el-icon><Plus /></el-icon>
-        创建会议
-      </el-button>
-    </div>
-
-    <div class="filter-bar">
-      <el-select
-        v-model="selectedCommittee"
-        placeholder="选择委员会"
-        clearable
-        style="width: 200px"
-        @change="loadMeetings"
-      >
-        <el-option
-          v-for="committee in committees"
-          :key="committee.id"
-          :label="committee.name"
-          :value="committee.id"
-        />
-      </el-select>
-
-      <el-radio-group v-model="viewMode" @change="handleViewModeChange">
-        <el-radio-button value="month">月视图</el-radio-button>
-        <el-radio-button value="list">列表视图</el-radio-button>
-      </el-radio-group>
-    </div>
-
-    <!-- Calendar View -->
-    <el-card v-if="viewMode === 'month'" v-loading="loading" class="calendar-card">
-      <el-calendar v-model="currentDate">
-        <template #date-cell="{ data }">
-          <div class="calendar-day">
-            <div class="day-number">{{ data.day.split('-').slice(-1)[0] }}</div>
-            <div
-              v-for="meeting in getMeetingsForDate(data.day)"
-              :key="meeting.id"
-              class="meeting-item"
-              :class="`status-${meeting.status}`"
-              @click="goToMeetingDetail(meeting.id)"
-            >
-              <div class="meeting-time">
-                {{ formatTime(meeting.scheduled_at) }}
-              </div>
-              <div class="meeting-title">{{ meeting.title }}</div>
-            </div>
-          </div>
-        </template>
-      </el-calendar>
-    </el-card>
-
-    <!-- List View -->
-    <el-card v-else v-loading="loading" class="list-card">
-      <div class="meeting-list">
-        <div
-          v-for="meeting in sortedMeetings"
-          :key="meeting.id"
-          class="meeting-list-item"
-          @click="goToMeetingDetail(meeting.id)"
-        >
-          <div class="meeting-date-block">
-            <div class="date-month">{{ formatMonth(meeting.scheduled_at) }}</div>
-            <div class="date-day">{{ formatDay(meeting.scheduled_at) }}</div>
-          </div>
-          <div class="meeting-content">
-            <div class="meeting-header">
-              <h4>{{ meeting.title }}</h4>
-              <el-tag :type="getStatusType(meeting.status)" size="small">
-                {{ getStatusText(meeting.status) }}
-              </el-tag>
-            </div>
-            <div class="meeting-meta">
-              <span>
-                <el-icon><Clock /></el-icon>
-                {{ formatDateTime(meeting.scheduled_at) }} · {{ meeting.duration }}分钟
-              </span>
-              <span v-if="meeting.location_type">
-                <el-icon><Location /></el-icon>
-                {{ meeting.location_type === 'online' ? '线上会议' : meeting.location }}
-              </span>
-            </div>
-            <div v-if="meeting.description" class="meeting-description">
-              {{ meeting.description }}
-            </div>
-          </div>
-          <div v-if="isAdmin" class="meeting-actions" @click.stop>
-            <el-button type="primary" link size="small" @click="editMeeting(meeting)">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button type="danger" link size="small" @click="confirmDelete(meeting)">
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
-          </div>
-        </div>
-
-        <el-empty v-if="sortedMeetings.length === 0" description="暂无会议" />
-      </div>
-    </el-card>
-
-    <!-- Create/Edit Dialog -->
-    <el-dialog
-      v-model="showCreateDialog"
-      :title="editingMeeting ? '编辑会议' : '创建会议'"
-      width="600px"
+    <el-empty v-if="!communityStore.currentCommunityId"
+      description="请先选择一个社区"
+      :image-size="150"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="100px"
-      >
-        <el-form-item label="委员会" prop="committee_id">
-          <el-select v-model="form.committee_id" placeholder="选择委员会" style="width: 100%">
-            <el-option
-              v-for="committee in committees"
-              :key="committee.id"
-              :label="committee.name"
-              :value="committee.id"
-            />
-          </el-select>
-        </el-form-item>
+      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
+    </el-empty>
 
-        <el-form-item label="会议标题" prop="title">
-          <el-input v-model="form.title" placeholder="如：2024年第一次技术委员会会议" />
-        </el-form-item>
-
-        <el-form-item label="会议描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="3"
-            placeholder="简要描述会议内容"
-          />
-        </el-form-item>
-
-        <el-form-item label="会议时间" prop="scheduled_at">
-          <el-date-picker
-            v-model="form.scheduled_at"
-            type="datetime"
-            placeholder="选择日期时间"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DDTHH:mm:ss"
-            style="width: 100%"
-          />
-        </el-form-item>
-
-        <el-form-item label="会议时长" prop="duration">
-          <el-input-number
-            v-model="form.duration"
-            :min="15"
-            :max="480"
-            :step="15"
-            style="width: 100%"
-          />
-          <span class="form-tip">分钟</span>
-        </el-form-item>
-
-        <el-form-item label="会议地点" prop="location_type">
-          <el-radio-group v-model="form.location_type">
-            <el-radio value="online">线上会议</el-radio>
-            <el-radio value="offline">线下会议</el-radio>
-          </el-radio-group>
-        </el-form-item>
-
-        <el-form-item v-if="form.location_type === 'offline'" label="具体地址" prop="location">
-          <el-input v-model="form.location" placeholder="输入会议地址" />
-        </el-form-item>
-
-        <el-form-item v-if="form.location_type === 'online'" label="会议链接" prop="location">
-          <el-input v-model="form.location" placeholder="输入会议链接或ID" />
-        </el-form-item>
-
-        <el-form-item label="会议议程" prop="agenda">
-          <el-input
-            v-model="form.agenda"
-            type="textarea"
-            :rows="5"
-            placeholder="输入会议议程"
-          />
-        </el-form-item>
-
-        <el-form-item label="提前提醒" prop="reminder_before_hours">
-          <el-select v-model="form.reminder_before_hours" style="width: 100%">
-            <el-option label="不提醒" :value="0" />
-            <el-option label="提前2小时" :value="2" />
-            <el-option label="提前24小时" :value="24" />
-            <el-option label="提前48小时" :value="48" />
-            <el-option label="提前1周" :value="168" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item v-if="editingMeeting" label="状态" prop="status">
-          <el-select v-model="form.status" style="width: 100%">
-            <el-option label="已安排" value="scheduled" />
-            <el-option label="进行中" value="in_progress" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已取消" value="cancelled" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">
-          {{ editingMeeting ? '更新' : '创建' }}
+    <template v-else>
+      <div class="page-header">
+        <div class="header-title">
+          <h2>会议日历</h2>
+          <p>查看和管理委员会会议</p>
+        </div>
+        <el-button
+          v-if="isAdmin"
+          type="primary"
+          @click="showCreateDialog = true"
+        >
+          <el-icon><Plus /></el-icon>
+          创建会议
         </el-button>
-      </template>
-    </el-dialog>
+      </div>
+
+      <div class="filter-bar">
+        <el-select
+          v-model="selectedCommittee"
+          placeholder="选择委员会"
+          clearable
+          style="width: 200px"
+          @change="loadMeetings"
+        >
+          <el-option
+            v-for="committee in committees"
+            :key="committee.id"
+            :label="committee.name"
+            :value="committee.id"
+          />
+        </el-select>
+
+        <el-radio-group v-model="viewMode" @change="handleViewModeChange">
+          <el-radio-button value="month">月视图</el-radio-button>
+          <el-radio-button value="list">列表视图</el-radio-button>
+        </el-radio-group>
+      </div>
+
+      <!-- Calendar View -->
+      <el-card v-if="viewMode === 'month'" v-loading="loading" class="calendar-card">
+        <el-calendar v-model="currentDate">
+          <template #date-cell="{ data }">
+            <div class="calendar-day">
+              <div class="day-number">{{ data.day.split('-').slice(-1)[0] }}</div>
+              <div
+                v-for="meeting in getMeetingsForDate(data.day)"
+                :key="meeting.id"
+                class="meeting-item"
+                :class="`status-${meeting.status}`"
+                @click="goToMeetingDetail(meeting.id)"
+              >
+                <div class="meeting-time">
+                  {{ formatTime(meeting.scheduled_at) }}
+                </div>
+                <div class="meeting-title">{{ meeting.title }}</div>
+              </div>
+            </div>
+          </template>
+        </el-calendar>
+      </el-card>
+
+      <!-- List View -->
+      <el-card v-else v-loading="loading" class="list-card">
+        <div class="meeting-list">
+          <div
+            v-for="meeting in sortedMeetings"
+            :key="meeting.id"
+            class="meeting-list-item"
+            @click="goToMeetingDetail(meeting.id)"
+          >
+            <div class="meeting-date-block">
+              <div class="date-month">{{ formatMonth(meeting.scheduled_at) }}</div>
+              <div class="date-day">{{ formatDay(meeting.scheduled_at) }}</div>
+            </div>
+            <div class="meeting-content">
+              <div class="meeting-header">
+                <h4>{{ meeting.title }}</h4>
+                <el-tag :type="getStatusType(meeting.status)" size="small">
+                  {{ getStatusText(meeting.status) }}
+                </el-tag>
+              </div>
+              <div class="meeting-meta">
+                <span>
+                  <el-icon><Clock /></el-icon>
+                  {{ formatDateTime(meeting.scheduled_at) }} · {{ meeting.duration }}分钟
+                </span>
+                <span v-if="meeting.location_type">
+                  <el-icon><Location /></el-icon>
+                  {{ meeting.location_type === 'online' ? '线上会议' : meeting.location }}
+                </span>
+              </div>
+              <div v-if="meeting.description" class="meeting-description">
+                {{ meeting.description }}
+              </div>
+            </div>
+            <div v-if="isAdmin" class="meeting-actions" @click.stop>
+              <el-button type="primary" link size="small" @click="editMeeting(meeting)">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button type="danger" link size="small" @click="confirmDelete(meeting)">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
+          </div>
+
+          <el-empty v-if="sortedMeetings.length === 0" description="暂无会议" />
+        </div>
+      </el-card>
+
+      <!-- Create/Edit Dialog -->
+      <el-dialog
+        v-model="showCreateDialog"
+        :title="editingMeeting ? '编辑会议' : '创建会议'"
+        width="600px"
+      >
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-width="100px"
+        >
+          <el-form-item label="委员会" prop="committee_id">
+            <el-select v-model="form.committee_id" placeholder="选择委员会" style="width: 100%">
+              <el-option
+                v-for="committee in committees"
+                :key="committee.id"
+                :label="committee.name"
+                :value="committee.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="会议标题" prop="title">
+            <el-input v-model="form.title" placeholder="如：2024年第一次技术委员会会议" />
+          </el-form-item>
+
+          <el-form-item label="会议描述" prop="description">
+            <el-input
+              v-model="form.description"
+              type="textarea"
+              :rows="3"
+              placeholder="简要描述会议内容"
+            />
+          </el-form-item>
+
+          <el-form-item label="会议时间" prop="scheduled_at">
+            <el-date-picker
+              v-model="form.scheduled_at"
+              type="datetime"
+              placeholder="选择日期时间"
+              format="YYYY-MM-DD HH:mm"
+              value-format="YYYY-MM-DDTHH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
+
+          <el-form-item label="会议时长" prop="duration">
+            <el-input-number
+              v-model="form.duration"
+              :min="15"
+              :max="480"
+              :step="15"
+              style="width: 100%"
+            />
+            <span class="form-tip">分钟</span>
+          </el-form-item>
+
+          <el-form-item label="会议地点" prop="location_type">
+            <el-radio-group v-model="form.location_type">
+              <el-radio value="online">线上会议</el-radio>
+              <el-radio value="offline">线下会议</el-radio>
+            </el-radio-group>
+          </el-form-item>
+
+          <el-form-item v-if="form.location_type === 'offline'" label="具体地址" prop="location">
+            <el-input v-model="form.location" placeholder="输入会议地址" />
+          </el-form-item>
+
+          <el-form-item v-if="form.location_type === 'online'" label="会议链接" prop="location">
+            <el-input v-model="form.location" placeholder="输入会议链接或ID" />
+          </el-form-item>
+
+          <el-form-item label="会议议程" prop="agenda">
+            <el-input
+              v-model="form.agenda"
+              type="textarea"
+              :rows="5"
+              placeholder="输入会议议程"
+            />
+          </el-form-item>
+
+          <el-form-item label="提前提醒" prop="reminder_before_hours">
+            <el-select v-model="form.reminder_before_hours" style="width: 100%">
+              <el-option label="不提醒" :value="0" />
+              <el-option label="提前2小时" :value="2" />
+              <el-option label="提前24小时" :value="24" />
+              <el-option label="提前48小时" :value="48" />
+              <el-option label="提前1周" :value="168" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item v-if="editingMeeting" label="状态" prop="status">
+            <el-select v-model="form.status" style="width: 100%">
+              <el-option label="已安排" value="scheduled" />
+              <el-option label="进行中" value="in_progress" />
+              <el-option label="已完成" value="completed" />
+              <el-option label="已取消" value="cancelled" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitForm">
+            {{ editingMeeting ? '更新' : '创建' }}
+          </el-button>
+        </template>
+      </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -245,10 +254,12 @@ import {
   type MeetingUpdate
 } from '@/api/governance'
 import { useUserStore } from '@/stores/user'
+import { useCommunityStore } from '@/stores/community'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const communityStore = useCommunityStore()
 
 const isAdmin = computed(() => userStore.isCommunityAdmin)
 
@@ -307,9 +318,10 @@ const sortedMeetings = computed(() => {
 })
 
 onMounted(() => {
+  if (!communityStore.currentCommunityId) return
   loadCommittees()
   loadMeetings()
-  
+
   if (route.query.action === 'create') {
     showCreateDialog.value = true
   }

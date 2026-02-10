@@ -15,9 +15,9 @@
         class="setup-alert"
       >
         <template #title>
-          欢迎使用 OmniContent！请创建您的管理员账号。
+          欢迎使用 OmniContent！请创建您的超级管理员账号。
         </template>
-        <p>默认管理员账号将在新账号创建后自动删除。新管理员必须配置邮箱以支持密码找回功能。</p>
+        <p>创建账号后，您可以开始创建社区并管理内容。默认管理员账号将自动删除。</p>
       </el-alert>
 
       <el-form
@@ -100,11 +100,9 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User, Lock, Message, UserFilled } from '@element-plus/icons-vue'
 import { initialSetup, getUserInfo } from '../api/auth'
 import { useAuthStore } from '../stores/auth'
-import { useCommunityStore } from '../stores/community'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const communityStore = useCommunityStore()
 
 const setupFormRef = ref<FormInstance>()
 const loading = ref(false)
@@ -172,12 +170,7 @@ const handleSetup = async () => {
     authStore.setUser(userInfo.user)
     authStore.setCommunities(userInfo.communities)
 
-    // Set default community if available
-    if (userInfo.communities.length > 0) {
-      communityStore.setCommunity(userInfo.communities[0].id)
-    }
-
-    ElMessage.success('管理员账号创建成功！默认账号已自动删除。')
+    ElMessage.success('管理员账号创建成功！请创建社区开始使用。')
 
     // Redirect to dashboard
     router.push('/')

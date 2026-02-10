@@ -2,7 +2,8 @@
   <div class="community-switcher">
     <el-select
       v-model="selectedCommunityId"
-      placeholder="选择社区"
+      :placeholder="communities.length === 0 ? '暂无社区' : '选择社区'"
+      :disabled="communities.length === 0"
       size="default"
       @change="handleCommunityChange"
     >

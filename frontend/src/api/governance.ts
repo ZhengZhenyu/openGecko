@@ -44,20 +44,16 @@ export interface CommitteeCreate {
   name: string
   slug: string
   description?: string
-  meeting_frequency?: string
   notification_email?: string
   notification_wechat?: string
-  established_at?: string
 }
 
 export interface CommitteeUpdate {
   name?: string
   description?: string
   is_active?: boolean
-  meeting_frequency?: string
   notification_email?: string
   notification_wechat?: string
-  established_at?: string
 }
 
 export interface CommitteeMemberCreate {
@@ -149,38 +145,38 @@ export interface MeetingReminder {
 // ==================== Committee APIs ====================
 
 export async function listCommittees(params?: { is_active?: boolean }) {
-  const { data } = await apiClient.get<Committee[]>('/api/committees', { params })
+  const { data } = await apiClient.get<Committee[]>('/committees', { params })
   return data
 }
 
 export async function createCommittee(data: CommitteeCreate) {
-  const response = await apiClient.post<Committee>('/api/committees', data)
+  const response = await apiClient.post<Committee>('/committees', data)
   return response.data
 }
 
 export async function getCommittee(id: number) {
-  const { data } = await apiClient.get<CommitteeWithMembers>(`/api/committees/${id}`)
+  const { data } = await apiClient.get<CommitteeWithMembers>(`/committees/${id}`)
   return data
 }
 
 export async function updateCommittee(id: number, data: CommitteeUpdate) {
-  const response = await apiClient.put<Committee>(`/api/committees/${id}`, data)
+  const response = await apiClient.put<Committee>(`/committees/${id}`, data)
   return response.data
 }
 
 export async function deleteCommittee(id: number) {
-  await apiClient.delete(`/api/committees/${id}`)
+  await apiClient.delete(`/committees/${id}`)
 }
 
 // ==================== Committee Member APIs ====================
 
 export async function listCommitteeMembers(committeeId: number, params?: { is_active?: boolean }) {
-  const { data } = await apiClient.get<CommitteeMember[]>(`/api/committees/${committeeId}/members`, { params })
+  const { data } = await apiClient.get<CommitteeMember[]>(`/committees/${committeeId}/members`, { params })
   return data
 }
 
 export async function createCommitteeMember(committeeId: number, data: CommitteeMemberCreate) {
-  const response = await apiClient.post<CommitteeMember>(`/api/committees/${committeeId}/members`, data)
+  const response = await apiClient.post<CommitteeMember>(`/committees/${committeeId}/members`, data)
   return response.data
 }
 
@@ -189,12 +185,12 @@ export async function updateCommitteeMember(
   memberId: number,
   data: CommitteeMemberUpdate
 ) {
-  const response = await apiClient.put<CommitteeMember>(`/api/committees/${committeeId}/members/${memberId}`, data)
+  const response = await apiClient.put<CommitteeMember>(`/committees/${committeeId}/members/${memberId}`, data)
   return response.data
 }
 
 export async function deleteCommitteeMember(committeeId: number, memberId: number) {
-  await apiClient.delete(`/api/committees/${committeeId}/members/${memberId}`)
+  await apiClient.delete(`/committees/${committeeId}/members/${memberId}`)
 }
 
 // ==================== Meeting APIs ====================
@@ -206,45 +202,45 @@ export async function listMeetings(params?: {
   skip?: number
   limit?: number
 }) {
-  const { data } = await apiClient.get<Meeting[]>('/api/meetings', { params })
+  const { data } = await apiClient.get<Meeting[]>('/meetings', { params })
   return data
 }
 
 export async function createMeeting(data: MeetingCreate) {
-  const response = await apiClient.post<Meeting>('/api/meetings', data)
+  const response = await apiClient.post<Meeting>('/meetings', data)
   return response.data
 }
 
 export async function getMeeting(id: number) {
-  const { data } = await apiClient.get<MeetingDetail>(`/api/meetings/${id}`)
+  const { data } = await apiClient.get<MeetingDetail>(`/meetings/${id}`)
   return data
 }
 
 export async function updateMeeting(id: number, data: MeetingUpdate) {
-  const response = await apiClient.put<Meeting>(`/api/meetings/${id}`, data)
+  const response = await apiClient.put<Meeting>(`/meetings/${id}`, data)
   return response.data
 }
 
 export async function deleteMeeting(id: number) {
-  await apiClient.delete(`/api/meetings/${id}`)
+  await apiClient.delete(`/meetings/${id}`)
 }
 
 export async function updateMeetingMinutes(id: number, minutes: string) {
-  const { data } = await apiClient.put<MeetingDetail>(`/api/meetings/${id}/minutes`, { minutes })
+  const { data } = await apiClient.put<MeetingDetail>(`/meetings/${id}/minutes`, { minutes })
   return data
 }
 
 export async function getMeetingMinutes(id: number) {
-  const { data } = await apiClient.get<{ minutes: string }>(`/api/meetings/${id}/minutes`)
+  const { data } = await apiClient.get<{ minutes: string }>(`/meetings/${id}/minutes`)
   return data
 }
 
 export async function listMeetingReminders(meetingId: number) {
-  const { data } = await apiClient.get<MeetingReminder[]>(`/api/meetings/${meetingId}/reminders`)
+  const { data } = await apiClient.get<MeetingReminder[]>(`/meetings/${meetingId}/reminders`)
   return data
 }
 
 export async function createMeetingReminder(meetingId: number, reminderType: string) {
-  const { data } = await apiClient.post<MeetingReminder>(`/api/meetings/${meetingId}/reminders`, { reminder_type: reminderType })
+  const { data } = await apiClient.post<MeetingReminder>(`/meetings/${meetingId}/reminders`, { reminder_type: reminderType })
   return data
 }
