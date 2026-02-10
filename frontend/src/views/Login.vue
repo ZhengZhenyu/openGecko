@@ -3,9 +3,9 @@
     <el-card class="login-card">
       <template #header>
         <div class="card-header">
-          <img src="/openGecko.jpg" alt="openGecko" class="logo" />
+          <img src="/openGecko-Horizontal.png" alt="openGecko" class="logo" />
           <h2>openGecko</h2>
-          <p class="subtitle">企业级多社区内容管理平台</p>
+          <p class="subtitle">多社区运营管理平台<br/>Manage All, Publish Everywhere</p>
         </div>
       </template>
 
@@ -160,13 +160,10 @@ const handleLogin = async () => {
   text-align: center;
 
   .logo {
-    max-width: 120px;
-    max-height: 120px;
-    width: auto;
+    width: 240px;
     height: auto;
     margin: 0 auto 16px;
     display: block;
-    object-fit: contain;
   }
 
   h2 {
