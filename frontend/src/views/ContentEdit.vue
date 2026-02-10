@@ -44,6 +44,37 @@
             </el-col>
           </el-row>
 
+          <!-- Work Status and Assignees -->
+          <el-row :gutter="16" style="margin-top: 12px">
+            <el-col :span="4">
+              <el-form-item label="工作状态">
+                <el-select v-model="form.work_status" style="width: 100%">
+                  <el-option label="计划中" value="planning" />
+                  <el-option label="实施中" value="in_progress" />
+                  <el-option label="已完成" value="completed" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="20">
+              <el-form-item label="责任人">
+                <el-select
+                  v-model="assigneeIds"
+                  multiple
+                  filterable
+                  placeholder="选择责任人（默认为创建者）"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="u in communityMembers"
+                    :key="u.id"
+                    :label="`${u.username} (${u.email})`"
+                    :value="u.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
           <!-- Cover Image Upload -->
           <el-row :gutter="16" style="margin-top: 12px">
             <el-col :span="24">
@@ -213,10 +244,22 @@ const form = ref({
   author: '',
   category: '',
   tags: [] as string[],
+  work_status: 'planning',
 })
 const tagsInput = ref('')
+const assigneeIds = ref<number[]>([])
 
 onMounted(async () => {
+  // Load community members first
+  const communityId = communityStore.currentCommunityId
+  if (communityId) {
+    try {
+      communityMembers.value = await getCommunityUsers(communityId)
+    } catch {
+      // ignore
+    }
+  }
+
   if (contentId.value) {
     const data = await fetchContent(contentId.value)
     form.value = {
@@ -226,10 +269,12 @@ onMounted(async () => {
       author: data.author,
       category: data.category,
       tags: data.tags,
+      work_status: data.work_status || 'planning',
     }
     tagsInput.value = data.tags.join(', ')
     coverImageUrl.value = data.cover_image || null
     contentOwnerId.value = data.owner_id
+    assigneeIds.value = data.assignee_ids || []
 
     // Load collaborators
     try {
@@ -237,15 +282,10 @@ onMounted(async () => {
     } catch {
       // ignore
     }
-
-    // Load community members for adding collaborators
-    const communityId = communityStore.currentCommunityId
-    if (communityId) {
-      try {
-        communityMembers.value = await getCommunityUsers(communityId)
-      } catch {
-        // ignore
-      }
+  } else {
+    // For new content, default assignee to current user
+    if (authStore.user?.id) {
+      assigneeIds.value = [authStore.user.id]
     }
   }
 })
@@ -296,6 +336,7 @@ async function handleSave() {
     const payload = {
       ...form.value,
       tags: tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean),
+      assignee_ids: assigneeIds.value,
     }
     if (isNew.value) {
       const created = await createContent(payload)

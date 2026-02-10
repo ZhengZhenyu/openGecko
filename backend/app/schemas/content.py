@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
 class ContentCreate(BaseModel):
@@ -13,6 +13,8 @@ class ContentCreate(BaseModel):
     category: str = ""
     cover_image: Optional[str] = None
     scheduled_publish_at: Optional[datetime] = None
+    work_status: str = "planning"
+    assignee_ids: list[int] = []
 
 
 class ContentUpdate(BaseModel):
@@ -25,6 +27,8 @@ class ContentUpdate(BaseModel):
     category: Optional[str] = None
     cover_image: Optional[str] = None
     scheduled_publish_at: Optional[datetime] = None
+    work_status: Optional[str] = None
+    assignee_ids: Optional[list[int]] = None
 
 
 class ContentStatusUpdate(BaseModel):
@@ -43,12 +47,14 @@ class ContentOut(BaseModel):
     category: str
     cover_image: Optional[str]
     status: str
+    work_status: str
     community_id: int
     created_by_user_id: Optional[int]
     owner_id: Optional[int]
     scheduled_publish_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
+    assignee_ids: list[int] = []
 
     model_config = {"from_attributes": True}
 

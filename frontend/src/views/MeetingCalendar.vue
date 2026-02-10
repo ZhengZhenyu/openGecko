@@ -85,9 +85,11 @@
             <div class="meeting-content">
               <div class="meeting-header">
                 <h4>{{ meeting.title }}</h4>
-                <el-tag :type="getStatusType(meeting.status)" size="small">
-                  {{ getStatusText(meeting.status) }}
-                </el-tag>
+                <div class="header-tags">
+                  <el-tag :type="getStatusType(meeting.status)" size="small">
+                    {{ getStatusText(meeting.status) }}
+                  </el-tag>
+                </div>
               </div>
               <div class="meeting-meta">
                 <span>
@@ -101,6 +103,10 @@
                 <span v-if="meeting.location_type">
                   <el-icon><Location /></el-icon>
                   {{ meeting.location_type === 'online' ? '线上会议' : meeting.location }}
+                </span>
+                <span v-if="(meeting as any).assignee_ids && (meeting as any).assignee_ids.length > 0">
+                  <el-icon><User /></el-icon>
+                  {{ (meeting as any).assignee_ids.length }} 位责任人
                 </span>
               </div>
               <div v-if="meeting.description" class="meeting-description">
@@ -215,6 +221,23 @@
             </el-select>
           </el-form-item>
 
+          <el-form-item label="责任人" prop="assignee_ids">
+            <el-select
+              v-model="form.assignee_ids"
+              multiple
+              filterable
+              placeholder="选择责任人（默认为创建者）"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="u in communityMembers"
+                :key="u.id"
+                :label="`${u.username} (${u.email})`"
+                :value="u.id"
+              />
+            </el-select>
+          </el-form-item>
+
           <el-form-item v-if="editingMeeting" label="状态" prop="status">
             <el-select v-model="form.status" style="width: 100%">
               <el-option label="已安排" value="scheduled" />
@@ -246,7 +269,8 @@ import {
   Location,
   Edit,
   Delete,
-  UserFilled
+  UserFilled,
+  User
 } from '@element-plus/icons-vue'
 import {
   listCommittees,
@@ -259,13 +283,16 @@ import {
   type MeetingCreate,
   type MeetingUpdate
 } from '@/api/governance'
+import { getCommunityUsers, type CommunityUser } from '@/api/community'
 import { useUserStore } from '@/stores/user'
 import { useCommunityStore } from '@/stores/community'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 
 const isAdmin = computed(() => userStore.isCommunityAdmin)
 
@@ -277,6 +304,7 @@ const selectedCommittee = ref<number | undefined>()
 
 const committees = ref<Committee[]>([])
 const meetings = ref<Meeting[]>([])
+const communityMembers = ref<CommunityUser[]>([])
 
 const showCreateDialog = ref(false)
 const editingMeeting = ref<Meeting | null>(null)
@@ -293,6 +321,7 @@ interface MeetingForm {
   agenda?: string
   reminder_before_hours: number
   status?: string
+  assignee_ids: number[]
 }
 
 const form = ref<MeetingForm>({
@@ -305,7 +334,8 @@ const form = ref<MeetingForm>({
   location: '',
   agenda: '',
   reminder_before_hours: 24,
-  status: 'scheduled'
+  status: 'scheduled',
+  assignee_ids: []
 })
 
 const rules: FormRules = {
@@ -327,10 +357,15 @@ onMounted(() => {
   if (communityStore.currentCommunityId) {
     loadCommittees()
     loadMeetings()
+    loadCommunityMembers()
   }
 
   if (route.query.action === 'create') {
     showCreateDialog.value = true
+    // Default assignee to current user
+    if (authStore.user?.id) {
+      form.value.assignee_ids = [authStore.user.id]
+    }
   }
 })
 
@@ -341,9 +376,20 @@ watch(
     if (newId) {
       loadCommittees()
       loadMeetings()
+      loadCommunityMembers()
     }
   }
 )
+
+async function loadCommunityMembers() {
+  const communityId = communityStore.currentCommunityId
+  if (!communityId) return
+  try {
+    communityMembers.value = await getCommunityUsers(communityId)
+  } catch {
+    // ignore
+  }
+}
 
 async function loadCommittees() {
   try {
@@ -395,7 +441,8 @@ function editMeeting(meeting: Meeting) {
     location: meeting.location,
     agenda: '',
     reminder_before_hours: 24,
-    status: meeting.status
+    status: meeting.status,
+    assignee_ids: (meeting as any).assignee_ids || []
   }
   showCreateDialog.value = true
 }
@@ -439,7 +486,8 @@ async function submitForm() {
           location: form.value.location,
           status: form.value.status,
           agenda: form.value.agenda,
-          reminder_before_hours: form.value.reminder_before_hours
+          reminder_before_hours: form.value.reminder_before_hours,
+          assignee_ids: form.value.assignee_ids
         }
         await updateMeeting(editingMeeting.value.id, updateData)
         ElMessage.success('更新成功')
@@ -453,7 +501,8 @@ async function submitForm() {
           location_type: form.value.location_type,
           location: form.value.location,
           agenda: form.value.agenda,
-          reminder_before_hours: form.value.reminder_before_hours
+          reminder_before_hours: form.value.reminder_before_hours,
+          assignee_ids: form.value.assignee_ids
         }
         await createMeeting(createData)
         ElMessage.success('创建成功')
@@ -660,6 +709,12 @@ function getCommitteeName(committeeId: number) {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+}
+
+.header-tags {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .meeting-meta {

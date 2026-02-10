@@ -2,11 +2,23 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, JSON,
-    ForeignKey, Index,
+    ForeignKey, Index, Table,
 )
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+
+# Association table for meeting assignees (责任人)
+meeting_assignees = Table(
+    "meeting_assignees",
+    Base.metadata,
+    Column("id", Integer, primary_key=True),
+    Column("meeting_id", Integer, ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("assigned_at", DateTime, default=datetime.utcnow),
+    Column("assigned_by_user_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+)
 
 
 class Meeting(Base):
@@ -39,6 +51,9 @@ class Meeting(Base):
     status = Column(String(50), default="scheduled", index=True)
     # 可选值: scheduled, in_progress, completed, cancelled
 
+    # Work status (工作状态): planning, in_progress, completed
+    work_status = Column(String(50), default="planning", index=True)
+
     agenda = Column(Text, nullable=True)       # 会议议程（Markdown）
     minutes = Column(Text, nullable=True)      # 会议纪要（Markdown）
     attachments = Column(JSON, default=list)   # 附件列表 [{name, url}]
@@ -58,6 +73,14 @@ class Meeting(Base):
     # Relationships
     committee = relationship("Committee", back_populates="meetings")
     community = relationship("Community")
+    created_by = relationship("User", foreign_keys=[created_by_user_id])
+    assignees = relationship(
+        "User",
+        secondary="meeting_assignees",
+        primaryjoin="Meeting.id == meeting_assignees.c.meeting_id",
+        secondaryjoin="User.id == meeting_assignees.c.user_id",
+        back_populates="assigned_meetings",
+    )
     created_by = relationship("User")
 
 

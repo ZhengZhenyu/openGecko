@@ -22,6 +22,10 @@
           <el-icon><OfficeBuilding /></el-icon>
           <span>社区总览</span>
         </el-menu-item>
+        <el-menu-item index="/my-work">
+          <el-icon><Checked /></el-icon>
+          <span>我的工作</span>
+        </el-menu-item>
         <el-sub-menu index="content">
           <template #title>
             <el-icon><Document /></el-icon>
@@ -108,7 +112,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { 
   Collection, DataAnalysis, Document, Promotion, Setting, 
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar, 
-  Calendar, Upload, List 
+  Calendar, Upload, List, Checked 
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { getUserInfo } from './api/auth'
@@ -129,13 +133,14 @@ const showLayout = computed(() => {
 })
 
 // 判断是否显示社区选择下拉框
-// 社区总览、社区管理、用户管理页面不显示
+// 社区总览、社区管理、用户管理、我的工作页面不显示
 const showCommunitySwitcher = computed(() => {
   const hideSwitcherRoutes = [
     'CommunityOverview',
     'CommunityManage',
     'UserManage',
-    'Dashboard'
+    'Dashboard',
+    'MyWork'
   ]
   return !hideSwitcherRoutes.includes(route.name as string)
 })

@@ -53,6 +53,19 @@
               <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
             </template>
           </el-table-column>
+          <el-table-column prop="work_status" label="工作状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="workStatusType((row as any).work_status)" size="small">
+                {{ workStatusLabel((row as any).work_status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="assignees" label="责任人" width="100">
+            <template #default="{ row }">
+              <el-icon><User /></el-icon>
+              {{ (row as any).assignee_ids?.length || 0 }}
+            </template>
+          </el-table-column>
           <el-table-column prop="updated_at" label="更新时间" width="180">
             <template #default="{ row }">{{ formatDate(row.updated_at) }}</template>
           </el-table-column>
@@ -85,7 +98,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Upload } from '@element-plus/icons-vue'
+import { Plus, Upload, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchContents, deleteContent, uploadFile, type ContentListItem } from '../api/content'
 import { useRouter } from 'vue-router'
@@ -153,6 +166,24 @@ function statusLabel(s: string) {
 
 function statusType(s: string) {
   const map: Record<string, string> = { draft: 'info', reviewing: 'warning', approved: 'success', published: '' }
+  return (map[s] || 'info') as any
+}
+
+function workStatusLabel(s: string) {
+  const map: Record<string, string> = { 
+    planning: '计划中', 
+    in_progress: '实施中', 
+    completed: '已完成' 
+  }
+  return map[s] || s
+}
+
+function workStatusType(s: string) {
+  const map: Record<string, string> = { 
+    planning: 'info', 
+    in_progress: 'warning', 
+    completed: 'success' 
+  }
   return (map[s] || 'info') as any
 }
 

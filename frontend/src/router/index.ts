@@ -36,6 +36,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/my-work',
+      name: 'MyWork',
+      component: () => import('../views/MyWork.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/contents',
       name: 'ContentList',
       component: () => import('../views/ContentList.vue'),

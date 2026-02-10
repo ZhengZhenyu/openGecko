@@ -17,6 +17,18 @@ content_collaborators = Table(
 )
 
 
+# Association table for content assignees (责任人)
+content_assignees = Table(
+    "content_assignees",
+    Base.metadata,
+    Column("id", Integer, primary_key=True),
+    Column("content_id", Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("assigned_at", DateTime, default=datetime.utcnow),
+    Column("assigned_by_user_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+)
+
+
 class Content(Base):
     __tablename__ = "contents"
 
@@ -37,6 +49,8 @@ class Content(Base):
         SAEnum("draft", "reviewing", "approved", "published", name="status_enum"),
         default="draft",
     )
+    # Work status (工作状态): planning, in_progress, completed
+    work_status = Column(String(50), default="planning", index=True)
     # Multi-tenancy fields
     community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -56,4 +70,11 @@ class Content(Base):
         "User",
         secondary="content_collaborators",
         back_populates="collaborated_contents",
+    )
+    assignees = relationship(
+        "User",
+        secondary="content_assignees",
+        primaryjoin="Content.id == content_assignees.c.content_id",
+        secondaryjoin="User.id == content_assignees.c.user_id",
+        back_populates="assigned_contents",
     )

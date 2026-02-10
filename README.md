@@ -4,9 +4,9 @@
 
 <img src="openGecko.jpg" alt="openGecko Logo" width="120" height="120" />
 
-**全域内容管理平台 - Manage All, Publish Everywhere**
+**全域社区运营管理平台 - Manage All, Publish Everywhere**
 
-企业级多社区全渠道内容编排与发布系统
+企业级多社区组织管理平台，支持内容策划、创作、编排和多渠道发布
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
@@ -17,7 +17,7 @@
 
 ## ✨ 项目简介
 
-openGecko 是为管理 10+ 开源社区打造的企业级多租户内容管理平台，支持统一管理多个社区的内容策划、创作、编排和多渠道发布。
+openGecko 是为管理多开源社区打造的企业级多租户运营和内容管理平台，支持统一管理多个社区的内容策划、创作、编排和多渠道发布。
 
 ### 核心特性
 

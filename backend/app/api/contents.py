@@ -68,12 +68,22 @@ def create_content(
         category=data.category,
         cover_image=data.cover_image,
         status="draft",
+        work_status=data.work_status,
         community_id=community_id,
         created_by_user_id=current_user.id,
         owner_id=current_user.id,  # Creator is the initial owner
         scheduled_publish_at=data.scheduled_publish_at,
     )
     db.add(content)
+    db.flush()  # Get content ID
+    
+    # Assign assignees (default to creator if empty)
+    assignee_ids = data.assignee_ids if data.assignee_ids else [current_user.id]
+    for user_id in assignee_ids:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            content.assignees.append(user)
+    
     db.commit()
     db.refresh(content)
     return content
@@ -92,7 +102,13 @@ def get_content(
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
-    return content
+    
+    # Build response dict with assignee_ids
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees]
+    }
+    return content_dict
 
 
 @router.put("/{content_id}", response_model=ContentOut)
@@ -115,6 +131,16 @@ def update_content(
         raise HTTPException(403, "You don't have permission to edit this content")
     
     update_data = data.model_dump(exclude_unset=True)
+    
+    # Handle assignees update
+    if "assignee_ids" in update_data:
+        assignee_ids = update_data.pop("assignee_ids")
+        content.assignees.clear()
+        for user_id in assignee_ids:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                content.assignees.append(user)
+    
     if "content_markdown" in update_data:
         update_data["content_html"] = convert_markdown_to_html(update_data["content_markdown"])
     for key, value in update_data.items():
