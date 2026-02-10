@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./omnicontent.db"
 
+    # Database Connection Pool (for PostgreSQL/MySQL)
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 3600
+    DB_ECHO: bool = False
+
     # Default admin account (seeded on first run)
     DEFAULT_ADMIN_USERNAME: str = "admin"
     DEFAULT_ADMIN_PASSWORD: str = "admin123"
