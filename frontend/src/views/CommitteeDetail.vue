@@ -32,7 +32,7 @@
         </div>
 
         <el-row :gutter="16" class="committee-meta">
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="meta-card">
               <el-icon><UserFilled /></el-icon>
               <div class="meta-content">
@@ -41,21 +41,12 @@
               </div>
             </div>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="meta-card">
               <el-icon><Calendar /></el-icon>
               <div class="meta-content">
                 <div class="meta-label">会议频率</div>
                 <div class="meta-value">{{ committee.meeting_frequency || '未设置' }}</div>
-              </div>
-            </div>
-          </el-col>
-          <el-col :span="8">
-            <div class="meta-card">
-              <el-icon><Clock /></el-icon>
-              <div class="meta-content">
-                <div class="meta-label">成立时间</div>
-                <div class="meta-value">{{ formatDate(committee.established_at) || '未知' }}</div>
               </div>
             </div>
           </el-col>

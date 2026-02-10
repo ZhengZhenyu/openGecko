@@ -61,6 +61,7 @@
                 <div class="meeting-time">
                   {{ formatTime(meeting.scheduled_at) }}
                 </div>
+                <div class="meeting-committee">{{ getCommitteeName(meeting.committee_id) }}</div>
                 <div class="meeting-title">{{ meeting.title }}</div>
               </div>
             </div>
@@ -89,6 +90,10 @@
                 </el-tag>
               </div>
               <div class="meeting-meta">
+                <span>
+                  <el-icon><UserFilled /></el-icon>
+                  {{ getCommitteeName(meeting.committee_id) }}
+                </span>
                 <span>
                   <el-icon><Clock /></el-icon>
                   {{ formatDateTime(meeting.scheduled_at) }} · {{ meeting.duration }}分钟
@@ -240,7 +245,8 @@ import {
   Clock,
   Location,
   Edit,
-  Delete
+  Delete,
+  UserFilled
 } from '@element-plus/icons-vue'
 import {
   listCommittees,
@@ -495,6 +501,11 @@ function getStatusText(status: string) {
   }
   return map[status] || status
 }
+
+function getCommitteeName(committeeId: number) {
+  const committee = committees.value.find(c => c.id === committeeId)
+  return committee ? committee.name : '未知委员会'
+}
 </script>
 
 <style scoped>
@@ -570,6 +581,12 @@ function getStatusText(status: string) {
 .meeting-time {
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.meeting-committee {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  margin: 1px 0;
 }
 
 .meeting-title {

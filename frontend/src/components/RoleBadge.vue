@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Crown, User, UserFilled } from '@element-plus/icons-vue'
+import { Star, StarFilled, User, UserFilled } from '@element-plus/icons-vue'
 
 interface Props {
   role: string
@@ -31,8 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Role display mapping
 const roleConfig: Record<string, { text: string; type: string; icon: any }> = {
-  chair: { text: '主席', type: 'danger', icon: Crown },
-  vice_chair: { text: '副主席', type: 'warning', icon: Crown },
+  chair: { text: '主席', type: 'danger', icon: StarFilled },
+  vice_chair: { text: '副主席', type: 'warning', icon: Star },
   secretary: { text: '秘书长', type: 'primary', icon: UserFilled },
   member: { text: '委员', type: 'info', icon: User },
   observer: { text: '观察员', type: '', icon: User }
