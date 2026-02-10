@@ -50,7 +50,17 @@ def list_meetings(
     query = query.order_by(Meeting.scheduled_at.desc())
     
     meetings = query.offset(skip).limit(limit).all()
-    return meetings
+    
+    # Build response with assignee_ids for each meeting
+    result = []
+    for meeting in meetings:
+        meeting_dict = {
+            **{c.name: getattr(meeting, c.name) for c in meeting.__table__.columns},
+            "assignee_ids": [a.id for a in meeting.assignees]
+        }
+        result.append(meeting_dict)
+    
+    return result
 
 
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
@@ -88,15 +98,30 @@ def create_meeting(
         location=data.location,
         agenda=data.agenda,
         status="scheduled",
+        work_status="planning",  # 固定默认值，不对外暴露
         reminder_before_hours=data.reminder_before_hours,
         created_by_user_id=current_user.id,
     )
     
     db.add(meeting)
+    db.flush()  # Get meeting ID
+    
+    # Assign assignees (default to creator if empty)
+    assignee_ids = data.assignee_ids if data.assignee_ids else [current_user.id]
+    for user_id in assignee_ids:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            meeting.assignees.append(user)
+    
     db.commit()
     db.refresh(meeting)
     
-    return meeting
+    # Build response with assignee_ids
+    meeting_dict = {
+        **{c.name: getattr(meeting, c.name) for c in meeting.__table__.columns},
+        "assignee_ids": [a.id for a in meeting.assignees]
+    }
+    return meeting_dict
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetail)
@@ -134,6 +159,7 @@ def get_meeting(
         "location_type": meeting.location_type,
         "location": meeting.location,
         "status": meeting.status,
+        "work_status": meeting.work_status,
         "agenda": meeting.agenda,
         "minutes": meeting.minutes,
         "attachments": meeting.attachments or [],
@@ -142,6 +168,7 @@ def get_meeting(
         "created_at": meeting.created_at,
         "updated_at": meeting.updated_at,
         "committee_name": meeting.committee.name if meeting.committee else "",
+        "assignee_ids": [a.id for a in meeting.assignees]
     }
     
     return meeting_dict
@@ -186,13 +213,28 @@ def update_meeting(
     
     # 更新字段
     update_data = data.model_dump(exclude_unset=True)
+    
+    # Handle assignees update
+    if "assignee_ids" in update_data:
+        assignee_ids = update_data.pop("assignee_ids")
+        meeting.assignees.clear()
+        for user_id in assignee_ids:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                meeting.assignees.append(user)
+    
     for field, value in update_data.items():
         setattr(meeting, field, value)
     
     db.commit()
     db.refresh(meeting)
     
-    return meeting
+    # Build response with assignee_ids
+    meeting_dict = {
+        **{c.name: getattr(meeting, c.name) for c in meeting.__table__.columns},
+        "assignee_ids": [a.id for a in meeting.assignees]
+    }
+    return meeting_dict
 
 
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)

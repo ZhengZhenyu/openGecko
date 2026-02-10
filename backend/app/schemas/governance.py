@@ -132,9 +132,11 @@ class MeetingCreate(BaseModel):
     location: Optional[str] = None
     agenda: Optional[str] = None
     reminder_before_hours: int = 24
+    assignee_ids: list[int] = []
 
 
 class MeetingUpdate(BaseModel):
+    committee_id: Optional[int] = None
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
     scheduled_at: Optional[datetime] = None
@@ -144,6 +146,7 @@ class MeetingUpdate(BaseModel):
     status: Optional[str] = None
     agenda: Optional[str] = None
     reminder_before_hours: Optional[int] = None
+    assignee_ids: Optional[list[int]] = None
 
 
 class MeetingOut(BaseModel):
@@ -161,6 +164,7 @@ class MeetingOut(BaseModel):
     created_by_user_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    assignee_ids: list[int] = []
 
     model_config = {"from_attributes": True}
 

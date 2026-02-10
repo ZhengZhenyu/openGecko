@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
 from app.database import init_db
-from app.api import contents, upload, publish, analytics, auth, communities, committees, channels, meetings
+from app.api import contents, upload, publish, analytics, auth, communities, committees, channels, meetings, dashboard
 
 
 @asynccontextmanager
@@ -76,6 +76,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 # Register API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(communities.router, prefix="/api/communities", tags=["Communities"])
+app.include_router(dashboard.router, prefix="/api/users/me", tags=["Dashboard"])
 app.include_router(contents.router, prefix="/api/contents", tags=["Contents"])
 app.include_router(upload.router, prefix="/api/contents", tags=["Upload"])
 app.include_router(publish.router, prefix="/api/publish", tags=["Publish"])

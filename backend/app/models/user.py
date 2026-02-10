@@ -44,4 +44,18 @@ class User(Base):
         secondary="content_collaborators",
         back_populates="collaborators",
     )
+    assigned_contents = relationship(
+        "Content",
+        secondary="content_assignees",
+        primaryjoin="User.id == content_assignees.c.user_id",
+        secondaryjoin="Content.id == content_assignees.c.content_id",
+        back_populates="assignees",
+    )
+    assigned_meetings = relationship(
+        "Meeting",
+        secondary="meeting_assignees",
+        primaryjoin="User.id == meeting_assignees.c.user_id",
+        secondaryjoin="Meeting.id == meeting_assignees.c.meeting_id",
+        back_populates="assignees",
+    )
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
