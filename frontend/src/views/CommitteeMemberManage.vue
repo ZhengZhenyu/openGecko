@@ -270,6 +270,12 @@ async function exportMembers() {
 
   exporting.value = true
   try {
+    // Ensure community ID is set before making request
+    const committee = committees.value.find(c => c.id === selectedCommitteeId.value)
+    if (committee) {
+      localStorage.setItem('current_community_id', String(committee.community_id))
+    }
+
     const response = await apiClient.get(`/committees/${selectedCommitteeId.value}/members/export`, {
       responseType: 'blob'
     })
@@ -309,14 +315,16 @@ async function importMembers() {
 
   importing.value = true
   try {
+    // Ensure community ID is set before making request
+    const committee = committees.value.find(c => c.id === selectedCommitteeId.value)
+    if (committee) {
+      localStorage.setItem('current_community_id', String(committee.community_id))
+    }
+
     const formData = new FormData()
     formData.append('file', file)
 
-    const { data: result } = await apiClient.post<ImportResult>(`/committees/${selectedCommitteeId.value}/members/import`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    const { data: result } = await apiClient.post<ImportResult>(`/committees/${selectedCommitteeId.value}/members/import`, formData)
 
     importResult.value = result
 
