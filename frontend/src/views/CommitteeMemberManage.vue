@@ -284,7 +284,6 @@ async function exportMembers() {
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    const committee = committees.value.find(c => c.id === selectedCommitteeId.value)
     link.setAttribute('download', `${committee?.slug || 'members'}_members.csv`)
     document.body.appendChild(link)
     link.click()
