@@ -213,6 +213,21 @@ def upgrade():
         )
         op.create_index('idx_reminder_scheduled_status', 'meeting_reminders', ['scheduled_at', 'status'])
 
+    if not _table_exists(conn, 'meeting_participants'):
+        op.create_table(
+            'meeting_participants',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('meeting_id', sa.Integer(), nullable=False),
+            sa.Column('name', sa.String(200), nullable=False),
+            sa.Column('email', sa.String(200), nullable=False),
+            sa.Column('source', sa.String(50), nullable=True, server_default='manual'),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.ForeignKeyConstraint(['meeting_id'], ['meetings.id'], ondelete='CASCADE'),
+            sa.UniqueConstraint('meeting_id', 'email', name='uq_meeting_participant_email'),
+        )
+        op.create_index('ix_meeting_participants_meeting_id', 'meeting_participants', ['meeting_id'])
+        op.create_index('ix_meeting_participants_email', 'meeting_participants', ['email'])
+
     # seed default community and admin
     # insert only if not exists
     users = conn.execute(sa.text("SELECT id FROM users WHERE username = :u OR email = :e"), {"u": "admin", "e": "admin@example.com"}).fetchone()
@@ -270,6 +285,7 @@ def downgrade():
 
     # drop tables in reverse order if exist
     for t in [
+        'meeting_participants',
         'meeting_reminders',
         'meetings',
         'committee_members',

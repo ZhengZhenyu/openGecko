@@ -58,25 +58,21 @@
                   >
                     复制内容
                   </el-button>
-              div>
+                </div>
+              </div>
+            </div>
 
-            <div class="section-card" v-if="records.length">
-              <div class="section-header">
-                <h3>发布记录</h3>
-              </div
             <el-card style="margin-top: 16px" v-if="records.length">
               <template #header>发布记录</template>
               <div v-for="rec in records" :key="rec.id" class="record-item">
                 <el-tag :type="rec.status === 'published' ? 'success' : rec.status === 'failed' ? 'danger' : 'warning'" size="small">
                   {{ rec.status }}
-              div>
+                </el-tag>
+              </div>
+            </el-card>
           </el-col>
 
           <el-col :span="12">
-            <div class="section-card">
-              <div class="section-header">
-                <h3>{{ activeChannel ? channelLabel(activeChannel) + ' 预览' : '渠道预览' }}</h3>
-              </div"12">
             <el-card>
               <template #header>
                 {{ activeChannel ? channelLabel(activeChannel) + ' 预览' : '渠道预览' }}
@@ -85,7 +81,7 @@
               <div v-else-if="previewContent" class="preview-area">
                 <div v-if="previewFormat === 'html'" v-html="previewContent" class="wechat-preview" />
                 <pre v-else class="markdown-preview">{{ previewContent }}</pre>
-              div
+              </div>
               <el-empty v-else description="点击左侧渠道查看预览" />
             </el-card>
           </el-col>
@@ -192,7 +188,9 @@ function channelLabel(ch: string) {
 
 function formatDate(d: string) { return new Date(d).toLocaleString('zh-CN') }
 </script>
-title {
+
+<style scoped>
+.page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -304,7 +302,5 @@ title {
   font-size: 13px;
   line-height: 1.6;
   color: #4e5969;
-
-.wechat-preview { padding: 16px; background: #fff; }
-.markdown-preview { padding: 16px; background: #f8f8f8; border-radius: 4px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; }
+}
 </style>

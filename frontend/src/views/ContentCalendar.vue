@@ -776,6 +776,7 @@ onBeforeUnmount(() => {
       .item-author {
         font-size: 11px;
         color: #999;
+      }
     }
   }
 }

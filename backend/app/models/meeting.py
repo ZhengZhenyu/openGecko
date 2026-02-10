@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, JSON,
-    ForeignKey, Index, Table,
+    ForeignKey, Index, Table, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -81,7 +81,11 @@ class Meeting(Base):
         secondaryjoin="User.id == meeting_assignees.c.user_id",
         back_populates="assigned_meetings",
     )
-    created_by = relationship("User")
+    participants = relationship(
+        "MeetingParticipant",
+        back_populates="meeting",
+        cascade="all, delete-orphan",
+    )
 
 
 class MeetingReminder(Base):
@@ -114,4 +118,28 @@ class MeetingReminder(Base):
 
     __table_args__ = (
         Index("idx_reminder_scheduled_status", "scheduled_at", "status"),
+    )
+
+
+class MeetingParticipant(Base):
+    """会议与会人"""
+    __tablename__ = "meeting_participants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    meeting_id = Column(
+        Integer,
+        ForeignKey("meetings.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name = Column(String(200), nullable=False)
+    email = Column(String(200), nullable=False, index=True)
+    source = Column(String(50), default="manual")  # manual / committee_import
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    meeting = relationship("Meeting", back_populates="participants")
+
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "email", name="uq_meeting_participant_email"),
     )

@@ -250,3 +250,44 @@ export async function createMeetingReminder(meetingId: number, reminderType: str
   const { data } = await apiClient.post<MeetingReminder>(`/meetings/${meetingId}/reminders`, { reminder_type: reminderType })
   return data
 }
+
+// ==================== Meeting Participant APIs ====================
+
+export interface MeetingParticipant {
+  id: number
+  meeting_id: number
+  name: string
+  email: string
+  source: string
+  created_at: string
+}
+
+export interface MeetingParticipantCreate {
+  name: string
+  email: string
+}
+
+export interface MeetingParticipantImportResult {
+  total_imported: number
+  skipped_count: number
+  added_count: number
+}
+
+export async function listMeetingParticipants(meetingId: number) {
+  const { data } = await apiClient.get<MeetingParticipant[]>(`/meetings/${meetingId}/participants`)
+  return data
+}
+
+export async function addMeetingParticipant(meetingId: number, participant: MeetingParticipantCreate) {
+  const { data } = await apiClient.post<MeetingParticipant>(`/meetings/${meetingId}/participants`, participant)
+  return data
+}
+
+export async function deleteMeetingParticipant(meetingId: number, participantId: number) {
+  await apiClient.delete(`/meetings/${meetingId}/participants/${participantId}`)
+}
+
+export async function importParticipantsFromCommittee(meetingId: number) {
+  const { data } = await apiClient.post<MeetingParticipantImportResult>(`/meetings/${meetingId}/participants/import`)
+  return data
+}

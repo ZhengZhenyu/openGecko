@@ -73,15 +73,15 @@
       </div>
 
       <!-- Agenda Section -->
-      <div v-if="meeting.agenda" class="section-card">
+      <el-card v-if="meeting.agenda" class="section-card">
         <template #header>
           <span class="section-title">会议议程</span>
         </template>
         <div class="agenda-content" v-html="formatAgenda(meeting.agenda)"></div>
-      </div>
+      </el-card>
 
       <!-- Minutes Section -->
-      <div class="section-card">
+      <el-card class="section-card">
         <template #header>
           <div class="section-header">
             <span class="section-title">会议纪要</span>
@@ -116,10 +116,76 @@
             </el-button>
           </div>
         </div>
-      </div>
+      </el-card>
+
+      <!-- Participants Section -->
+      <el-card v-if="isAdmin" class="section-card">
+        <template #header>
+          <div class="section-header">
+            <span class="section-title">会议参与者</span>
+            <div class="header-actions">
+              <el-button
+                size="small"
+                @click="showImportDialog = true"
+                :disabled="!meeting.committee_id"
+              >
+                <el-icon><Download /></el-icon>
+                从委员会名单导入
+              </el-button>
+              <el-button
+                type="primary"
+                size="small"
+                @click="showAddParticipantDialog = true"
+              >
+                <el-icon><Plus /></el-icon>
+                添加参与者
+              </el-button>
+            </div>
+          </div>
+        </template>
+
+        <el-table :data="participants" v-loading="loadingParticipants">
+          <el-table-column label="姓名" prop="name" />
+          <el-table-column label="邮箱" prop="email" />
+          <el-table-column label="来源" prop="source" width="120">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.source === 'committee' ? 'success' : ''">
+                {{ row.source === 'committee' ? '理事会' : '手动添加' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="center">
+            <template #default="{ row }">
+              <el-popconfirm
+                title="确定删除此参与者吗？"
+                @confirm="deleteParticipant(row.id)"
+              >
+                <template #reference>
+                  <el-button link type="danger" size="small">删除</el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="participants.length === 0" description="暂无参与者" :image-size="80" />
+
+        <!-- Send Calendar Invite Button -->
+        <div v-if="participants.length > 0" class="send-calendar-section">
+          <el-button
+            type="success"
+            :loading="sendingCalendar"
+            @click="sendCalendarInvite"
+          >
+            <el-icon><Message /></el-icon>
+            发送日历邀请（全部参与者）
+          </el-button>
+          <span class="hint-text">将向所有参与者发送包含日历文件的邮件邀请</span>
+        </div>
+      </el-card>
 
       <!-- Reminders Section -->
-      <div v-if="isAdmin" class="section-card">
+      <el-card v-if="isAdmin" class="section-card">
         <template #header>
           <div class="section-header">
             <span class="section-title">会议提醒</span>
@@ -145,11 +211,16 @@
               {{ formatDateTime(row.scheduled_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="状态" prop="status">
+          <el-table-column label="状态" prop="status" width="180">
             <template #default="{ row }">
-              <el-tag :type="row.status === 'sent' ? 'success' : row.status === 'failed' ? 'danger' : ''">
-                {{ row.status === 'sent' ? '已发送' : row.status === 'failed' ? '失败' : '待发送' }}
-              </el-tag>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <el-tag :type="row.status === 'sent' ? 'success' : row.status === 'failed' ? 'danger' : ''">
+                  {{ row.status === 'sent' ? '已发送' : row.status === 'failed' ? '失败' : '待发送' }}
+                </el-tag>
+                <el-tooltip v-if="row.status === 'failed' && row.error_message" placement="top" :content="row.error_message">
+                  <el-icon color="#f56c6c" style="cursor: help;"><Warning /></el-icon>
+                </el-tooltip>
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="发送渠道" prop="notification_channels">
@@ -160,7 +231,7 @@
         </el-table>
 
         <el-empty v-if="reminders.length === 0" description="暂无提醒" :image-size="80" />
-      </div>
+      </el-card>
     </div>
 
     <!-- Reminder Dialog -->
@@ -184,6 +255,43 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- Add Participant Dialog -->
+    <el-dialog v-model="showAddParticipantDialog" title="添加参与者" width="400px">
+      <el-form label-width="80px">
+        <el-form-item label="姓名" required>
+          <el-input v-model="participantForm.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="邮箱" required>
+          <el-input v-model="participantForm.email" type="email" placeholder="请输入邮箱" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddParticipantDialog = false">取消</el-button>
+        <el-button type="primary" :loading="addingParticipant" @click="addParticipant">
+          添加
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Import Participants Dialog -->
+    <el-dialog v-model="showImportDialog" title="从委员会名单导入参与者" width="450px">
+      <el-alert
+        title="导入说明"
+        type="info"
+        :closable="false"
+        show-icon
+      >
+        <p>将从此会议所属的委员会中导入所有活跃成员（仅导入有邮箱的成员）</p>
+        <p>已存在的参与者将自动跳过</p>
+      </el-alert>
+      <template #footer>
+        <el-button @click="showImportDialog = false">取消</el-button>
+        <el-button type="primary" :loading="importing" @click="importFromCommittee">
+          确认导入
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -197,14 +305,22 @@ import {
   Calendar,
   Clock,
   Location,
-  Plus
+  Plus,
+  Download,
+  Message,
+  Warning
 } from '@element-plus/icons-vue'
 import {
   getMeeting,
   updateMeetingMinutes,
   listMeetingReminders,
   createMeetingReminder,
+  listMeetingParticipants,
+  addMeetingParticipant,
+  deleteMeetingParticipant,
+  importParticipantsFromCommittee,
   type MeetingDetail,
+  type MeetingParticipant,
   type MeetingReminder
 } from '@/api/governance'
 import { useUserStore } from '@/stores/user'
@@ -231,10 +347,24 @@ const minutesForm = ref({
 const showReminderDialog = ref(false)
 const reminderType = ref('one_day')
 
+// Participants
+const participants = ref<MeetingParticipant[]>([])
+const loadingParticipants = ref(false)
+const showAddParticipantDialog = ref(false)
+const showImportDialog = ref(false)
+const addingParticipant = ref(false)
+const importing = ref(false)
+const sendingCalendar = ref(false)
+const participantForm = ref({
+  name: '',
+  email: ''
+})
+
 onMounted(() => {
   loadMeeting()
   if (isAdmin.value) {
     loadReminders()
+    loadParticipants()
   }
 })
 
@@ -311,6 +441,84 @@ async function createReminder() {
     ElMessage.error(error.message || '创建失败')
   } finally {
     creatingReminder.value = false
+  }
+}
+
+// ── Participants Functions ──────────────────────────────────────────
+async function loadParticipants() {
+  if (!meeting.value) return
+  
+  loadingParticipants.value = true
+  try {
+    participants.value = await listMeetingParticipants(meeting.value.id)
+  } catch (error: any) {
+    ElMessage.error('加载参与者列表失败')
+  } finally {
+    loadingParticipants.value = false
+  }
+}
+
+async function addParticipant() {
+  if (!meeting.value || !participantForm.value.name || !participantForm.value.email) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+  
+  addingParticipant.value = true
+  try {
+    await addMeetingParticipant(meeting.value.id, participantForm.value)
+    ElMessage.success('添加成功')
+    showAddParticipantDialog.value = false
+    participantForm.value = { name: '', email: '' }
+    loadParticipants()
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || '添加失败')
+  } finally {
+    addingParticipant.value = false
+  }
+}
+
+async function deleteParticipant(participantId: number) {
+  if (!meeting.value) return
+  
+  try {
+    await deleteMeetingParticipant(meeting.value.id, participantId)
+    ElMessage.success('删除成功')
+    loadParticipants()
+  } catch (error: any) {
+    ElMessage.error('删除失败')
+  }
+}
+
+async function importFromCommittee() {
+  if (!meeting.value) return
+  
+  importing.value = true
+  try {
+    const result = await importParticipantsFromCommittee(meeting.value.id)
+    ElMessage.success(`导入成功！共导入 ${result.added_count} 人，跳过 ${result.skipped_count} 人`)
+    showImportDialog.value = false
+    loadParticipants()
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || '导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function sendCalendarInvite() {
+  if (!meeting.value || participants.value.length === 0) return
+  
+  sendingCalendar.value = true
+  try {
+    // Create an immediate reminder to send calendar invites
+    await createMeetingReminder(meeting.value.id, 'immediate')
+    ElMessage.success('日历邀请已发送！')
+    loadReminders()
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || '发送失败')
+  } finally {
+    sendingCalendar.value = false
   }
 }
 
@@ -483,5 +691,24 @@ function getReminderTypeText(type: string) {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.send-calendar-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hint-text {
+  color: #909399;
+  font-size: 12px;
 }
 </style>

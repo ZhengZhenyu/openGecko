@@ -23,6 +23,7 @@
                   <el-dropdown-menu>
                     <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="edit">编辑</el-dropdown-item>
                     <el-dropdown-item command="channels">渠道管理</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="email">邮件设置</el-dropdown-item>
                     <el-dropdown-item v-if="isSuperuser" command="members">成员管理</el-dropdown-item>
                     <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="toggle">{{ community.is_active ? '停用' : '启用' }}</el-dropdown-item>
                     <el-dropdown-item v-if="isSuperuser" command="delete" divided style="color: #f56c6c">删除</el-dropdown-item>
@@ -260,6 +261,122 @@
         <el-button type="primary" @click="handleSaveChannel">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- Email Settings Dialog -->
+    <el-dialog
+      v-model="emailSettingsVisible"
+      :title="`邮件设置 - ${selectedCommunity?.name || ''}`"
+      width="600px"
+    >
+      <el-form
+        ref="emailFormRef"
+        :model="emailForm"
+        label-width="120px"
+      >
+        <el-form-item label="启用邮件">
+          <el-switch v-model="emailForm.enabled" />
+        </el-form-item>
+
+        <el-divider content-position="left">SMTP 配置</el-divider>
+
+        <el-form-item label="快速配置">
+          <el-select
+            v-model="selectedEmailTemplate"
+            placeholder="选择邮箱服务商模板（可选）"
+            @change="applyEmailTemplate"
+            clearable
+            style="width: 100%"
+          >
+            <el-option label="飞书邮箱" value="feishu" />
+            <el-option label="QQ邮箱" value="qq" />
+            <el-option label="163邮箱" value="163" />
+            <el-option label="Gmail" value="gmail" />
+            <el-option label="Outlook" value="outlook" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="发件人邮箱" prop="from_email" required>
+          <el-input v-model="emailForm.from_email" placeholder="your-email@example.com" />
+        </el-form-item>
+
+        <el-form-item label="发件人名称">
+          <el-input v-model="emailForm.from_name" placeholder="社区名称（可选）" />
+        </el-form-item>
+
+        <el-form-item label="回复邮箱">
+          <el-input v-model="emailForm.reply_to" placeholder="回复地址（可选）" />
+        </el-form-item>
+
+        <el-form-item label="SMTP 服务器" prop="smtp.host" required>
+          <el-input v-model="emailForm.smtp.host" placeholder="smtp.example.com" />
+        </el-form-item>
+
+        <el-form-item label="SMTP 端口" prop="smtp.port" required>
+          <el-input-number v-model="emailForm.smtp.port" :min="1" :max="65535" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            常用端口：465 (SSL/TLS) 或 587 (STARTTLS)
+          </div>
+        </el-form-item>
+
+        <el-form-item label="用户名">
+          <div style="display: flex; gap: 8px; align-items: flex-start; flex-direction: column; width: 100%;">
+            <el-input v-model="emailForm.smtp.username" placeholder="留空自动使用发件人邮箱" style="width: 100%;" />
+            <el-button 
+              v-if="emailForm.from_email && !emailForm.smtp.username" 
+              size="small" 
+              text
+              @click="emailForm.smtp.username = emailForm.from_email"
+            >
+              使用发件人邮箱 ({{ emailForm.from_email }})
+            </el-button>
+          </div>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            大多数邮箱服务的用户名就是完整邮箱地址，留空则自动使用上面的发件人邮箱
+          </div>
+        </el-form-item>
+
+        <el-form-item label="密码">
+          <el-input
+            v-model="emailForm.smtp.password"
+            type="password"
+            show-password
+            placeholder="SMTP密码或专用密码"
+          />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            <template v-if="emailForm.smtp.password">
+              <span style="color: #67c23a;">✓ 密码已填写</span>。点击小眼睛图标可查看密码
+            </template>
+            <template v-else>
+              <span style="color: #f56c6c;">• 请填写密码</span>
+            </template>
+            <div style="margin-top: 4px;">
+              部分邮箱需要使用专用密码而非登录密码
+            </div>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="加密方式">
+          <el-radio-group v-model="emailForm.smtp.port" @change="handlePortChange">
+            <el-radio :label="465">SSL/TLS (端口465，推荐)</el-radio>
+            <el-radio :label="587">STARTTLS (端口587)</el-radio>
+          </el-radio-group>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            端口465会自动使用SSL加密连接
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <el-button @click="handleTestEmailSettings" :loading="emailTesting" :disabled="!emailForm.smtp.host || !emailForm.from_email">
+            测试配置
+          </el-button>
+          <div>
+            <el-button @click="emailSettingsVisible = false">取消</el-button>
+            <el-button type="primary" @click="handleSaveEmailSettings" :loading="emailSaving">保存</el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -278,7 +395,12 @@ import {
   addUserToCommunity,
   removeUserFromCommunity,
   updateUserRole,
+  getEmailSettings,
+  updateEmailSettings,
+  testEmailSettings,
   type CommunityUser,
+  type EmailSettings,
+  type EmailSettingsOut,
 } from '../api/community'
 import {
   listChannels,
@@ -360,6 +482,52 @@ const availableChannelTypes = computed(() => {
 
 function isSecretMasked(val: string | undefined): boolean {
   return !!val && val.startsWith('••••')
+}
+
+// ── Email settings ──────────────────────────────────────────────────
+const emailSettingsVisible = ref(false)
+const emailFormRef = ref<FormInstance>()
+const emailSaving = ref(false)
+const emailTesting = ref(false)
+const emailForm = ref<EmailSettings>({
+  enabled: false,
+  provider: 'smtp',
+  from_email: '',
+  from_name: '',
+  reply_to: '',
+  smtp: {
+    host: '',
+    port: 465,
+    username: '',
+    password: '',
+    use_tls: true,
+  },
+})
+
+const selectedEmailTemplate = ref('')
+
+// Email service templates
+const emailTemplates: Record<string, { host: string; port: number; desc: string }> = {
+  feishu: { host: 'smtp.feishu.cn', port: 465, desc: '飞书邮箱' },
+  qq: { host: 'smtp.qq.com', port: 465, desc: 'QQ邮箱' },
+  '163': { host: 'smtp.163.com', port: 465, desc: '163邮箱' },
+  gmail: { host: 'smtp.gmail.com', port: 587, desc: 'Gmail' },
+  outlook: { host: 'smtp.office365.com', port: 587, desc: 'Outlook' },
+}
+
+function applyEmailTemplate() {
+  const template = emailTemplates[selectedEmailTemplate.value]
+  if (template) {
+    emailForm.value.smtp.host = template.host
+    emailForm.value.smtp.port = template.port
+    emailForm.value.smtp.use_tls = template.port === 587
+    ElMessage.success(`已应用${template.desc}配置模板`)
+  }
+}
+
+function handlePortChange(port: number) {
+  // Auto set use_tls based on port
+  emailForm.value.smtp.use_tls = port === 587
 }
 
 function handleSecretFocus(field: string) {
@@ -527,6 +695,9 @@ async function handleCommunityAction(command: string, community: Community) {
       await loadChannels()
       channelsDialogVisible.value = true
       break
+    case 'email':
+      await showEmailSettingsDialog(community)
+      break
     case 'members':
       await showMembersDialog(community)
       break
@@ -599,6 +770,121 @@ async function handleRoleChange(user: CommunityUser, newRole: string) {
     ElMessage.success('角色更新成功')
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || '更新角色失败')
+  }
+}
+
+// ── Email Settings ──────────────────────────────────────────────────
+async function showEmailSettingsDialog(community: Community) {
+  selectedCommunity.value = community
+  selectedEmailTemplate.value = ''
+  try {
+    const settings = await getEmailSettings(community.id)
+    emailForm.value = {
+      enabled: settings.enabled,
+      provider: settings.provider || 'smtp',
+      from_email: settings.from_email || '',
+      from_name: settings.from_name || '',
+      reply_to: settings.reply_to || '',
+      smtp: {
+        host: settings.smtp?.host || '',
+        port: settings.smtp?.port || 465,
+        username: settings.smtp?.username || '',
+        password: settings.smtp?.password || '',
+        use_tls: settings.smtp?.use_tls !== undefined ? settings.smtp.use_tls : true,
+      },
+    }
+  } catch (e: any) {
+    ElMessage.error('加载邮件设置失败')
+    // Set default values
+    emailForm.value = {
+      enabled: false,
+      provider: 'smtp',
+      from_email: '',
+      from_name: '',
+      reply_to: '',
+      smtp: {
+        host: '',
+        port: 465,
+        username: '',
+        password: '',
+        use_tls: true,
+      },
+    }
+  }
+  emailSettingsVisible.value = true
+}
+
+async function handleSaveEmailSettings() {
+  if (!selectedCommunity.value) return
+  
+  // Validate password
+  if (!emailForm.value.smtp.password) {
+    ElMessage.warning('请填写SMTP密码')
+    return
+  }
+  
+  emailSaving.value = true
+  try {
+    const settingsToSave: EmailSettings = { ...emailForm.value }
+    // Enable email settings when saving
+    settingsToSave.enabled = true
+    // If username is empty, use from_email
+    if (!settingsToSave.smtp.username || !settingsToSave.smtp.username.trim()) {
+      settingsToSave.smtp.username = settingsToSave.from_email
+    }
+    
+    await updateEmailSettings(selectedCommunity.value.id, settingsToSave)
+    ElMessage.success('邮件设置已保存')
+    emailSettingsVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || '保存失败')
+  } finally {
+    emailSaving.value = false
+  }
+}
+
+async function handleTestEmailSettings() {
+  if (!selectedCommunity.value) return
+  
+  // Validate required fields
+  if (!emailForm.value.from_email) {
+    ElMessage.warning('请填写发件人邮箱')
+    return
+  }
+  if (!emailForm.value.smtp.host) {
+    ElMessage.warning('请填写SMTP服务器')
+    return
+  }
+  // Check if password is configured
+  if (!emailForm.value.smtp.password || emailForm.value.smtp.password.trim() === '') {
+    ElMessage.warning('请填写SMTP密码')
+    return
+  }
+  
+  emailTesting.value = true
+  try {
+    // Save settings first (temporarily)
+    const settingsToSave: EmailSettings = { ...emailForm.value }
+    // Enable SMTP for testing
+    settingsToSave.enabled = true
+    // If username is empty, it will use from_email on backend
+    if (!settingsToSave.smtp.username || !settingsToSave.smtp.username.trim()) {
+      settingsToSave.smtp.username = settingsToSave.from_email
+    }
+    
+    await updateEmailSettings(selectedCommunity.value.id, settingsToSave)
+    
+    // Test by sending to the from_email address
+    const result = await testEmailSettings(
+      selectedCommunity.value.id,
+      emailForm.value.from_email
+    )
+    
+    ElMessage.success(`测试邮件已发送到 ${emailForm.value.from_email}，请检查收件箱`)
+  } catch (e: any) {
+    ElMessage.error('测试失败：' + (e?.response?.data?.detail || e.message || '网络错误'))
+  } finally {
+    emailTesting.value = false
   }
 }
 

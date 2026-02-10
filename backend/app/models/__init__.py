@@ -6,7 +6,7 @@ from app.models.channel import ChannelConfig
 from app.models.publish_record import PublishRecord
 from app.models.password_reset import PasswordResetToken
 from app.models.committee import Committee, CommitteeMember
-from app.models.meeting import Meeting, MeetingReminder
+from app.models.meeting import Meeting, MeetingReminder, MeetingParticipant
 
 __all__ = [
     "User",
@@ -21,4 +21,5 @@ __all__ = [
     "CommitteeMember",
     "Meeting",
     "MeetingReminder",
+    "MeetingParticipant",
 ]

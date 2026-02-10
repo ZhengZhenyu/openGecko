@@ -84,3 +84,55 @@ export async function updateUserRole(
     params: { role },
   })
 }
+
+// Email Settings Types
+export interface EmailSmtpConfig {
+  host: string
+  port: number
+  username: string
+  password?: string
+  use_tls: boolean
+}
+
+export interface EmailSettings {
+  enabled: boolean
+  provider: string
+  from_email: string
+  from_name?: string
+  reply_to?: string
+  smtp: EmailSmtpConfig
+}
+
+export interface EmailSettingsOut {
+  enabled: boolean
+  provider: string
+  from_email: string
+  from_name?: string
+  reply_to?: string
+  smtp: Record<string, any>
+}
+
+export async function getEmailSettings(communityId: number): Promise<EmailSettingsOut> {
+  const { data } = await apiClient.get<EmailSettingsOut>(
+    `/communities/${communityId}/email-settings`
+  )
+  return data
+}
+
+export async function updateEmailSettings(
+  communityId: number,
+  settings: EmailSettings
+): Promise<void> {
+  await apiClient.put(`/communities/${communityId}/email-settings`, settings)
+}
+
+export async function testEmailSettings(
+  communityId: number,
+  toEmail: string
+): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>(
+    `/communities/${communityId}/email-settings/test`,
+    { to_email: toEmail }
+  )
+  return data
+}

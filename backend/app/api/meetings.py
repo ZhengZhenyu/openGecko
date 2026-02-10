@@ -8,14 +8,18 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.dependencies import get_current_community, get_community_admin
 from app.database import get_db
 from app.models import User
-from app.models.meeting import Meeting, MeetingReminder
-from app.models.committee import Committee
+from app.models.meeting import Meeting, MeetingReminder, MeetingParticipant
+from app.models.committee import Committee, CommitteeMember
 from app.schemas.governance import (
     MeetingCreate,
     MeetingUpdate,
     MeetingOut,
     MeetingDetail,
+    MeetingReminderCreate,
     MeetingReminderOut,
+    MeetingParticipantCreate,
+    MeetingParticipantOut,
+    MeetingParticipantImportResult,
 )
 
 router = APIRouter()
@@ -269,7 +273,7 @@ def delete_meeting(
 @router.post("/{meeting_id}/reminders", response_model=MeetingReminderOut, status_code=status.HTTP_201_CREATED)
 def create_reminder(
     meeting_id: int,
-    reminder_type: str,
+    reminder_data: MeetingReminderCreate,
     community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_community_admin),
     db: Session = Depends(get_db),
@@ -278,7 +282,7 @@ def create_reminder(
     为会议创建提醒记录。
     
     实际的通知发送依赖角色4的通知服务（预留）。
-    reminder_type: 'preparation', 'one_week', 'three_days', 'one_day', 'two_hours'
+    reminder_type: 'preparation', 'one_week', 'three_days', 'one_day', 'two_hours', 'immediate'
     """
     # 验证会议存在
     meeting = db.query(Meeting).filter(
@@ -294,16 +298,23 @@ def create_reminder(
     
     # 计算提醒时间
     from datetime import timedelta
+    reminder_type = reminder_data.reminder_type
     hours_map = {
         'preparation': meeting.reminder_before_hours or 24,
         'one_week': 168,
         'three_days': 72,
         'one_day': 24,
         'two_hours': 2,
+        'immediate': 0,  # 立即发送
     }
     
     hours_before = hours_map.get(reminder_type, 24)
-    scheduled_at = meeting.scheduled_at - timedelta(hours=hours_before)
+    
+    # For immediate reminders, set scheduled_at to now
+    if reminder_type == 'immediate':
+        scheduled_at = datetime.now()
+    else:
+        scheduled_at = meeting.scheduled_at - timedelta(hours=hours_before)
     
     reminder = MeetingReminder(
         meeting_id=meeting_id,
@@ -316,6 +327,17 @@ def create_reminder(
     db.add(reminder)
     db.commit()
     db.refresh(reminder)
+    
+    # If immediate, trigger sending right away
+    if reminder_type == 'immediate':
+        from app.services.notification import send_meeting_reminder
+        try:
+            send_meeting_reminder(db, reminder.id)
+            db.refresh(reminder)
+        except Exception as e:
+            # Even if sending fails, we still return the reminder
+            # The error will be recorded in the reminder status
+            pass
     
     return reminder
 
@@ -347,6 +369,176 @@ def list_reminders(
     )
     
     return reminders
+
+
+@router.get("/{meeting_id}/participants", response_model=List[MeetingParticipantOut])
+def list_participants(
+    meeting_id: int,
+    community_id: int = Depends(get_current_community),
+    db: Session = Depends(get_db),
+):
+    """列出会议的与会人。"""
+    meeting = db.query(Meeting).filter(
+        Meeting.id == meeting_id,
+        Meeting.community_id == community_id,
+    ).first()
+
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会议不存在",
+        )
+
+    participants = (
+        db.query(MeetingParticipant)
+        .filter(MeetingParticipant.meeting_id == meeting_id)
+        .order_by(MeetingParticipant.created_at.asc())
+        .all()
+    )
+
+    return participants
+
+
+@router.post("/{meeting_id}/participants", response_model=MeetingParticipantOut, status_code=status.HTTP_201_CREATED)
+def add_participant(
+    meeting_id: int,
+    data: MeetingParticipantCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """手动添加会议与会人。"""
+    meeting = db.query(Meeting).filter(
+        Meeting.id == meeting_id,
+        Meeting.community_id == community_id,
+    ).first()
+
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会议不存在",
+        )
+
+    existing = db.query(MeetingParticipant).filter(
+        MeetingParticipant.meeting_id == meeting_id,
+        MeetingParticipant.email == data.email,
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该邮箱已在与会人列表中",
+        )
+
+    participant = MeetingParticipant(
+        meeting_id=meeting_id,
+        name=data.name,
+        email=data.email,
+        source="manual",
+    )
+
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+
+    return participant
+
+
+@router.delete("/{meeting_id}/participants/{participant_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_participant(
+    meeting_id: int,
+    participant_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """删除会议与会人。"""
+    participant = (
+        db.query(MeetingParticipant)
+        .join(Meeting, MeetingParticipant.meeting_id == Meeting.id)
+        .filter(
+            MeetingParticipant.id == participant_id,
+            MeetingParticipant.meeting_id == meeting_id,
+            Meeting.community_id == community_id,
+        )
+        .first()
+    )
+
+    if not participant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="与会人不存在",
+        )
+
+    db.delete(participant)
+    db.commit()
+
+    return None
+
+
+@router.post("/{meeting_id}/participants/import", response_model=MeetingParticipantImportResult)
+def import_participants(
+    meeting_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """从委员会成员导入会议与会人。"""
+    meeting = db.query(Meeting).filter(
+        Meeting.id == meeting_id,
+        Meeting.community_id == community_id,
+    ).first()
+
+    if not meeting:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会议不存在",
+        )
+
+    members = db.query(CommitteeMember).filter(
+        CommitteeMember.committee_id == meeting.committee_id,
+        CommitteeMember.is_active.is_(True),
+        CommitteeMember.email.isnot(None),
+        CommitteeMember.email != "",
+    ).all()
+
+    # Get existing participant emails to avoid duplicates
+    existing_emails = set(
+        email for (email,) in db.query(MeetingParticipant.email)
+        .filter(MeetingParticipant.meeting_id == meeting_id)
+        .all()
+    )
+
+    imported = 0
+    skipped = 0
+    participants = []
+
+    for member in members:
+        if member.email in existing_emails:
+            skipped += 1
+            continue
+
+        participant = MeetingParticipant(
+            meeting_id=meeting_id,
+            name=member.name,
+            email=member.email,
+            source="committee_import",
+        )
+        db.add(participant)
+        participants.append(participant)
+        existing_emails.add(member.email)  # Prevent duplicates within this batch
+        imported += 1
+
+    if participants:
+        db.commit()
+        for participant in participants:
+            db.refresh(participant)
+
+    return MeetingParticipantImportResult(
+        imported=imported,
+        skipped=skipped,
+        participants=participants,
+    )
 
 
 @router.get("/{meeting_id}/minutes")

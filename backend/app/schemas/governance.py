@@ -180,7 +180,33 @@ class MeetingMinutesUpdate(BaseModel):
     minutes: str
 
 
+class MeetingParticipantCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=1, max_length=200)
+
+
+class MeetingParticipantOut(BaseModel):
+    id: int
+    meeting_id: int
+    name: str
+    email: str
+    source: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MeetingParticipantImportResult(BaseModel):
+    imported: int
+    skipped: int
+    participants: list[MeetingParticipantOut] = []
+
+
 # ==================== MeetingReminder Schemas ====================
+
+class MeetingReminderCreate(BaseModel):
+    reminder_type: str = Field(..., description="Reminder type: preparation, one_week, three_days, one_day, two_hours, immediate")
+
 
 class MeetingReminderOut(BaseModel):
     id: int

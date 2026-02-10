@@ -36,7 +36,7 @@
       <el-row :gutter="24">
         <!-- Export Section -->
         <el-col :xs="24" :md="12">
-          <div class="section-card action-card">
+          <el-card class="section-card action-card">
             <template #header>
               <div class="card-header">
                 <el-icon class="header-icon"><Download /></el-icon>
@@ -65,12 +65,12 @@
                 导出为CSV
               </el-button>
             </div>
-          </div>
+          </el-card>
         </el-col>
 
         <!-- Import Section -->
         <el-col :xs="24" :md="12">
-          <div class="section-card action-card">
+          <el-card class="section-card action-card">
             <template #header>
               <div class="card-header">
                 <el-icon class="header-icon"><Upload /></el-icon>
@@ -133,12 +133,12 @@
                 下载CSV模板
               </el-button>
             </div>
-          </div>
+          </el-card>
         </el-col>
       </el-row>
 
       <!-- Import Result -->
-      <div v-if="importResult" class="section-card result-card">
+      <el-card v-if="importResult" class="section-card result-card">
         <template #header>
           <span>导入结果</span>
         </template>
@@ -179,7 +179,7 @@
             </el-button>
           </template>
         </el-result>
-      </div>
+      </el-card>
     </div>
 
     <el-empty

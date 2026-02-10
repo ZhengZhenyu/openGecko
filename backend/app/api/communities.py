@@ -1,7 +1,8 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from sqlalchemy.orm import Session, attributes
 from sqlalchemy import update, select, insert
 
 from app.core.dependencies import get_current_user, get_current_active_superuser
@@ -17,8 +18,14 @@ from app.schemas import (
     CommunityMemberAdd,
     UserBrief,
 )
+from app.schemas.email import EmailSettings, EmailSettingsOut
+
 
 router = APIRouter()
+
+
+class TestEmailRequest(BaseModel):
+    to_email: str
 
 
 @router.get("", response_model=List[CommunityBrief])
@@ -437,3 +444,176 @@ def update_user_role(
     db.commit()
     
     return {"message": f"User role updated to {role} successfully"}
+
+
+@router.get("/{community_id}/email-settings", response_model=EmailSettingsOut)
+def get_email_settings(
+    community_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get email settings for a community."""
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community not found",
+        )
+    
+    # Check if user has access to this community
+    if not current_user.is_superuser and community not in current_user.communities:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    
+    settings_data = community.settings or {}
+    email_config = settings_data.get("email") if isinstance(settings_data, dict) else None
+    
+    if not email_config:
+        # Return default empty settings
+        return EmailSettingsOut(
+            enabled=False,
+            provider="smtp",
+            from_email="",
+            smtp={}
+        )
+    
+    # Return all SMTP config including password (admin has permission to view)
+    smtp_config = email_config.get("smtp", {})
+    if not isinstance(smtp_config, dict):
+        smtp_config = {}
+    
+    return EmailSettingsOut(
+        enabled=email_config.get("enabled", False),
+        provider=email_config.get("provider", "smtp"),
+        from_email=email_config.get("from_email", ""),
+        from_name=email_config.get("from_name"),
+        reply_to=email_config.get("reply_to"),
+        smtp=smtp_config
+    )
+
+
+@router.put("/{community_id}/email-settings")
+def update_email_settings(
+    community_id: int,
+    settings: EmailSettings,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update email settings for a community. Admin only."""
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community not found",
+        )
+    
+    # Check if user is admin of this community or superuser
+    is_admin = False
+    if current_user.is_superuser:
+        is_admin = True
+    else:
+        # Check community_users role
+        result = db.execute(
+            select(community_users.c.role)
+            .where(community_users.c.user_id == current_user.id)
+            .where(community_users.c.community_id == community_id)
+        ).first()
+        if result and result[0] == 'admin':
+            is_admin = True
+    
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    
+    # Update settings
+    current_settings = community.settings or {}
+    if not isinstance(current_settings, dict):
+        current_settings = {}
+    
+    current_settings["email"] = settings.model_dump()
+    community.settings = current_settings
+    # Mark the JSON field as modified so SQLAlchemy detects the change
+    attributes.flag_modified(community, "settings")
+    
+    db.commit()
+    db.refresh(community)
+    
+    return {"message": "Email settings updated successfully"}
+
+
+@router.post("/{community_id}/email-settings/test")
+def test_email_settings(
+    community_id: int,
+    request_data: TestEmailRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Test email settings by sending a test email. Admin only."""
+    to_email = request_data.to_email
+    if not to_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="to_email is required",
+        )
+    
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community not found",
+        )
+    
+    # Check if user is admin of this community or superuser
+    is_admin = False
+    if current_user.is_superuser:
+        is_admin = True
+    else:
+        # Check community_users role
+        result = db.execute(
+            select(community_users.c.role)
+            .where(community_users.c.user_id == current_user.id)
+            .where(community_users.c.community_id == community_id)
+        ).first()
+        if result and result[0] == 'admin':
+            is_admin = True
+    
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    
+    # Send test email
+    from app.services.email import send_email, EmailMessage, get_sender_info, get_smtp_config
+    
+    smtp_config, email_cfg = get_smtp_config(community)
+    if not smtp_config:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SMTP not configured",
+        )
+    
+    from_email, from_name, reply_to = get_sender_info(community, email_cfg)
+    
+    message = EmailMessage(
+        subject=f"[{community.name}] Email Configuration Test",
+        to_emails=[to_email],
+        html_body="<html><body><h2>Email Test Successful!</h2><p>Your SMTP configuration is working correctly.</p></body></html>",
+        text_body="Email Test Successful!\n\nYour SMTP configuration is working correctly.",
+        from_email=from_email,
+        from_name=from_name,
+        reply_to=reply_to,
+    )
+    
+    try:
+        send_email(community, message)
+        return {"message": "Test email sent successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send email: {str(e)}",
+        )
