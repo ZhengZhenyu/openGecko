@@ -2,9 +2,10 @@
 
 <div align="center">
 
-<img src="openGecko.jpg" alt="openGecko Logo" width="120" height="120" />
+<img src="openGecko-Horizontal.png" alt="openGecko Logo" width="300" />
 
-**全域社区运营管理平台 - Manage All, Publish Everywhere**
+**多社区运营管理平台**  
+**Manage All, Publish Everywhere**
 
 企业级多社区组织管理平台，支持内容策划、创作、编排和多渠道发布
 

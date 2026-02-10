@@ -8,8 +8,7 @@
   <el-container v-else class="app-container">
     <el-aside width="220px" class="app-aside">
       <div class="logo">
-        <el-icon :size="24"><Collection /></el-icon>
-        <span>openGecko</span>
+        <img src="/openGecko-Horizontal.png" alt="openGecko" class="logo-img" />
       </div>
       <el-menu
         :default-active="route.path"
@@ -110,7 +109,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
-  Collection, DataAnalysis, Document, Promotion, Setting, 
+  DataAnalysis, Document, Promotion, Setting, 
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar, 
   Calendar, Upload, List, Checked 
 } from '@element-plus/icons-vue'
@@ -200,12 +199,16 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 24px;
-  color: #fff;
-  font-size: 18px;
-  font-weight: bold;
+  justify-content: center;
+  padding: 20px 16px;
+  background-color: #1d1e1f;
   border-bottom: 1px solid #333;
+}
+
+.logo-img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
 }
 
 .app-header {
