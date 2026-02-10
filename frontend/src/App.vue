@@ -131,13 +131,24 @@ const showCommunitySwitcher = computed(() => {
 })
 
 onMounted(async () => {
-  if (authStore.isAuthenticated && !authStore.user) {
-    try {
-      const userInfo = await getUserInfo()
-      authStore.setUser(userInfo.user)
-      authStore.setCommunities(userInfo.communities)
-    } catch {
-      // If failed to get user info, clear auth
+  if (authStore.isAuthenticated) {
+    // Always fetch user info and communities to ensure they're up to date
+    if (!authStore.user || authStore.communities.length === 0) {
+      try {
+        const userInfo = await getUserInfo()
+        authStore.setUser(userInfo.user)
+        authStore.setCommunities(userInfo.communities)
+        
+        // Set the first community as default if not already set
+        if (userInfo.communities.length > 0) {
+          const currentCommunityId = localStorage.getItem('current_community_id')
+          if (!currentCommunityId) {
+            localStorage.setItem('current_community_id', String(userInfo.communities[0].id))
+          }
+        }
+      } catch {
+        // If failed to get user info, clear auth
+      }
     }
   }
 })

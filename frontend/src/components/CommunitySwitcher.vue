@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
@@ -34,6 +34,24 @@ const communityStore = useCommunityStore()
 
 const communities = computed(() => authStore.communities)
 const selectedCommunityId = computed(() => communityStore.currentCommunityId)
+
+// Auto-select first community if no community is selected and communities are available
+onMounted(() => {
+  if (!selectedCommunityId.value && communities.value.length > 0) {
+    communityStore.setCommunity(communities.value[0].id)
+  }
+})
+
+// Watch for changes in communities list
+watch(
+  () => communities.value.length,
+  (newLength) => {
+    // If we have communities but no selected community, select the first one
+    if (newLength > 0 && !selectedCommunityId.value) {
+      communityStore.setCommunity(communities.value[0].id)
+    }
+  }
+)
 
 const handleCommunityChange = (communityId: number) => {
   const community = communities.value.find((c) => c.id === communityId)
