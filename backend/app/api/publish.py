@@ -7,9 +7,11 @@ from app.config import settings
 from app.database import get_db
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
+from app.core.dependencies import get_current_community
 from app.schemas.publish import (
     PublishRequest,
     PublishRecordOut,
+    PublishRecordListOut,
     ChannelPreview,
     CopyContent,
 )
@@ -40,7 +42,12 @@ async def publish_to_wechat(
 ):
     content = _get_content_or_404(content_id, db)
     community_id = content.community_id
-    wechat_html = wechat_service.convert_to_wechat_html(content.content_markdown)
+
+    # Replace local images with WeChat URLs before conversion
+    markdown_with_wechat_images = await wechat_service._replace_local_images_with_wechat_urls(
+        content.content_markdown, community_id
+    )
+    wechat_html = wechat_service.convert_to_wechat_html(markdown_with_wechat_images)
 
     # Resolve thumb_media_id: explicit param > auto-upload cover_image
     thumb_media_id = data.thumb_media_id if data and data.thumb_media_id else ""
@@ -74,6 +81,7 @@ async def publish_to_wechat(
             channel="wechat",
             status="failed",
             error_message=str(e),
+            community_id=community_id,
         )
         db.add(record)
         db.commit()
@@ -85,6 +93,7 @@ async def publish_to_wechat(
         channel="wechat",
         status="draft",
         platform_article_id=result.get("media_id", ""),
+        community_id=community_id,
     )
     db.add(record)
     db.commit()
@@ -117,6 +126,7 @@ def publish_to_hugo(content_id: int, db: Session = Depends(get_db)):
             channel="hugo",
             status="failed",
             error_message=str(e),
+            community_id=community_id,
         )
         db.add(record)
         db.commit()
@@ -129,6 +139,7 @@ def publish_to_hugo(content_id: int, db: Session = Depends(get_db)):
         status="published",
         platform_url=file_path,
         published_at=datetime.utcnow(),
+        community_id=community_id,
     )
     db.add(record)
     db.commit()
@@ -172,7 +183,7 @@ def get_copy_content(content_id: int, channel: str, db: Session = Depends(get_db
         result = csdn_service.format_for_csdn(
             content.title, content.content_markdown, content.tags, content.category
         )
-        return CopyContent(**result)
+        return CopyContent(channel="csdn", **result)
     elif channel == "zhihu":
         result = zhihu_service.format_for_zhihu(content.title, content.content_markdown)
         return CopyContent(
@@ -188,9 +199,24 @@ def get_copy_content(content_id: int, channel: str, db: Session = Depends(get_db
 
 # ── Publish records ───────────────────────────────────────────────────
 
-@router.get("/records", response_model=list[PublishRecordOut])
-def list_publish_records(content_id: int | None = None, db: Session = Depends(get_db)):
-    query = db.query(PublishRecord).order_by(PublishRecord.created_at.desc())
+@router.get("/records", response_model=PublishRecordListOut)
+def list_publish_records(
+    content_id: int | None = None,
+    channel: str | None = None,
+    db: Session = Depends(get_db),
+    community_id: int = Depends(get_current_community)
+):
+    # Multi-tenant filtering: only show records from current community
+    query = db.query(PublishRecord).filter(
+        PublishRecord.community_id == community_id
+    ).order_by(PublishRecord.created_at.desc())
+
     if content_id:
         query = query.filter(PublishRecord.content_id == content_id)
-    return query.limit(100).all()
+    if channel:
+        query = query.filter(PublishRecord.channel == channel)
+
+    items = query.limit(100).all()
+    total = query.count()
+
+    return PublishRecordListOut(total=total, items=items)

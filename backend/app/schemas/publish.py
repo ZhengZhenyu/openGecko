@@ -18,8 +18,14 @@ class PublishRecordOut(BaseModel):
     published_at: Optional[datetime]
     error_message: Optional[str]
     created_at: datetime
+    community_id: int
 
     model_config = {"from_attributes": True}
+
+
+class PublishRecordListOut(BaseModel):
+    total: int
+    items: list[PublishRecordOut]
 
 
 class ChannelPreview(BaseModel):

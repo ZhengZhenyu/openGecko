@@ -1,5 +1,7 @@
 import os
+import re
 import time
+from pathlib import Path
 
 import httpx
 import markdown
@@ -74,21 +76,31 @@ class WechatService:
         if self._access_token and time.time() < self._token_expires:
             return self._access_token
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{WECHAT_API_BASE}/cgi-bin/token",
-                params={
-                    "grant_type": "client_credential",
-                    "appid": app_id,
-                    "secret": app_secret,
-                },
-            )
-            data = resp.json()
-            if "access_token" not in data:
-                raise Exception(f"Failed to get access token: {data}")
-            self._access_token = data["access_token"]
-            self._token_expires = time.time() + data.get("expires_in", 7200) - 300
-            return self._access_token
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"{WECHAT_API_BASE}/cgi-bin/token",
+                    params={
+                        "grant_type": "client_credential",
+                        "appid": app_id,
+                        "secret": app_secret,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "access_token" not in data:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"获取access_token失败 [errcode={errcode}]: {errmsg}")
+
+                self._access_token = data["access_token"]
+                self._token_expires = time.time() + data.get("expires_in", 7200) - 300
+                return self._access_token
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试")
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}")
 
     def convert_to_wechat_html(self, markdown_text: str) -> str:
         """Convert Markdown to WeChat-compatible HTML with inline styles."""
@@ -122,36 +134,111 @@ class WechatService:
 
         return str(soup)
 
+    async def _replace_local_images_with_wechat_urls(
+        self, markdown_text: str, community_id: int
+    ) -> str:
+        """
+        查找Markdown中的本地图片引用，上传到微信并替换URL。
+
+        支持格式：
+        - ![alt](/uploads/xxx.jpg)
+        - ![alt](../uploads/xxx.png)
+        """
+        from app.config import settings
+
+        image_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+
+        async def replace_image(match):
+            alt_text = match.group(1)
+            img_path = match.group(2)
+
+            # 只处理本地路径
+            if img_path.startswith('http://') or img_path.startswith('https://'):
+                return match.group(0)
+
+            # 解析本地路径
+            if img_path.startswith('/uploads/'):
+                full_path = Path(settings.UPLOAD_DIR) / img_path.lstrip('/uploads/')
+            elif img_path.startswith('uploads/'):
+                full_path = Path(settings.UPLOAD_DIR) / img_path.lstrip('uploads/')
+            else:
+                # 尝试相对路径
+                full_path = Path(img_path)
+
+            if not full_path.exists():
+                # 图片不存在，保留原样并记录警告
+                print(f"警告: 图片文件不存在 {img_path}")
+                return match.group(0)
+
+            try:
+                # 上传到微信并获取URL
+                wechat_url = await self.upload_image(str(full_path), community_id)
+                return f'![{alt_text}]({wechat_url})'
+            except Exception as e:
+                # 上传失败，记录错误但不中断流程
+                print(f"警告: 图片上传失败 {img_path}: {e}")
+                return match.group(0)
+
+        # 查找所有图片并替换
+        result = markdown_text
+        for match in re.finditer(image_pattern, markdown_text):
+            replacement = await replace_image(match)
+            result = result.replace(match.group(0), replacement, 1)
+
+        return result
+
     async def upload_image(self, image_path: str, community_id: int) -> str:
         """Upload an image for use inside article body. Returns a WeChat URL."""
         token = await self._get_access_token(community_id)
-        async with httpx.AsyncClient() as client:
-            with open(image_path, "rb") as f:
-                resp = await client.post(
-                    f"{WECHAT_API_BASE}/cgi-bin/media/uploadimg",
-                    params={"access_token": token},
-                    files={"media": f},
-                )
-            data = resp.json()
-            if "url" not in data:
-                raise Exception(f"Failed to upload image: {data}")
-            return data["url"]
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                with open(image_path, "rb") as f:
+                    resp = await client.post(
+                        f"{WECHAT_API_BASE}/cgi-bin/media/uploadimg",
+                        params={"access_token": token},
+                        files={"media": f},
+                    )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "url" not in data:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"微信图片上传失败 [errcode={errcode}]: {errmsg}")
+
+                return data["url"]
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试")
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}")
 
     async def upload_thumb_media(self, image_path: str, community_id: int) -> str:
         """Upload a permanent thumb image and return media_id for use as cover."""
         token = await self._get_access_token(community_id)
         filename = os.path.basename(image_path)
-        async with httpx.AsyncClient() as client:
-            with open(image_path, "rb") as f:
-                resp = await client.post(
-                    f"{WECHAT_API_BASE}/cgi-bin/material/add_material",
-                    params={"access_token": token, "type": "image"},
-                    files={"media": (filename, f, "image/png")},
-                )
-            data = resp.json()
-            if "media_id" not in data:
-                raise Exception(f"Failed to upload thumb media: {data}")
-            return data["media_id"]
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                with open(image_path, "rb") as f:
+                    resp = await client.post(
+                        f"{WECHAT_API_BASE}/cgi-bin/material/add_material",
+                        params={"access_token": token, "type": "image"},
+                        files={"media": (filename, f, "image/png")},
+                    )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "media_id" not in data:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"微信封面上传失败 [errcode={errcode}]: {errmsg}")
+
+                return data["media_id"]
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试")
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}")
 
     async def create_draft(self, title: str, content_html: str, author: str = "", thumb_media_id: str = "", community_id: int = 0) -> dict:
         """Create a draft article in WeChat Official Account."""
@@ -167,16 +254,26 @@ class WechatService:
             "only_fans_can_comment": 0,
         }
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{WECHAT_API_BASE}/cgi-bin/draft/add",
-                params={"access_token": token},
-                json={"articles": [article]},
-            )
-            data = resp.json()
-            if "media_id" not in data:
-                raise Exception(f"Failed to create draft: {data}")
-            return {"media_id": data["media_id"], "status": "draft"}
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{WECHAT_API_BASE}/cgi-bin/draft/add",
+                    params={"access_token": token},
+                    json={"articles": [article]},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "media_id" not in data:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"微信草稿创建失败 [errcode={errcode}]: {errmsg}")
+
+                return {"media_id": data["media_id"], "status": "draft"}
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试")
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}")
 
     async def get_article_stats(self, publish_id: str, community_id: int = 0) -> dict:
         """Get article statistics (limited for subscription accounts)."""
