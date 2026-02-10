@@ -17,6 +17,7 @@ export interface Content {
   owner_id: number | null
   community_id: number
   created_by_user_id: number | null
+  scheduled_publish_at: string | null
   created_at: string
   updated_at: string
 }
@@ -30,8 +31,20 @@ export interface ContentListItem {
   category: string
   status: string
   owner_id: number | null
+  scheduled_publish_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ContentCalendarItem {
+  id: number
+  title: string
+  status: string
+  source_type: string
+  author: string
+  category: string
+  scheduled_publish_at: string | null
+  created_at: string
 }
 
 export interface PaginatedContents {
@@ -117,5 +130,26 @@ export async function removeCollaborator(contentId: number, userId: number): Pro
 
 export async function transferOwnership(contentId: number, newOwnerId: number): Promise<Content> {
   const { data } = await api.put(`/contents/${contentId}/owner/${newOwnerId}`)
+  return data
+}
+
+// Calendar API
+
+export async function fetchCalendarEvents(params: {
+  start: string
+  end: string
+  status?: string
+}): Promise<ContentCalendarItem[]> {
+  const { data } = await api.get('/contents/calendar/events', { params })
+  return data
+}
+
+export async function updateContentSchedule(
+  id: number,
+  scheduledPublishAt: string | null
+): Promise<Content> {
+  const { data } = await api.patch(`/contents/${id}/schedule`, {
+    scheduled_publish_at: scheduledPublishAt,
+  })
   return data
 }

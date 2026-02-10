@@ -1,0 +1,1020 @@
+<template>
+  <div class="content-calendar-container">
+    <!-- 顶部工具栏 -->
+    <div class="calendar-header">
+      <div class="header-left">
+        <h2>内容日历</h2>
+        <el-tag type="info" size="small" style="margin-left: 12px">
+          {{ eventCount }} 条内容
+        </el-tag>
+      </div>
+      <div class="header-actions">
+        <el-select
+          v-model="statusFilter"
+          placeholder="筛选状态"
+          clearable
+          size="default"
+          style="width: 140px; margin-right: 12px"
+          @change="refetchEvents"
+        >
+          <el-option label="全部状态" value="" />
+          <el-option label="草稿" value="draft" />
+          <el-option label="审核中" value="reviewing" />
+          <el-option label="已通过" value="approved" />
+          <el-option label="已发布" value="published" />
+        </el-select>
+        <el-button type="primary" :icon="Plus" @click="handleCreateContent()">
+          新建内容
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 社区未选择提示 -->
+    <el-empty
+      v-if="!communityStore.currentCommunityId"
+      description="请先在顶部选择一个社区"
+      :image-size="120"
+    />
+
+    <!-- 日历主体 -->
+    <div v-else class="calendar-wrapper">
+      <!-- 左侧未排期内容面板 -->
+      <div class="unscheduled-panel" :class="{ collapsed: panelCollapsed }">
+        <div class="panel-header" @click="panelCollapsed = !panelCollapsed">
+          <span v-if="!panelCollapsed">
+            <el-icon><Collection /></el-icon>
+            未排期内容
+          </span>
+          <el-icon :class="{ rotate: panelCollapsed }">
+            <ArrowLeft />
+          </el-icon>
+        </div>
+        <div v-if="!panelCollapsed" class="panel-body">
+          <div
+            v-for="item in unscheduledEvents"
+            :key="item.id"
+            class="unscheduled-item"
+            :class="'status-' + item.status"
+            draggable="true"
+            @dragstart="handleExternalDragStart($event, item)"
+          >
+            <div class="item-dot" :style="{ backgroundColor: getStatusColor(item.status) }" />
+            <div class="item-info">
+              <div class="item-title">{{ item.title }}</div>
+              <div class="item-meta">
+                <el-tag :type="getStatusTagType(item.status)" size="small" effect="plain">
+                  {{ getStatusLabel(item.status) }}
+                </el-tag>
+                <span class="item-author">{{ item.author }}</span>
+              </div>
+            </div>
+          </div>
+          <el-empty
+            v-if="unscheduledEvents.length === 0"
+            description="暂无未排期内容"
+            :image-size="60"
+          />
+        </div>
+      </div>
+
+      <!-- FullCalendar -->
+      <div class="calendar-main">
+        <FullCalendar ref="calendarRef" :options="calendarOptions" />
+      </div>
+    </div>
+
+    <!-- 内容详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="selectedEvent?.title || '内容详情'"
+      width="480px"
+      class="event-detail-dialog"
+    >
+      <div v-if="selectedEvent" class="event-detail">
+        <div class="detail-row">
+          <span class="detail-label">标题</span>
+          <span class="detail-value">{{ selectedEvent.title }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">状态</span>
+          <el-tag :type="getStatusTagType(selectedEvent.extendedProps.status)" size="small">
+            {{ getStatusLabel(selectedEvent.extendedProps.status) }}
+          </el-tag>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">来源类型</span>
+          <span class="detail-value">{{ getSourceTypeLabel(selectedEvent.extendedProps.source_type) }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">作者</span>
+          <span class="detail-value">{{ selectedEvent.extendedProps.author || '未设置' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">分类</span>
+          <span class="detail-value">{{ selectedEvent.extendedProps.category || '未设置' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">排期时间</span>
+          <span class="detail-value">
+            {{ selectedEvent.start ? formatDate(selectedEvent.start) : '未排期' }}
+          </span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button
+          type="danger"
+          plain
+          @click="handleRemoveSchedule"
+        >
+          取消排期
+        </el-button>
+        <el-button type="primary" @click="handleEditContent">
+          编辑内容
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 快速创建弹窗 -->
+    <el-dialog
+      v-model="createDialogVisible"
+      title="快速创建内容"
+      width="500px"
+    >
+      <el-form :model="createForm" label-width="80px">
+        <el-form-item label="标题" required>
+          <el-input v-model="createForm.title" placeholder="输入内容标题" />
+        </el-form-item>
+        <el-form-item label="来源类型">
+          <el-select v-model="createForm.source_type" style="width: 100%">
+            <el-option label="投稿" value="contribution" />
+            <el-option label="发行说明" value="release_note" />
+            <el-option label="活动总结" value="event_summary" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="createForm.author" placeholder="输入作者" />
+        </el-form-item>
+        <el-form-item label="排期时间">
+          <el-date-picker
+            v-model="createForm.scheduled_publish_at"
+            type="datetime"
+            placeholder="选择发布时间"
+            style="width: 100%"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="handleConfirmCreate">
+          创建
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Plus, Collection, ArrowLeft } from '@element-plus/icons-vue'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import listPlugin from '@fullcalendar/list'
+import type { CalendarOptions, EventInput, EventDropArg, DateSelectArg, EventClickArg } from '@fullcalendar/core'
+import { useCommunityStore } from '../stores/community'
+import {
+  fetchCalendarEvents,
+  updateContentSchedule,
+  createContent,
+  type ContentCalendarItem,
+} from '../api/content'
+
+const router = useRouter()
+const communityStore = useCommunityStore()
+
+const calendarRef = ref()
+const statusFilter = ref('')
+const panelCollapsed = ref(false)
+const loading = ref(false)
+const creating = ref(false)
+const detailDialogVisible = ref(false)
+const createDialogVisible = ref(false)
+const selectedEvent = ref<any>(null)
+const calendarEvents = ref<ContentCalendarItem[]>([])
+const unscheduledEvents = ref<ContentCalendarItem[]>([])
+
+const createForm = reactive({
+  title: '',
+  source_type: 'contribution',
+  author: '',
+  scheduled_publish_at: null as string | null,
+})
+
+const eventCount = computed(() => calendarEvents.value.length + unscheduledEvents.value.length)
+
+// ==================== 状态映射 ====================
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: '#909399',
+  reviewing: '#E6A23C',
+  approved: '#409EFF',
+  published: '#67C23A',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  reviewing: '审核中',
+  approved: '已通过',
+  published: '已发布',
+}
+
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  contribution: '投稿',
+  release_note: '发行说明',
+  event_summary: '活动总结',
+}
+
+function getStatusColor(status: string): string {
+  return STATUS_COLORS[status] || '#909399'
+}
+
+function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status] || status
+}
+
+function getStatusTagType(status: string): 'info' | 'warning' | '' | 'success' | 'danger' {
+  const map: Record<string, 'info' | 'warning' | '' | 'success' | 'danger'> = {
+    draft: 'info',
+    reviewing: 'warning',
+    approved: '',
+    published: 'success',
+  }
+  return map[status] || 'info'
+}
+
+function getSourceTypeLabel(type: string): string {
+  return SOURCE_TYPE_LABELS[type] || type
+}
+
+function formatDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// ==================== 日历配置 ====================
+
+function transformToEvents(items: ContentCalendarItem[]): EventInput[] {
+  return items
+    .filter((item) => item.scheduled_publish_at)
+    .map((item) => ({
+      id: String(item.id),
+      title: item.title,
+      start: item.scheduled_publish_at!,
+      allDay: false,
+      backgroundColor: getStatusColor(item.status),
+      borderColor: getStatusColor(item.status),
+      textColor: '#fff',
+      extendedProps: {
+        status: item.status,
+        source_type: item.source_type,
+        author: item.author,
+        category: item.category,
+        content_id: item.id,
+      },
+    }))
+}
+
+const calendarOptions = computed<CalendarOptions>(() => ({
+  plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin],
+  initialView: 'dayGridMonth',
+  locale: 'zh-cn',
+  headerToolbar: {
+    left: 'prev,today,next',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+  },
+  buttonText: {
+    today: '今天',
+    month: '月',
+    week: '周',
+    day: '日',
+    list: '列表',
+  },
+  // 交互功能
+  editable: true,
+  droppable: true,
+  selectable: true,
+  selectMirror: true,
+  dayMaxEvents: 4,
+  eventMaxStack: 3,
+  nowIndicator: true,
+
+  // 事件
+  events: transformToEvents(calendarEvents.value),
+  
+  // 日期范围变化（切换月份/视图时获取数据）
+  datesSet: handleDatesSet,
+  // 拖拽移动事件
+  eventDrop: handleEventDrop,
+  // 点击事件
+  eventClick: handleEventClick,
+  // 选择日期范围
+  select: handleDateSelect,
+  // 外部拖入
+  drop: handleExternalDrop,
+  // 事件渲染
+  eventContent: renderEventContent,
+
+  // 样式
+  height: 'auto',
+  contentHeight: 'auto',
+  aspectRatio: 1.8,
+  fixedWeekCount: false,
+  showNonCurrentDates: true,
+  handleWindowResize: true,
+}))
+
+// ==================== 事件处理 ====================
+
+async function handleDatesSet(info: { startStr: string; endStr: string }) {
+  await loadEvents(info.startStr, info.endStr)
+}
+
+async function loadEvents(start: string, end: string) {
+  if (!communityStore.currentCommunityId) return
+  loading.value = true
+  try {
+    const items = await fetchCalendarEvents({
+      start: start.slice(0, 10),
+      end: end.slice(0, 10),
+      status: statusFilter.value || undefined,
+    })
+
+    // 分离已排期和未排期
+    calendarEvents.value = items.filter((i) => i.scheduled_publish_at)
+    unscheduledEvents.value = items.filter((i) => !i.scheduled_publish_at)
+  } catch (err: any) {
+    ElMessage.error('加载日历数据失败: ' + (err?.response?.data?.detail || err.message))
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleEventDrop(info: EventDropArg) {
+  const contentId = Number(info.event.id)
+  const newDate = info.event.start
+
+  if (!newDate) {
+    info.revert()
+    return
+  }
+
+  try {
+    await updateContentSchedule(contentId, newDate.toISOString())
+    ElMessage.success('发布时间已更新')
+  } catch (err: any) {
+    info.revert()
+    ElMessage.error('更新失败: ' + (err?.response?.data?.detail || err.message))
+  }
+}
+
+function handleEventClick(info: EventClickArg) {
+  selectedEvent.value = {
+    id: info.event.id,
+    title: info.event.title,
+    start: info.event.start,
+    extendedProps: info.event.extendedProps,
+  }
+  detailDialogVisible.value = true
+}
+
+function handleDateSelect(info: DateSelectArg) {
+  createForm.title = ''
+  createForm.source_type = 'contribution'
+  createForm.author = ''
+  createForm.scheduled_publish_at = info.startStr
+  createDialogVisible.value = true
+}
+
+function handleExternalDragStart(event: DragEvent, item: ContentCalendarItem) {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('text/plain', JSON.stringify({
+      id: item.id,
+      title: item.title,
+      status: item.status,
+    }))
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+async function handleExternalDrop(info: any) {
+  // 从外部面板拖入日历
+  const rawData = info.draggedEl?.getAttribute('data-event') ||
+    info.draggedEl?.textContent
+  
+  // We use the dataTransfer or the DOM-based approach
+  // FullCalendar's drop event gives us info.dateStr
+  try {
+    const jsonStr = info.draggedEl?.querySelector('.item-title')?.textContent
+    // Find the unscheduled item by title match
+    const item = unscheduledEvents.value.find(
+      (e) => info.draggedEl?.textContent?.includes(e.title)
+    )
+    if (item) {
+      await updateContentSchedule(item.id, new Date(info.dateStr).toISOString())
+      ElMessage.success(`"${item.title}" 已排期`)
+      await refetchEvents()
+    }
+  } catch (err: any) {
+    ElMessage.error('排期失败: ' + (err?.response?.data?.detail || err.message))
+  }
+}
+
+function renderEventContent(arg: any) {
+  const status = arg.event.extendedProps.status
+  const author = arg.event.extendedProps.author
+  const timeText = arg.timeText
+
+  return {
+    html: `
+      <div class="fc-event-custom">
+        <div class="fc-event-dot" style="background:${getStatusColor(status)}"></div>
+        <div class="fc-event-info">
+          <span class="fc-event-title">${arg.event.title}</span>
+          <span class="fc-event-meta">${author ? author : ''}${timeText ? ' · ' + timeText : ''}</span>
+        </div>
+      </div>
+    `,
+  }
+}
+
+// ==================== 操作 ====================
+
+async function handleConfirmCreate() {
+  if (!createForm.title.trim()) {
+    ElMessage.warning('请输入内容标题')
+    return
+  }
+  creating.value = true
+  try {
+    const content = await createContent({
+      title: createForm.title,
+      source_type: createForm.source_type,
+      author: createForm.author,
+      scheduled_publish_at: createForm.scheduled_publish_at,
+    } as any)
+    ElMessage.success('内容已创建')
+    createDialogVisible.value = false
+    router.push({ name: 'ContentEdit', params: { id: content.id } })
+  } catch (err: any) {
+    ElMessage.error('创建失败: ' + (err?.response?.data?.detail || err.message))
+  } finally {
+    creating.value = false
+  }
+}
+
+function handleCreateContent(dateStr?: string) {
+  createForm.title = ''
+  createForm.source_type = 'contribution'
+  createForm.author = ''
+  createForm.scheduled_publish_at = dateStr || null
+  createDialogVisible.value = true
+}
+
+function handleEditContent() {
+  if (selectedEvent.value) {
+    const id = selectedEvent.value.extendedProps.content_id || selectedEvent.value.id
+    detailDialogVisible.value = false
+    router.push({ name: 'ContentEdit', params: { id } })
+  }
+}
+
+async function handleRemoveSchedule() {
+  if (!selectedEvent.value) return
+  const id = selectedEvent.value.extendedProps.content_id || selectedEvent.value.id
+  try {
+    await updateContentSchedule(Number(id), null)
+    ElMessage.success('排期已取消')
+    detailDialogVisible.value = false
+    await refetchEvents()
+  } catch (err: any) {
+    ElMessage.error('操作失败: ' + (err?.response?.data?.detail || err.message))
+  }
+}
+
+async function refetchEvents() {
+  const calendarApi = calendarRef.value?.getApi()
+  if (calendarApi) {
+    const view = calendarApi.view
+    await loadEvents(view.activeStart.toISOString(), view.activeEnd.toISOString())
+  }
+}
+
+// 监听社区切换
+watch(
+  () => communityStore.currentCommunityId,
+  () => {
+    refetchEvents()
+  }
+)
+
+onMounted(() => {
+  // Initial load happens via datesSet callback
+})
+</script>
+
+<style lang="scss">
+.content-calendar-container {
+  padding: 0;
+  min-height: calc(100vh - 120px);
+}
+
+// ==================== 顶部工具栏 ====================
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+
+  .header-left {
+    display: flex;
+    align-items: center;
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #303133;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+  }
+}
+
+// ==================== 主体布局 ====================
+
+.calendar-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+// ==================== 左侧未排期面板 ====================
+
+.unscheduled-panel {
+  width: 260px;
+  min-width: 260px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  overflow: hidden;
+
+  &.collapsed {
+    width: 40px;
+    min-width: 40px;
+
+    .panel-header {
+      justify-content: center;
+      padding: 12px 8px;
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #303133;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+
+    &:hover {
+      background: #f5f7fa;
+    }
+
+    .el-icon {
+      transition: transform 0.3s;
+      &.rotate {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .panel-body {
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
+    padding: 8px;
+  }
+}
+
+.unscheduled-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: #fafafa;
+  border-radius: 6px;
+  border-left: 3px solid #ddd;
+  cursor: grab;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f0f4ff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    cursor: grabbing;
+    opacity: 0.7;
+  }
+
+  &.status-draft { border-left-color: #909399; }
+  &.status-reviewing { border-left-color: #E6A23C; }
+  &.status-approved { border-left-color: #409EFF; }
+  &.status-published { border-left-color: #67C23A; }
+
+  .item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .item-info {
+    flex: 1;
+    min-width: 0;
+
+    .item-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #303133;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .item-author {
+        font-size: 11px;
+        color: #999;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+// ==================== 日历主体 ====================
+
+.calendar-main {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
+  overflow: hidden;
+}
+
+// ==================== FullCalendar 深度样式定制 ====================
+
+.fc {
+  // 头部工具栏
+  .fc-toolbar {
+    margin-bottom: 20px !important;
+
+    .fc-toolbar-title {
+      font-size: 18px !important;
+      font-weight: 600 !important;
+      color: #303133;
+    }
+  }
+
+  // 按钮样式
+  .fc-button {
+    background: #fff !important;
+    border: 1px solid #dcdfe6 !important;
+    color: #606266 !important;
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    transition: all 0.2s !important;
+
+    &:hover {
+      background: #ecf5ff !important;
+      border-color: #409eff !important;
+      color: #409eff !important;
+    }
+
+    &.fc-button-active {
+      background: #409eff !important;
+      border-color: #409eff !important;
+      color: #fff !important;
+    }
+
+    &:focus {
+      box-shadow: none !important;
+    }
+  }
+
+  .fc-button-group {
+    .fc-button {
+      border-radius: 0 !important;
+
+      &:first-child {
+        border-radius: 4px 0 0 4px !important;
+      }
+
+      &:last-child {
+        border-radius: 0 4px 4px 0 !important;
+      }
+    }
+  }
+
+  // today 按钮
+  .fc-today-button {
+    border-radius: 4px !important;
+  }
+
+  // 表头
+  .fc-col-header-cell {
+    padding: 10px 0 !important;
+    background: #f8f9fb !important;
+    border-color: #ebeef5 !important;
+
+    .fc-col-header-cell-cushion {
+      font-weight: 500;
+      color: #606266;
+      font-size: 13px;
+      text-decoration: none !important;
+    }
+  }
+
+  // 日期单元格
+  .fc-daygrid-day {
+    border-color: #ebeef5 !important;
+    transition: background 0.15s;
+    min-height: 100px;
+
+    &:hover {
+      background: #f5f8ff;
+    }
+
+    &.fc-day-today {
+      background: #ecf5ff !important;
+
+      .fc-daygrid-day-number {
+        background: #409eff;
+        color: #fff;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+
+  .fc-daygrid-day-number {
+    font-size: 13px;
+    color: #606266;
+    padding: 6px 8px !important;
+    text-decoration: none !important;
+  }
+
+  // 事件样式
+  .fc-event {
+    border-radius: 4px !important;
+    border: none !important;
+    padding: 2px 6px !important;
+    margin-bottom: 2px !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    transition: all 0.2s;
+
+    &:hover {
+      opacity: 0.85;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+    }
+  }
+
+  // 自定义事件内容
+  .fc-event-custom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px;
+    width: 100%;
+    overflow: hidden;
+
+    .fc-event-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .fc-event-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+
+      .fc-event-title {
+        font-size: 12px;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1.4;
+      }
+
+      .fc-event-meta {
+        font-size: 10px;
+        opacity: 0.85;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1.3;
+      }
+    }
+  }
+
+  // "更多"链接
+  .fc-daygrid-more-link {
+    font-size: 12px;
+    color: #409eff;
+    font-weight: 500;
+    padding: 2px 4px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // 时间网格视图
+  .fc-timegrid-slot {
+    height: 48px !important;
+    border-color: #f0f0f0 !important;
+  }
+
+  .fc-timegrid-slot-label-cushion {
+    font-size: 12px;
+    color: #909399;
+  }
+
+  // 列表视图
+  .fc-list {
+    border-radius: 8px;
+    overflow: hidden;
+
+    .fc-list-day-cushion {
+      background: #f5f7fa !important;
+      padding: 8px 16px !important;
+    }
+
+    .fc-list-event {
+      cursor: pointer;
+
+      &:hover td {
+        background: #f0f4ff;
+      }
+    }
+
+    .fc-list-event-dot {
+      border-radius: 50%;
+    }
+  }
+
+  // 弹出框（more popover）
+  .fc-popover {
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border: 1px solid #ebeef5;
+
+    .fc-popover-header {
+      background: #f8f9fb;
+      padding: 10px 14px;
+      font-weight: 500;
+    }
+  }
+
+  // 选择效果
+  .fc-highlight {
+    background: rgba(64, 158, 255, 0.1) !important;
+    border: 2px dashed #409eff !important;
+    border-radius: 4px;
+  }
+
+  // 骨架（拖拽时的占位）
+  .fc-event-mirror {
+    opacity: 0.6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+// ==================== 弹窗样式 ====================
+
+.event-detail-dialog {
+  .event-detail {
+    .detail-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f5f5f5;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        width: 80px;
+        flex-shrink: 0;
+        color: #909399;
+        font-size: 13px;
+      }
+
+      .detail-value {
+        color: #303133;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// ==================== 响应式 ====================
+
+@media (max-width: 1200px) {
+  .unscheduled-panel {
+    width: 220px;
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-wrapper {
+    flex-direction: column;
+  }
+
+  .unscheduled-panel {
+    width: 100% !important;
+    min-width: 100% !important;
+
+    .panel-body {
+      max-height: 200px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .unscheduled-item {
+      width: calc(50% - 4px);
+    }
+  }
+
+  .calendar-main {
+    padding: 12px;
+  }
+
+  .fc .fc-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+</style>

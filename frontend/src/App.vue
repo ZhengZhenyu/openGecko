@@ -26,10 +26,20 @@
           <el-icon><OfficeBuilding /></el-icon>
           <span>社区总览</span>
         </el-menu-item>
-        <el-menu-item index="/contents">
-          <el-icon><Document /></el-icon>
-          <span>内容管理</span>
-        </el-menu-item>
+        <el-sub-menu index="content">
+          <template #title>
+            <el-icon><Document /></el-icon>
+            <span>内容管理</span>
+          </template>
+          <el-menu-item index="/contents">
+            <el-icon><List /></el-icon>
+            <span>内容列表</span>
+          </el-menu-item>
+          <el-menu-item index="/content-calendar">
+            <el-icon><Calendar /></el-icon>
+            <span>内容日历</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/publish">
           <el-icon><Promotion /></el-icon>
           <span>发布管理</span>
@@ -102,7 +112,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { 
   Collection, DataAnalysis, Document, Promotion, Setting, 
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar, 
-  Calendar, Upload 
+  Calendar, Upload, List 
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { getUserInfo } from './api/auth'
