@@ -3,8 +3,10 @@
     <el-select
       v-model="selectedCommunityId"
       :placeholder="communities.length === 0 ? '暂无社区' : '选择社区'"
-      :disabled="communities.length === 0"
+      :disabled="communities.length <= 1"
       size="default"
+      clearable
+      filterable
       @change="handleCommunityChange"
     >
       <el-option

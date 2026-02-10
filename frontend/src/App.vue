@@ -52,10 +52,6 @@
             <span>批量管理</span>
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="/settings">
-          <el-icon><Setting /></el-icon>
-          <span>渠道设置</span>
-        </el-menu-item>
         <el-menu-item v-if="isSuperuser" index="/communities">
           <el-icon><OfficeBuilding /></el-icon>
           <span>社区管理</span>
@@ -72,7 +68,7 @@
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <community-switcher />
+        <community-switcher v-if="showCommunitySwitcher" />
         <div class="header-right">
           <el-dropdown @command="handleCommand">
             <span class="user-info">
@@ -100,8 +96,8 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
-  Collection, DataAnalysis, Document, Promotion, Setting, 
-  OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar, 
+  Collection, DataAnalysis, Document, Promotion,
+  OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar,
   Calendar, Upload 
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
@@ -120,6 +116,18 @@ const isSuperuser = computed(() => authStore.isSuperuser)
 const showLayout = computed(() => {
   const noLayoutRoutes = ['Login', 'InitialSetup', 'ForgotPassword', 'ResetPassword']
   return !noLayoutRoutes.includes(route.name as string)
+})
+
+// 判断是否显示社区选择下拉框
+// 社区总览、社区管理、用户管理页面不显示
+const showCommunitySwitcher = computed(() => {
+  const hideSwitcherRoutes = [
+    'CommunityOverview',
+    'CommunityManage',
+    'UserManage',
+    'Dashboard'
+  ]
+  return !hideSwitcherRoutes.includes(route.name as string)
 })
 
 onMounted(async () => {
