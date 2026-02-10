@@ -203,9 +203,11 @@ import {
   CircleCloseFilled
 } from '@element-plus/icons-vue'
 import { listCommittees, getCommittee, type Committee, type CommitteeWithMembers } from '@/api/governance'
+import { useCommunityStore } from '@/stores/community'
 import apiClient from '@/api/index'
 
 const router = useRouter()
+const communityStore = useCommunityStore()
 
 const committees = ref<Committee[]>([])
 const selectedCommitteeId = ref<number | undefined>()
@@ -247,6 +249,11 @@ async function handleCommitteeChange() {
   }
 
   try {
+    // Set current community ID for API calls
+    const committee = committees.value.find(c => c.id === selectedCommitteeId.value)
+    if (committee) {
+      localStorage.setItem('current_community_id', String(committee.community_id))
+    }
     selectedCommittee.value = await getCommittee(selectedCommitteeId.value)
   } catch (error: any) {
     ElMessage.error(error.message || '加载委员会详情失败')
