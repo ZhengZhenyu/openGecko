@@ -12,6 +12,7 @@ class ContentCreate(BaseModel):
     tags: list[str] = []
     category: str = ""
     cover_image: Optional[str] = None
+    scheduled_publish_at: Optional[datetime] = None
 
 
 class ContentUpdate(BaseModel):
@@ -23,6 +24,7 @@ class ContentUpdate(BaseModel):
     tags: Optional[list[str]] = None
     category: Optional[str] = None
     cover_image: Optional[str] = None
+    scheduled_publish_at: Optional[datetime] = None
 
 
 class ContentStatusUpdate(BaseModel):
@@ -60,10 +62,30 @@ class ContentListOut(BaseModel):
     category: str
     status: str
     owner_id: Optional[int] = None
+    scheduled_publish_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ContentCalendarOut(BaseModel):
+    """日历视图专用的轻量响应模型"""
+    id: int
+    title: str
+    status: str
+    source_type: str
+    author: str
+    category: str
+    scheduled_publish_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ContentScheduleUpdate(BaseModel):
+    """拖拽更新发布时间"""
+    scheduled_publish_at: Optional[datetime] = None
 
 
 class PaginatedContents(BaseModel):
