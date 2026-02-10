@@ -231,6 +231,11 @@ const memberCount = computed(() => {
 })
 
 onMounted(() => {
+  // Ensure community ID is set from store
+  const currentCommunityId = communityStore.currentCommunityId
+  if (currentCommunityId) {
+    localStorage.setItem('current_community_id', String(currentCommunityId))
+  }
   loadCommittees()
 })
 

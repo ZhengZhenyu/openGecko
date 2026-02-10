@@ -1,11 +1,10 @@
 <template>
   <div class="community-switcher">
     <el-select
-      v-model="selectedCommunityId"
+      :model-value="selectedCommunityId"
       :placeholder="communities.length === 0 ? '暂无社区' : '选择社区'"
-      :disabled="communities.length <= 1"
+      :disabled="communities.length === 0"
       size="default"
-      clearable
       filterable
       @change="handleCommunityChange"
     >
@@ -25,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
@@ -34,15 +33,7 @@ const authStore = useAuthStore()
 const communityStore = useCommunityStore()
 
 const communities = computed(() => authStore.communities)
-const selectedCommunityId = ref<number | null>(communityStore.currentCommunityId)
-
-// Watch for external changes to current community
-watch(
-  () => communityStore.currentCommunityId,
-  (newId) => {
-    selectedCommunityId.value = newId
-  }
-)
+const selectedCommunityId = computed(() => communityStore.currentCommunityId)
 
 const handleCommunityChange = (communityId: number) => {
   const community = communities.value.find((c) => c.id === communityId)
