@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.core.dependencies import get_current_user, get_current_community, check_content_edit_permission
 from app.database import get_db
@@ -11,6 +12,8 @@ from app.schemas.content import (
     ContentStatusUpdate,
     ContentListOut,
     PaginatedContents,
+    ContentCalendarOut,
+    ContentScheduleUpdate,
 )
 from app.services.converter import convert_markdown_to_html
 
@@ -68,6 +71,7 @@ def create_content(
         community_id=community_id,
         created_by_user_id=current_user.id,
         owner_id=current_user.id,  # Creator is the initial owner
+        scheduled_publish_at=data.scheduled_publish_at,
     )
     db.add(content)
     db.commit()
@@ -308,4 +312,83 @@ def transfer_ownership(
     db.commit()
     db.refresh(content)
     
+    return content
+
+
+# ==================== Calendar API Endpoints ====================
+
+
+@router.get("/calendar/events", response_model=list[ContentCalendarOut])
+def list_calendar_events(
+    start: str = Query(..., description="Start date ISO format (e.g. 2026-02-01)"),
+    end: str = Query(..., description="End date ISO format (e.g. 2026-03-01)"),
+    status: str | None = None,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    获取日历视图的内容事件。
+    返回指定日期范围内有 scheduled_publish_at 的内容，
+    以及在该范围内创建但未设置发布时间的内容。
+    """
+    try:
+        start_dt = datetime.fromisoformat(start)
+        end_dt = datetime.fromisoformat(end)
+    except ValueError:
+        raise HTTPException(400, "Invalid date format. Use ISO format (e.g. 2026-02-01)")
+
+    query = db.query(Content).filter(Content.community_id == community_id)
+
+    if status:
+        query = query.filter(Content.status == status)
+
+    # Get contents that have a scheduled_publish_at in the date range
+    # OR contents created in the date range (to show unscheduled items too)
+    from sqlalchemy import or_, and_
+
+    query = query.filter(
+        or_(
+            and_(
+                Content.scheduled_publish_at.isnot(None),
+                Content.scheduled_publish_at >= start_dt,
+                Content.scheduled_publish_at < end_dt,
+            ),
+            and_(
+                Content.scheduled_publish_at.is_(None),
+                Content.created_at >= start_dt,
+                Content.created_at < end_dt,
+            ),
+        )
+    )
+
+    items = query.order_by(Content.scheduled_publish_at.asc().nullslast()).all()
+    return items
+
+
+@router.patch("/{content_id}/schedule", response_model=ContentOut)
+def update_content_schedule(
+    content_id: int,
+    data: ContentScheduleUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    更新内容的排期发布时间（用于日历拖拽）。
+    """
+    content = db.query(Content).filter(
+        Content.id == content_id,
+        Content.community_id == community_id,
+    ).first()
+    if not content:
+        raise HTTPException(404, "Content not found")
+
+    # Check edit permission
+    if not check_content_edit_permission(content, current_user, db):
+        raise HTTPException(403, "You don't have permission to update this content's schedule")
+
+    content.scheduled_publish_at = data.scheduled_publish_at
+    db.commit()
+    db.refresh(content)
     return content
