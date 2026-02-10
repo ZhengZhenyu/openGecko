@@ -519,6 +519,8 @@ async function handleCommunityAction(command: string, community: Community) {
       break
     case 'channels':
       selectedCommunity.value = community
+      // Temporarily set current community for API calls
+      localStorage.setItem('current_community_id', String(community.id))
       await loadChannels()
       channelsDialogVisible.value = true
       break
