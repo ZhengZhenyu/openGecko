@@ -40,6 +40,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/community-wizard',
+      name: 'CommunityWizard',
+      component: () => import('../views/CommunityWizard.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/community-settings/:communityId?',
+      name: 'CommunitySettings',
+      component: () => import('../views/CommunitySettings.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/dashboard',
       name: 'Dashboard',
       component: () => import('../views/Dashboard.vue'),

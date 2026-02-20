@@ -5,7 +5,7 @@
       <el-empty description="您还没有加入任何社区" :image-size="200">
         <template v-if="authStore.isSuperuser">
           <p class="empty-tip">作为超级管理员，您可以创建社区开始使用</p>
-          <el-button type="primary" @click="$router.push('/communities')">创建社区</el-button>
+          <el-button type="primary" @click="$router.push('/community-wizard')">创建社区</el-button>
         </template>
         <template v-else>
           <p class="empty-tip">请联系管理员将您添加到社区</p>
@@ -43,7 +43,7 @@
           <el-button
             v-if="isCurrentCommunityAdmin"
             size="small"
-            @click="$router.push('/communities')"
+            @click="$router.push(`/community-settings/${communityStore.currentCommunityId}`)"
           >
             <el-icon><Setting /></el-icon> 社区设置
           </el-button>
@@ -56,6 +56,27 @@
       </div>
 
       <template v-else-if="dashboardData">
+        <!-- 新社区引导横幅 -->
+        <div v-if="isNewCommunity" class="onboarding-banner">
+          <div class="onboarding-left">
+            <span class="onboard-emoji">🎉</span>
+            <div>
+              <div class="onboard-title">社区刚刚创建，从这里开始!</div>
+              <div class="onboard-desc">完成基础配置，让社区运转起来。</div>
+            </div>
+          </div>
+          <div class="onboarding-right">
+            <el-button
+              v-if="authStore.isSuperuser"
+              type="primary"
+              size="small"
+              @click="$router.push(`/community-settings/${communityStore.currentCommunityId}`)"
+            >
+              <el-icon><Setting /></el-icon> 配置社区
+            </el-button>
+            <el-button v-else size="small" disabled>请联系超管完成配置</el-button>
+          </div>
+        </div>
         <!-- 第一层：8 指标卡片 (2行x4列) -->
         <div class="metrics-grid">
           <div class="metric-card" @click="$router.push('/contents')">
@@ -272,6 +293,13 @@ const isCurrentCommunityAdmin = computed(() =>
     ? authStore.isAdminInCommunity(communityStore.currentCommunityId)
     : false
 )
+
+// 是否是全新社区（需要展示引导横幅）
+const isNewCommunity = computed(() => {
+  if (!dashboardData.value) return false
+  const m = dashboardData.value.metrics
+  return (m.total_contents || 0) === 0 && (m.total_members || 0) <= 1
+})
 
 // ===== 数据加载 =====
 
@@ -533,6 +561,23 @@ function formatTime(dt: string) {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* ===== 新社区引导横幅 ===== */
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+}
+.onboarding-left { display: flex; align-items: center; gap: 14px; }
+.onboard-emoji { font-size: 28px; }
+.onboard-title { font-size: 14px; font-weight: 600; color: #1e3a8a; }
+.onboard-desc { font-size: 12px; color: #3b82f6; margin-top: 2px; }
+.onboarding-right {}
 
 /* ===== 骨架屏 ===== */
 .skeleton-wrap {

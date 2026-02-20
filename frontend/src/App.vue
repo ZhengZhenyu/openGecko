@@ -64,6 +64,11 @@
             <span>会议管理</span>
           </el-menu-item>
         </el-sub-menu>
+        <!-- 社区设置（管理员及超管可见）-->
+        <el-menu-item v-if="isSuperuser || isAdminInCurrentCommunity" index="/community-settings">
+          <el-icon><Setting /></el-icon>
+          <span>社区设置</span>
+        </el-menu-item>
         <!-- 超管专属区 -->
         <template v-if="isSuperuser">
           <el-divider style="margin: 8px 0" />
@@ -127,15 +132,21 @@ import {
   Calendar, Upload, List, Checked, TrendCharts, House
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
+import { useCommunityStore } from './stores/community'
 import { getUserInfo } from './api/auth'
 import CommunitySwitcher from './components/CommunitySwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const communityStore = useCommunityStore()
 
 const user = computed(() => authStore.user)
 const isSuperuser = computed(() => authStore.isSuperuser)
+const isAdminInCurrentCommunity = computed(() => {
+  const cid = communityStore.currentCommunityId
+  return cid ? authStore.isAdminInCommunity(cid) : false
+})
 
 // 判断是否显示侧边栏和顶栏布局
 // 登录页、初始设置页、忘记密码页、重置密码页不显示

@@ -6,10 +6,17 @@
         <h2>社区总览</h2>
         <p class="subtitle">查看所有社区的运营概况</p>
       </div>
-      <el-button v-if="isSuperuser" type="primary" :icon="Plus" @click="$router.push('/communities')">
-        管理社区
-      </el-button>
+      <div style="display:flex;gap:10px">
+        <el-button v-if="isSuperuser" type="primary" :icon="Plus" @click="showWizard = true">
+          创建社区
+        </el-button>
+        <el-button v-if="isSuperuser" :icon="Setting" @click="$router.push('/communities')">
+          管理社区
+        </el-button>
+      </div>
     </div>
+    <!-- 创建社区向导 -->
+    <CommunityWizard v-if="showWizard" @completed="handleWizardCompleted" />
 
     <!-- 指标卡片 -->
     <div class="metric-cards">
@@ -127,6 +134,13 @@ import { useAuthStore } from '../stores/auth'
 import { getCommunities } from '../api/community'
 import type { Community } from '../stores/auth'
 import apiClient from '../api/index'
+import CommunityWizard from './CommunityWizard.vue'
+
+const showWizard = ref(false)
+function handleWizardCompleted(cid: number) {
+  showWizard.value = false
+  loadCommunities()
+}
 
 interface CommunityStats extends Community {
   committee_count?: number

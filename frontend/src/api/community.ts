@@ -50,6 +50,22 @@ export async function updateCommunity(
   return data
 }
 
+export interface CommunityBasicUpdate {
+  name?: string
+  description?: string
+  logo_url?: string
+  url?: string
+}
+
+/** 社区管理员可更新基本信息（名称/描述/Logo/链接），不涉及 SMTP/渠道等敏感配置 */
+export async function updateCommunityBasic(
+  id: number,
+  updates: CommunityBasicUpdate
+): Promise<Community> {
+  const { data } = await apiClient.put<Community>(`/communities/${id}/basic`, updates)
+  return data
+}
+
 export async function deleteCommunity(id: number): Promise<void> {
   await apiClient.delete(`/communities/${id}`)
 }
@@ -63,9 +79,10 @@ export async function getCommunityUsers(communityId: number): Promise<CommunityU
 
 export async function addUserToCommunity(
   communityId: number,
-  userId: number
+  userId: number,
+  role?: string
 ): Promise<void> {
-  await apiClient.post(`/communities/${communityId}/users`, { user_id: userId })
+  await apiClient.post(`/communities/${communityId}/users`, { user_id: userId, role })
 }
 
 export async function removeUserFromCommunity(
