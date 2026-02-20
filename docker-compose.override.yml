@@ -1,0 +1,16 @@
+# 开发环境覆盖配置
+# 运行 `docker compose up` 时自动加载此文件
+# 无需额外 -f 参数
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app         # 代码热重载
+      - ./uploads:/app/uploads # 本地上传目录映射
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

@@ -195,7 +195,7 @@ async function finishWizard() {
 
 function goToCommunity() {
   if (createdCommunity.value) {
-    communityStore.setCurrentCommunity(createdCommunity.value.id)
+    communityStore.setCommunity(createdCommunity.value.id)
   }
   router.push('/community')
 }
@@ -562,7 +562,6 @@ onMounted(async () => {
   display: flex;
   gap: 10px;
 }
-.step-panel {}
 .step-title {
   font-size: 16px;
   font-weight: 600;

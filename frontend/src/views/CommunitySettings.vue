@@ -244,7 +244,7 @@ async function doDeleteCommunity() {
   try {
     await deleteCommunity(communityId.value)
     ElMessage.success('社区已删除')
-    communityStore.setCurrentCommunity(null)
+    communityStore.clearCommunity()
     router.push('/community-overview')
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || '删除失败')

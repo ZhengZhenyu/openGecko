@@ -1,4 +1,5 @@
-.PHONY: setup setup-backend setup-frontend dev dev-backend dev-frontend stop clean
+.PHONY: setup setup-backend setup-frontend dev dev-backend dev-frontend stop clean \
+        docker-dev docker-prod docker-prod-down docker-logs docker-status
 
 # ── One-command setup ─────────────────────────────────────────────────
 setup: setup-backend setup-frontend
@@ -32,6 +33,30 @@ dev-backend:
 
 dev-frontend:
 	cd frontend && npx vite --port 3000
+
+# ── Docker 开发模式（热重载）─────────────────────────────────────────
+docker-dev:
+	@echo "🐳 Starting openGecko in Docker (dev mode)..."
+	docker compose up --build
+
+# ── Docker 生产模式（gunicorn + 资源限制 + 日志驱动）────────────────
+docker-prod:
+	@echo "🚀 Starting openGecko in production mode..."
+	@if [ ! -f backend/.env ]; then echo "❌ backend/.env not found! Copy from backend/.env.prod.example"; exit 1; fi
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+	@echo "✅ Production stack started"
+	@echo "   Frontend: http://localhost:80"
+	@echo "   Backend:  http://localhost:8000"
+	@echo "   Run 'make docker-logs' to view logs"
+
+docker-prod-down:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+docker-logs:
+	docker compose logs -f --tail=100
+
+docker-status:
+	docker compose ps
 
 # ── Stop background processes ─────────────────────────────────────────
 stop:
