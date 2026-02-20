@@ -1,0 +1,44 @@
+# 生产环境加固配置
+# 使用方式：docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# 此文件不会被 docker compose up 自动加载
+
+services:
+  backend:
+    # 生产环境使用 gunicorn + uvicorn worker，多进程提升吞吐量
+    command: >
+      gunicorn app.main:app
+      --workers 4
+      --worker-class uvicorn.workers.UvicornWorker
+      --bind 0.0.0.0:8000
+      --timeout 60
+      --access-logfile -
+      --error-logfile -
+      --log-level warning
+    # 覆盖为命名卷，避免宿主路径依赖、数据持久化更安全
+    volumes:
+      - uploads_data:/app/uploads
+      - app_data:/app/data
+    mem_limit: 512m
+    cpus: "1.0"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+
+  frontend:
+    mem_limit: 128m
+    cpus: "0.5"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+        compress: "true"
+
+volumes:
+  uploads_data:
+    driver: local
+  app_data:
+    driver: local
