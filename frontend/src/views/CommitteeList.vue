@@ -40,12 +40,12 @@
           :md="8"
           :lg="6"
         >
-          <el-card class="committee-card" shadow="hover" @click="goToDetail(committee.id)">
+          <div class="committee-card" @click="goToDetail(committee.id)">
             <div class="card-header">
               <h3>{{ committee.name }}</h3>
-              <el-tag :type="committee.is_active ? 'success' : 'info'" size="small">
+              <span class="status-badge" :class="committee.is_active ? 'badge-active' : 'badge-archived'">
                 {{ committee.is_active ? '活跃' : '已归档' }}
-              </el-tag>
+              </span>
             </div>
 
             <div v-if="committee.description" class="card-description">
@@ -60,26 +60,16 @@
             </div>
 
             <div v-if="isAdmin" class="card-actions" @click.stop>
-              <el-button
-                type="primary"
-                size="small"
-                link
-                @click="editCommittee(committee)"
-              >
+              <button class="action-link action-edit" @click="editCommittee(committee)">
                 <el-icon><Edit /></el-icon>
                 编辑
-              </el-button>
-              <el-button
-                type="danger"
-                size="small"
-                link
-                @click="confirmDelete(committee)"
-              >
+              </button>
+              <button class="action-link action-delete" @click="confirmDelete(committee)">
                 <el-icon><Delete /></el-icon>
                 删除
-              </el-button>
+              </button>
             </div>
-          </el-card>
+          </div>
         </el-col>
       </el-row>
 
@@ -327,61 +317,87 @@ async function submitForm() {
 
 <style scoped>
 .committee-list {
-  padding: 24px;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --green: #22c55e;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  padding: 0 4px;
 }
 
 .page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .page-title .subtitle {
   margin: 0;
-  color: #86909c;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 15px;
 }
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  background: #ffffff;
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 
 .filter-section {
-  padding: 16px 24px;
+  padding: 20px 28px;
 }
 
 .committee-grid {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .committee-card {
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
   height: 100%;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
 }
 
 .committee-card:hover {
-  transform: translateY(-4px);
+  border-color: #0095ff;
+  box-shadow: var(--shadow-hover);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .card-header h3 {
@@ -389,13 +405,35 @@ async function submitForm() {
   font-size: 18px;
   font-weight: 600;
   flex: 1;
+  color: var(--text-primary);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-active {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.badge-archived {
+  background: #f1f5f9;
+  color: var(--text-secondary);
 }
 
 .card-description {
-  color: var(--el-text-color-regular);
+  color: #64748b;
   font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 16px;
+  line-height: 1.7;
+  margin-bottom: 20px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -405,33 +443,167 @@ async function submitForm() {
 .card-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--text-muted);
 }
 
 .meta-item .el-icon {
-  font-size: 14px;
+  font-size: 16px;
+  color: #0095ff;
 }
 
 .card-actions {
-  padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-edit {
+  color: var(--blue);
+}
+
+.action-edit:hover {
+  background: #eff6ff;
+  color: #0080e6;
+}
+
+.action-delete {
+  color: #ef4444;
+}
+
+.action-delete:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .form-tip {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
-  margin-top: 4px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Element Plus overrides */
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+:deep(.el-button--primary:hover) {
+  background: #0080e6;
+  border-color: #0080e6;
+}
+
+:deep(.el-button--default) {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:deep(.el-button--default:hover) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+:deep(.el-input__wrapper) {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--blue), 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+}
+
+:deep(.el-input__inner::placeholder) {
+  color: var(--text-muted);
+}
+
+:deep(.el-select) {
+  --el-fill-color-blank: #ffffff;
+}
+
+:deep(.el-empty) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-empty__description) {
+  color: var(--text-muted);
+}
+
+/* Dialog overrides */
+:deep(.el-dialog) {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-hover);
+}
+
+:deep(.el-dialog__header) {
+  border-bottom: 1px solid var(--border);
+}
+
+:deep(.el-dialog__title) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:deep(.el-dialog__body) {
+  color: var(--text-primary);
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-textarea__inner) {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:deep(.el-textarea__inner:hover) {
+  border-color: #cbd5e1;
+}
+
+:deep(.el-textarea__inner:focus) {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 149, 255, 0.1);
 }
 </style>

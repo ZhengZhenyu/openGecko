@@ -14,9 +14,11 @@ export interface Content {
   category: string
   cover_image: string | null
   status: string
+  work_status: string
   owner_id: number | null
   community_id: number
   created_by_user_id: number | null
+  assignee_ids: number[]
   scheduled_publish_at: string | null
   created_at: string
   updated_at: string

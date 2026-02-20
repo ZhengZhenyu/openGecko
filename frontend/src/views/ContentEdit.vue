@@ -392,76 +392,127 @@ async function handleTransferOwnership() {
 </script>
 
 <style scoped>
+/* LFX Insights Light Theme - Content Edit */
+.content-edit {
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
+
 .page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
+
 .page-title .subtitle {
   margin: 0;
-  color: #86909c;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 15px;
 }
+
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .section-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #1d2129;
+  color: var(--text-primary);
 }
 
+/* Form Overrides */
 .meta-card :deep(.el-form-item) {
   margin-bottom: 0;
 }
 
+.meta-card :deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.meta-card :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--border);
+  border-radius: 8px;
+}
+
+.meta-card :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--blue), 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+
+.meta-card :deep(.el-input__inner) {
+  color: var(--text-primary);
+}
+
+.meta-card :deep(.el-input__inner::placeholder) {
+  color: var(--text-muted);
+}
+
+/* Collaborators */
 .collab-add {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .collab-list {
-  padding: 8px 0;
+  padding: 12px 0;
 }
 
 .collab-empty {
-  color: #909399;
-  font-size: 13px;
-  padding: 8px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 12px 0;
+  text-align: center;
 }
 
 .ownership-section .label {
   font-size: 14px;
-  color: #606266;
-  margin-right: 8px;
+  color: var(--text-secondary);
+  margin-right: 12px;
+  font-weight: 500;
 }
 
 .ownership-transfer {
@@ -470,15 +521,23 @@ async function handleTransferOwnership() {
   gap: 12px;
 }
 
+/* Cover Upload */
 .cover-upload-area {
   width: 320px;
 }
 
 .cover-preview {
   position: relative;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   overflow: hidden;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.cover-preview:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-hover);
 }
 
 .cover-preview img {
@@ -491,37 +550,79 @@ async function handleTransferOwnership() {
 .cover-actions {
   display: flex;
   gap: 8px;
-  padding: 8px;
+  padding: 10px;
   justify-content: center;
-  background: #fafafa;
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid #f1f5f9;
 }
 
 .cover-placeholder {
   width: 100%;
   height: 136px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 6px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #909399;
-  gap: 4px;
-  transition: border-color 0.2s;
+  color: var(--text-muted);
+  gap: 6px;
+  transition: all 0.2s ease;
+  background: #f8fafc;
 }
 
 .cover-placeholder:hover {
-  border-color: #409eff;
-  color: #409eff;
+  border-color: var(--blue);
+  color: var(--blue);
+  background: #eff6ff;
 }
 
 .cover-placeholder span {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .cover-placeholder .hint {
-  font-size: 11px;
-  color: #c0c4cc;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Element Plus Overrides */
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+:deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+:deep(.el-button--primary:hover) {
+  background: #0080e6;
+  border-color: #0080e6;
+}
+
+:deep(.el-button--success) {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+:deep(.el-button--success:hover) {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+:deep(.el-button--default) {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+:deep(.el-button--default:hover) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 </style>

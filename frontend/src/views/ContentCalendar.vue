@@ -603,8 +603,21 @@ onBeforeUnmount(() => {
 
 <style lang="scss">
 .content-calendar-container {
-  padding: 0;
-  min-height: calc(100vh - 120px);
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 // ==================== 页面标题 ====================
@@ -613,19 +626,20 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 
   h2 {
-    margin: 0 0 4px;
-    font-size: 22px;
-    font-weight: 600;
-    color: #1d2129;
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
   }
 
   .subtitle {
     margin: 0;
-    color: #86909c;
-    font-size: 14px;
+    color: var(--text-secondary);
+    font-size: 15px;
   }
 
   .header-left {
@@ -643,12 +657,12 @@ onBeforeUnmount(() => {
 // ==================== 通用卡片样式 ====================
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
 // ==================== 主体布局 ====================
@@ -669,9 +683,9 @@ onBeforeUnmount(() => {
   padding: 0;
 
   &.drop-target-active {
-    background: #ecf5ff;
-    border: 2px dashed #409eff;
-    box-shadow: 0 0 12px rgba(64, 158, 255, 0.2);
+    background: #eff6ff;
+    border: 2px dashed var(--blue);
+    box-shadow: 0 0 12px rgba(0, 149, 255, 0.15);
   }
 
   &.collapsed {
@@ -691,14 +705,14 @@ onBeforeUnmount(() => {
     padding: 14px 16px;
     font-weight: 600;
     font-size: 14px;
-    color: #303133;
-    border-bottom: 1px solid #f0f0f0;
+    color: var(--text-primary);
+    border-bottom: 1px solid #f1f5f9;
     cursor: pointer;
     user-select: none;
     gap: 8px;
 
     &:hover {
-      background: #f5f7fa;
+      background: #f8fafc;
     }
 
     .el-icon {
@@ -722,29 +736,28 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 10px 12px;
   margin-bottom: 6px;
-  background: #fafafa;
-  border-radius: 6px;
-  border-left: 3px solid #ddd;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 3px solid var(--border);
   cursor: grab;
   transition: all 0.2s ease;
 
   &:hover {
-    background: #f0f4ff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transform: translateY(-1px);
+    background: #eff6ff;
+    box-shadow: var(--shadow);
   }
 
   &:active,
   &.fc-dragging {
     cursor: grabbing;
     opacity: 0.4;
-    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+    box-shadow: var(--shadow-hover);
   }
 
-  &.status-draft { border-left-color: #909399; }
-  &.status-reviewing { border-left-color: #E6A23C; }
-  &.status-approved { border-left-color: #409EFF; }
-  &.status-published { border-left-color: #67C23A; }
+  &.status-draft { border-left-color: var(--text-muted); }
+  &.status-reviewing { border-left-color: var(--orange); }
+  &.status-approved { border-left-color: var(--blue); }
+  &.status-published { border-left-color: var(--green); }
 
   .item-dot {
     width: 8px;
@@ -761,7 +774,7 @@ onBeforeUnmount(() => {
     .item-title {
       font-size: 13px;
       font-weight: 500;
-      color: #303133;
+      color: var(--text-primary);
       margin-bottom: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -775,7 +788,7 @@ onBeforeUnmount(() => {
 
       .item-author {
         font-size: 11px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
   }
@@ -785,10 +798,11 @@ onBeforeUnmount(() => {
 
 .calendar-main {
   flex: 1;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 20px;
+  background: #ffffff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 24px;
   overflow: hidden;
 }
 
@@ -802,30 +816,31 @@ onBeforeUnmount(() => {
     .fc-toolbar-title {
       font-size: 18px !important;
       font-weight: 600 !important;
-      color: #303133;
+      color: var(--text-primary);
     }
   }
 
   // 按钮样式
   .fc-button {
-    background: #fff !important;
-    border: 1px solid #dcdfe6 !important;
-    color: #606266 !important;
+    background: #ffffff !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
     font-size: 13px !important;
-    padding: 6px 12px !important;
-    border-radius: 4px !important;
+    padding: 6px 14px !important;
+    border-radius: 8px !important;
     box-shadow: none !important;
-    transition: all 0.2s !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease !important;
 
     &:hover {
-      background: #ecf5ff !important;
-      border-color: #409eff !important;
-      color: #409eff !important;
+      background: #f8fafc !important;
+      border-color: #cbd5e1 !important;
+      color: var(--text-primary) !important;
     }
 
     &.fc-button-active {
-      background: #409eff !important;
-      border-color: #409eff !important;
+      background: var(--blue) !important;
+      border-color: var(--blue) !important;
       color: #fff !important;
     }
 
@@ -839,49 +854,51 @@ onBeforeUnmount(() => {
       border-radius: 0 !important;
 
       &:first-child {
-        border-radius: 4px 0 0 4px !important;
+        border-radius: 8px 0 0 8px !important;
       }
 
       &:last-child {
-        border-radius: 0 4px 4px 0 !important;
+        border-radius: 0 8px 8px 0 !important;
       }
     }
   }
 
   // today 按钮
   .fc-today-button {
-    border-radius: 4px !important;
+    border-radius: 8px !important;
   }
 
   // 表头
   .fc-col-header-cell {
     padding: 10px 0 !important;
-    background: #f8f9fb !important;
-    border-color: #ebeef5 !important;
+    background: #f8fafc !important;
+    border-color: #f1f5f9 !important;
 
     .fc-col-header-cell-cushion {
-      font-weight: 500;
-      color: #606266;
-      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       text-decoration: none !important;
     }
   }
 
   // 日期单元格
   .fc-daygrid-day {
-    border-color: #ebeef5 !important;
+    border-color: #f1f5f9 !important;
     transition: background 0.15s;
     min-height: 100px;
 
     &:hover {
-      background: #f5f8ff;
+      background: #f8fafc;
     }
 
     &.fc-day-today {
-      background: #ecf5ff !important;
+      background: #eff6ff !important;
 
       .fc-daygrid-day-number {
-        background: #409eff;
+        background: var(--blue);
         color: #fff;
         border-radius: 50%;
         width: 28px;
@@ -895,25 +912,24 @@ onBeforeUnmount(() => {
 
   .fc-daygrid-day-number {
     font-size: 13px;
-    color: #606266;
+    color: var(--text-secondary);
     padding: 6px 8px !important;
     text-decoration: none !important;
   }
 
   // 事件样式
   .fc-event {
-    border-radius: 4px !important;
+    border-radius: 6px !important;
     border: none !important;
     padding: 2px 6px !important;
     margin-bottom: 2px !important;
     font-size: 12px !important;
     cursor: pointer !important;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
 
     &:hover {
       opacity: 0.85;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      transform: translateY(-1px);
+      box-shadow: var(--shadow);
     }
   }
 
@@ -962,7 +978,7 @@ onBeforeUnmount(() => {
   // "更多"链接
   .fc-daygrid-more-link {
     font-size: 12px;
-    color: #409eff;
+    color: var(--blue);
     font-weight: 500;
     padding: 2px 4px;
 
@@ -974,12 +990,12 @@ onBeforeUnmount(() => {
   // 时间网格视图
   .fc-timegrid-slot {
     height: 48px !important;
-    border-color: #f0f0f0 !important;
+    border-color: #f1f5f9 !important;
   }
 
   .fc-timegrid-slot-label-cushion {
     font-size: 12px;
-    color: #909399;
+    color: var(--text-muted);
   }
 
   // 列表视图
@@ -988,7 +1004,7 @@ onBeforeUnmount(() => {
     overflow: hidden;
 
     .fc-list-day-cushion {
-      background: #f5f7fa !important;
+      background: #f8fafc !important;
       padding: 8px 16px !important;
     }
 
@@ -996,7 +1012,7 @@ onBeforeUnmount(() => {
       cursor: pointer;
 
       &:hover td {
-        background: #f0f4ff;
+        background: #eff6ff;
       }
     }
 
@@ -1007,28 +1023,29 @@ onBeforeUnmount(() => {
 
   // 弹出框（more popover）
   .fc-popover {
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    border: 1px solid #ebeef5;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    border: 1px solid var(--border);
 
     .fc-popover-header {
-      background: #f8f9fb;
+      background: #f8fafc;
       padding: 10px 14px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--text-primary);
     }
   }
 
   // 选择效果
   .fc-highlight {
-    background: rgba(64, 158, 255, 0.1) !important;
-    border: 2px dashed #409eff !important;
-    border-radius: 4px;
+    background: rgba(0, 149, 255, 0.08) !important;
+    border: 2px dashed var(--blue) !important;
+    border-radius: 6px;
   }
 
   // 骨架（拖拽时的占位）
   .fc-event-mirror {
     opacity: 0.6;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-hover);
   }
 }
 
@@ -1040,7 +1057,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       padding: 10px 0;
-      border-bottom: 1px solid #f5f5f5;
+      border-bottom: 1px solid #f1f5f9;
 
       &:last-child {
         border-bottom: none;
@@ -1049,12 +1066,12 @@ onBeforeUnmount(() => {
       .detail-label {
         width: 80px;
         flex-shrink: 0;
-        color: #909399;
+        color: var(--text-muted);
         font-size: 13px;
       }
 
       .detail-value {
-        color: #303133;
+        color: var(--text-primary);
         font-size: 14px;
       }
     }
@@ -1064,6 +1081,10 @@ onBeforeUnmount(() => {
 // ==================== 响应式 ====================
 
 @media (max-width: 1200px) {
+  .content-calendar-container {
+    padding: 28px 24px;
+  }
+
   .unscheduled-panel {
     width: 220px;
     min-width: 220px;
@@ -1071,6 +1092,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .content-calendar-container {
+    padding: 20px 16px;
+  }
+
   .calendar-wrapper {
     flex-direction: column;
   }
@@ -1092,7 +1117,7 @@ onBeforeUnmount(() => {
   }
 
   .calendar-main {
-    padding: 12px;
+    padding: 16px;
   }
 
   .fc .fc-toolbar {

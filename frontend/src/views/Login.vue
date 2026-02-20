@@ -134,25 +134,59 @@ const handleLogin = async () => {
 </script>
 
 <style scoped lang="scss">
+/* LFX Insights Light Theme - Login */
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f7fa;
+  position: relative;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -20%;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(0, 149, 255, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
 }
 
 .login-card {
-  width: 400px;
+  position: relative;
+  width: 460px;
   max-width: 90%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 
   :deep(.el-card__header) {
-    padding: 30px 20px 20px;
-    border-bottom: none;
+    padding: 48px 40px 32px;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
   }
 
   :deep(.el-card__body) {
-    padding: 0 40px 40px;
+    padding: 40px;
+    background: transparent;
   }
 }
 
@@ -160,57 +194,161 @@ const handleLogin = async () => {
   text-align: center;
 
   .logo {
-    width: 240px;
+    width: 200px;
     height: auto;
-    margin: 0 auto 16px;
+    margin: 0 auto 24px;
     display: block;
-    background-color: #fff;
-    border-radius: 8px;
-    padding: 8px;
+    border-radius: 16px;
+    padding: 12px;
   }
 
   h2 {
-    margin: 0 0 8px;
-    font-size: 28px;
-    font-weight: 600;
-    color: #303133;
+    margin: 0 0 12px;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1e293b;
   }
 
   .subtitle {
     margin: 0;
-    font-size: 14px;
-    color: #909399;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #64748b;
+    letter-spacing: 0.011em;
   }
 }
 
 .login-form {
-  margin-top: 30px;
+  margin-top: 32px;
 
   .el-form-item {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 
     &:last-child {
       margin-bottom: 0;
+      margin-top: 28px;
+    }
+  }
+
+  :deep(.el-input) {
+    .el-input__wrapper {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: none;
+      padding: 14px 16px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #ffffff;
+        border-color: #cbd5e1;
+      }
+
+      &.is-focus {
+        background: #ffffff;
+        border-color: #0095ff;
+        box-shadow: 0 0 0 3px rgba(0, 149, 255, 0.1);
+      }
+    }
+
+    .el-input__inner {
+      color: #1e293b;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+
+      &::placeholder {
+        color: #94a3b8;
+      }
+    }
+
+    .el-input__prefix {
+      color: #94a3b8;
+      font-size: 18px;
+    }
+
+    .el-input__suffix {
+      color: #94a3b8;
     }
   }
 
   .login-button {
     width: 100%;
-    margin-top: 12px;
+    height: 52px;
+    background: #0095ff;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    box-shadow: 0 2px 8px rgba(0, 149, 255, 0.25);
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #0080e6;
+      box-shadow: 0 4px 12px rgba(0, 149, 255, 0.35);
+    }
+
+    &:active {
+      background: #006acc;
+    }
   }
 }
 
 .login-links {
-  margin-top: 16px;
+  margin-top: 24px;
   text-align: right;
 
   .forgot-link {
-    color: #409eff;
+    color: #64748b;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    transition: color 0.15s ease;
 
     &:hover {
-      text-decoration: underline;
+      color: #0095ff;
+    }
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .login-card {
+    width: calc(100% - 40px);
+    margin: 20px;
+
+    :deep(.el-card__header) {
+      padding: 40px 32px 28px;
+    }
+
+    :deep(.el-card__body) {
+      padding: 32px;
+    }
+  }
+
+  .card-header {
+    .logo {
+      width: 160px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 26px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+    }
+  }
+
+  .login-form {
+    .login-button {
+      height: 48px;
+      font-size: 16px;
     }
   }
 }

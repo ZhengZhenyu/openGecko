@@ -74,15 +74,17 @@
           <el-table-column prop="updated_at" label="更新时间" width="180">
             <template #default="{ row }">{{ formatDate(row.updated_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column label="操作" width="180" fixed="right">
             <template #default="{ row }">
-              <el-button size="small" @click="$router.push(`/contents/${row.id}/edit`)">编辑</el-button>
-              <el-button size="small" type="primary" @click="$router.push(`/publish/${row.id}`)">发布</el-button>
-              <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
-                <template #reference>
-                  <el-button size="small" type="danger">删除</el-button>
-                </template>
-              </el-popconfirm>
+              <div class="action-buttons">
+                <el-button size="small" link type="primary" @click="$router.push(`/contents/${row.id}/edit`)">编辑</el-button>
+                <el-button size="small" link type="primary" @click="$router.push(`/publish/${row.id}`)">发布</el-button>
+                <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
+                  <template #reference>
+                    <el-button size="small" link type="danger">删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -214,48 +216,333 @@ watch(
 </script>
 
 <style scoped>
+/* LFX Insights Light Theme - Content List */
+.content-list {
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --bg-card: #ffffff;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Page Title */
 .page-title {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  align-items: flex-start;
+  margin-bottom: 28px;
 }
+
 .page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
+
 .page-title .subtitle {
   margin: 0;
-  color: #86909c;
-  font-size: 14px;
+  font-size: 15px;
+  color: var(--text-secondary);
 }
+
 .actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
+
+.actions :deep(.el-button) {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.actions :deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.actions :deep(.el-button--primary:hover) {
+  background: #0080e6;
+  border-color: #0080e6;
+}
+
+.actions :deep(.el-button--success) {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.actions :deep(.el-button--success:hover) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+/* Section Card */
 .section-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
 }
+
+.section-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Filter */
 .filter-section {
-  padding: 16px 24px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
 }
+
 .filters {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
+
+.filters :deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.filters :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--blue), 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+
+.filters :deep(.el-input__inner) {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.filters :deep(.el-input__inner::placeholder) {
+  color: var(--text-muted);
+}
+
+/* Table */
+.section-card :deep(.el-table) {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.section-card :deep(.el-table::before) {
+  display: none;
+}
+
+.section-card :deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.section-card :deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 0;
+}
+
+.section-card :deep(.el-table .el-table__row:hover > td) {
+  background: #f8fafc !important;
+}
+
 .title-link {
-  color: #4e5969;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
+  transition: color 0.15s ease;
 }
+
 .title-link:hover {
-  color: #3b82f6;
+  color: var(--blue);
+}
+
+/* Tags */
+.section-card :deep(.el-tag) {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+}
+
+.section-card :deep(.el-tag--info) {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+
+.section-card :deep(.el-tag--warning) {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.section-card :deep(.el-tag--success) {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.section-card :deep(.el-tag--primary) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.section-card :deep(.el-button) {
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.action-buttons :deep(.el-button.is-link) {
+  height: auto;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.action-buttons :deep(.el-button--primary.is-link) {
+  color: var(--blue);
+  background: transparent;
+}
+
+.action-buttons :deep(.el-button--primary.is-link:hover) {
+  color: #0080e6;
+  background: #eff6ff;
+}
+
+.action-buttons :deep(.el-button--danger.is-link) {
+  color: var(--red);
+  background: transparent;
+}
+
+.action-buttons :deep(.el-button--danger.is-link:hover) {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.section-card :deep(.el-button--small) {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.section-card :deep(.el-button--small:hover) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.section-card :deep(.el-button--primary) {
+  background: var(--blue);
+  color: white;
+  border: none;
+}
+
+.section-card :deep(.el-button--primary:hover) {
+  background: #0080e6;
+}
+
+.section-card :deep(.el-button--danger) {
+  background: #fef2f2;
+  color: var(--red);
+  border: 1px solid #fecaca;
+}
+
+.section-card :deep(.el-button--danger:hover) {
+  background: #fee2e2;
+}
+
+/* Pagination */
+.section-card :deep(.el-pagination) {
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.section-card :deep(.el-pagination .btn-prev),
+.section-card :deep(.el-pagination .btn-next),
+.section-card :deep(.el-pagination .el-pager li) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.section-card :deep(.el-pagination .el-pager li.is-active) {
+  background: var(--blue);
+  color: white;
+}
+
+/* Empty */
+:deep(.el-empty) {
+  padding: 60px;
+}
+
+:deep(.el-empty__description) {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .content-list {
+    padding: 28px 24px;
+  }
+
+  .page-title {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 734px) {
+  .content-list {
+    padding: 20px 16px;
+  }
+
+  .page-title h2 {
+    font-size: 22px;
+  }
+
+  .section-card {
+    padding: 16px;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .filters :deep(.el-input),
+  .filters :deep(.el-select) {
+    width: 100% !important;
+  }
 }
 </style>

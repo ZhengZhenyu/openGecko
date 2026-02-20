@@ -892,72 +892,103 @@ onMounted(loadCommunities)
 </script>
 
 <style scoped>
+.community-manage {
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
 .page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .page-title .subtitle {
   margin: 0;
-  color: #86909c;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 15px;
 }
 
 .community-card {
   margin-bottom: 20px;
+  transition: all 0.2s ease;
 }
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .community-title {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .community-title .name {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 18px;
+  color: var(--text-primary);
 }
+
 .more-icon {
   cursor: pointer;
-  color: #909399;
+  color: var(--text-muted);
   font-size: 18px;
+  transition: color 0.15s ease;
 }
+
 .more-icon:hover {
-  color: #409eff;
+  color: var(--blue);
 }
+
 .community-info .slug {
-  color: #909399;
+  color: var(--text-muted);
   font-size: 13px;
   display: flex;
   align-items: center;
   gap: 4px;
   margin: 0 0 4px;
 }
+
 .community-info .url {
   font-size: 13px;
   margin: 0 0 8px;
 }
+
 .community-info .url a {
-  color: #409eff;
+  color: var(--blue);
   text-decoration: none;
+  transition: opacity 0.15s ease;
 }
+
 .community-info .url a:hover {
   text-decoration: underline;
+  opacity: 0.85;
 }
+
 .community-info .desc {
-  color: #606266;
+  color: var(--text-secondary);
   font-size: 14px;
   margin: 0;
   line-height: 1.6;
@@ -970,6 +1001,81 @@ onMounted(loadCommunities)
   align-items: center;
 }
 
-.hint-text { color: #999; font-size: 13px; }
-.secret-hint { color: #909399; font-size: 12px; margin-top: 4px; }
+.hint-text {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.secret-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Element Plus overrides */
+:deep(.el-card) {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+:deep(.el-card:hover) {
+  box-shadow: var(--shadow-hover);
+}
+
+:deep(.el-card__header) {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 18px 20px;
+}
+
+:deep(.el-card__body) {
+  padding: 20px;
+}
+
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+:deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+:deep(.el-button--primary:hover) {
+  background: #0080e6;
+  border-color: #0080e6;
+}
+
+:deep(.el-dialog) {
+  border-radius: var(--radius);
+}
+
+:deep(.el-dialog__header) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+:deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--border);
+  border-radius: 8px;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--blue), 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+
+:deep(.el-table) {
+  --el-table-border-color: #f1f5f9;
+  --el-table-header-bg-color: #f8fafc;
+  --el-table-row-hover-bg-color: #f8fafc;
+}
+
+:deep(.el-table th) {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 </style>

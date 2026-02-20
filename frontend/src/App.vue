@@ -13,9 +13,9 @@
       <el-menu
         :default-active="route.path"
         router
-        background-color="#1d1e1f"
-        text-color="#bbb"
-        active-text-color="#409eff"
+        background-color="#ffffff"
+        text-color="#64748b"
+        active-text-color="#0095ff"
       >
         <el-menu-item index="/community-overview">
           <el-icon><OfficeBuilding /></el-icon>
@@ -189,7 +189,10 @@ function handleCommand(command: string) {
 <style>
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1e293b;
 }
 
 .fullscreen-container {
@@ -203,8 +206,22 @@ body {
 }
 
 .app-aside {
-  background-color: #1d1e1f;
+  background-color: #ffffff;
   overflow-y: auto;
+  border-right: 1px solid #e2e8f0;
+}
+
+.app-aside::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-aside::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .logo {
@@ -212,8 +229,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px 16px;
-  background-color: #1d1e1f;
-  border-bottom: 1px solid #333;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .logo-img {
@@ -226,10 +243,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0 20px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 24px;
   height: 56px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .header-right {
@@ -241,22 +259,75 @@ body {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
-  color: #606266;
+  color: #64748b;
   font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
 .user-info:hover {
-  color: #409eff;
+  color: #0095ff;
 }
 
 .app-main {
   background-color: #f5f7fa;
   overflow-y: auto;
+  padding: 0;
 }
 
 .el-menu {
   border-right: none !important;
+}
+
+/* LFX-style sidebar menu items */
+.app-aside .el-menu-item {
+  border-radius: 8px;
+  margin: 2px 8px;
+  height: 42px;
+  line-height: 42px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.app-aside .el-menu-item:hover {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+}
+
+.app-aside .el-menu-item.is-active {
+  background-color: #eff6ff !important;
+  color: #0095ff !important;
+}
+
+.app-aside .el-sub-menu .el-sub-menu__title {
+  border-radius: 8px;
+  margin: 2px 8px;
+  height: 42px;
+  line-height: 42px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-aside .el-sub-menu .el-sub-menu__title:hover {
+  background-color: #f8fafc !important;
+}
+
+.app-aside .el-sub-menu .el-sub-menu__title {
+  color: #64748b !important;
+}
+
+.app-aside .el-sub-menu.is-active .el-sub-menu__title {
+  color: #0095ff !important;
+}
+
+.app-aside .el-sub-menu .el-menu-item {
+  padding-left: 52px !important;
+  margin: 1px 8px;
+  height: 38px;
+  line-height: 38px;
+  font-size: 13px;
 }
 </style>

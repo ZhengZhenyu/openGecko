@@ -180,45 +180,151 @@ async function handleToggle(ch: ChannelItem) {
 </script>
 
 <style scoped>
+.settings {
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .page-title {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .page-title .subtitle {
   margin: 0;
-  color: #86909c;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.page-title strong {
+  color: var(--blue);
+  font-weight: 600;
 }
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+}
+
+.card-header span {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .hint-text {
-  color: #999;
+  color: var(--text-muted);
   font-size: 13px;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
 .secret-hint {
-  color: #909399;
+  color: var(--text-muted);
   font-size: 12px;
-  margin-top: 4px;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Element Plus form overrides */
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+:deep(.el-input__wrapper) {
+  background: #ffffff;
+  border: none;
+  box-shadow: 0 0 0 1px #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #0095ff, 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+}
+
+:deep(.el-input__inner::placeholder) {
+  color: var(--text-muted);
+}
+
+:deep(.el-switch) {
+  --el-switch-on-color: #0095ff;
+}
+
+:deep(.el-empty) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-empty__description) {
+  color: var(--text-muted);
+}
+
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+:deep(.el-button--primary:hover) {
+  background: #007acc;
+  border-color: #007acc;
+}
+
+:deep(.el-button--default) {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: var(--text-primary);
+}
+
+:deep(.el-button--default:hover) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 </style>
