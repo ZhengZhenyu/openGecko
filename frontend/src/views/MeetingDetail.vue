@@ -629,7 +629,7 @@ function getReminderTypeText(type: string) {
 
 .meta-icon {
   font-size: 24px;
-  color: var(--el-color-primary);
+  color: #0095ff;
 }
 
 .meta-content {

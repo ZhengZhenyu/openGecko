@@ -43,7 +43,7 @@ const router = createRouter({
       path: '/community-wizard',
       name: 'CommunityWizard',
       component: () => import('../views/CommunityWizard.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresSuperuser: true },
     },
     {
       path: '/community-settings/:communityId?',

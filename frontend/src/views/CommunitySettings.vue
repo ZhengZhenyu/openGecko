@@ -290,6 +290,8 @@ async function loadMembers() {
 
 onMounted(async () => {
   if (!communityId.value) { router.push('/community'); return }
+  // Block access for users who are neither superuser nor admin of this community
+  if (!canEditBasic.value) { router.push('/community'); return }
   await loadCommunity()
   if (authStore.isSuperuser) {
     await Promise.all([loadChannels(), loadEmailSettings()])
@@ -300,6 +302,7 @@ onMounted(async () => {
 
 watch(() => communityId.value, async (val) => {
   if (val) {
+    if (!canEditBasic.value) { router.push('/community'); return }
     await loadCommunity()
     await loadMembers()
     if (authStore.isSuperuser) await Promise.all([loadChannels(), loadEmailSettings()])

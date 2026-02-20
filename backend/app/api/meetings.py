@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from typing import List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import and_, or_
@@ -7,6 +8,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_community, get_community_admin
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.models import User
 from app.models.meeting import Meeting, MeetingReminder, MeetingParticipant
 from app.models.committee import Committee, CommitteeMember
@@ -307,7 +310,13 @@ def create_reminder(
         'two_hours': 2,
         'immediate': 0,  # 立即发送
     }
-    
+
+    if reminder_type not in hours_map:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无效的提醒类型 '{reminder_type}'。可选值: {', '.join(sorted(hours_map.keys()))}",
+        )
+
     hours_before = hours_map.get(reminder_type, 24)
     
     # For immediate reminders, set scheduled_at to now
@@ -337,7 +346,7 @@ def create_reminder(
         except Exception as e:
             # Even if sending fails, we still return the reminder
             # The error will be recorded in the reminder status
-            pass
+            logger.warning("立即发送提醒失败，reminder_id=%s: %s", reminder.id, e)
     
     return reminder
 

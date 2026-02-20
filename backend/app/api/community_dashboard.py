@@ -10,7 +10,7 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user, get_current_community, get_user_community_role
@@ -80,21 +80,7 @@ def get_community_dashboard(
 
     # ── 1. 指标卡片聚合（单批查询）──────────────────────────────────────
 
-    # 内容指标（4 个）—— 用 CASE WHEN 的方式一次性统计，减少 DB 往返
-    content_stats = db.query(
-        func.count(Content.id).label("total"),
-        func.sum(
-            func.cast(Content.status == "published", type_=func.Integer.__class__)
-        ).label("published"),
-        func.sum(
-            func.cast(Content.status == "reviewing", type_=func.Integer.__class__)
-        ).label("reviewing"),
-        func.sum(
-            func.cast(Content.status == "draft", type_=func.Integer.__class__)
-        ).label("draft"),
-    ).filter(Content.community_id == community_id).one()
-
-    # SQLite friendly version using separate counts
+    # 内容指标（4 个）—— 用分开的 count 查询，兼容 SQLite 和 PostgreSQL
     total_contents = db.query(Content).filter(Content.community_id == community_id).count()
     published_contents = (
         db.query(Content)
@@ -412,10 +398,10 @@ def get_superuser_overview(
             Content.community_id,
             func.count(Content.id).label("total"),
             func.sum(
-                func.case((Content.status == "published", 1), else_=0)
+                case((Content.status == "published", 1), else_=0)
             ).label("published"),
             func.sum(
-                func.case((Content.status == "reviewing", 1), else_=0)
+                case((Content.status == "reviewing", 1), else_=0)
             ).label("reviewing"),
         ).group_by(Content.community_id)
     ).all()

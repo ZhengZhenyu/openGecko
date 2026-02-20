@@ -237,7 +237,7 @@ const handleReset = async () => {
     gap: 4px;
 
     &:hover {
-      color: #409eff;
+      color: #0095ff;
     }
   }
 }

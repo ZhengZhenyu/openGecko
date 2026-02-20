@@ -228,7 +228,11 @@ function showEditDialog(user: User) {
 
 async function handleRegister() {
   if (!registerFormRef.value) return
-  await registerFormRef.value.validate()
+  try {
+    await registerFormRef.value.validate()
+  } catch {
+    return
+  }
 
   submitting.value = true
   try {
@@ -251,7 +255,11 @@ async function handleRegister() {
 
 async function handleEdit() {
   if (!editFormRef.value) return
-  await editFormRef.value.validate()
+  try {
+    await editFormRef.value.validate()
+  } catch {
+    return
+  }
 
   submitting.value = true
   try {
