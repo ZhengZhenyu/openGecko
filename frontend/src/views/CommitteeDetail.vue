@@ -360,7 +360,7 @@ async function submitMemberForm() {
   if (!memberFormRef.value || !committee.value) return
 
   await memberFormRef.value.validate(async (valid) => {
-    if (!valid) return
+    if (!valid || !committee.value) return
 
     submitting.value = true
     try {
@@ -479,7 +479,7 @@ function formatDate(dateStr?: string) {
 
 .meta-card .el-icon {
   font-size: 24px;
-  color: var(--el-color-primary);
+  color: #0095ff;
 }
 
 .meta-content {

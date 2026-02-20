@@ -635,8 +635,8 @@ function getCommitteeName(committeeId: number) {
 }
 
 .meeting-item.status-scheduled {
-  background: var(--el-color-primary-light-9);
-  border-color: var(--el-color-primary);
+  background: rgba(0, 149, 255, 0.08);
+  border-color: #0095ff;
 }
 
 .meeting-item.status-completed {
@@ -688,7 +688,7 @@ function getCommitteeName(committeeId: number) {
   width: 60px;
   text-align: center;
   padding: 8px;
-  background: var(--el-color-primary-light-9);
+  background: rgba(0, 149, 255, 0.08);
   border-radius: 8px;
 }
 
@@ -701,7 +701,7 @@ function getCommitteeName(committeeId: number) {
 .date-day {
   font-size: 24px;
   font-weight: 700;
-  color: var(--el-color-primary);
+  color: #0095ff;
 }
 
 .meeting-content {

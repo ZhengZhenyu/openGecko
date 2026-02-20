@@ -193,7 +193,7 @@ const handleSubmit = async () => {
   }
 
   .reset-link {
-    color: #409eff;
+    color: #0095ff;
     text-decoration: none;
     font-size: 14px;
 
@@ -218,7 +218,7 @@ const handleSubmit = async () => {
     gap: 4px;
 
     &:hover {
-      color: #409eff;
+      color: #0095ff;
     }
   }
 }

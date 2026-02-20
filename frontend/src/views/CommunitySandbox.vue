@@ -577,7 +577,6 @@ function formatTime(dt: string) {
 .onboard-emoji { font-size: 28px; }
 .onboard-title { font-size: 14px; font-weight: 600; color: #1e3a8a; }
 .onboard-desc { font-size: 12px; color: #3b82f6; margin-top: 2px; }
-.onboarding-right {}
 
 /* ===== 骨架屏 ===== */
 .skeleton-wrap {

@@ -236,7 +236,7 @@ const eventCount = computed(() => calendarEvents.value.length + unscheduledEvent
 const STATUS_COLORS: Record<string, string> = {
   draft: '#909399',
   reviewing: '#E6A23C',
-  approved: '#409EFF',
+  approved: '#0095ff',
   published: '#67C23A',
 }
 
