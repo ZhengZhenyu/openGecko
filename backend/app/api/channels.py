@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_community, get_community_admin
+from app.core.dependencies import get_current_community, get_community_admin, get_current_active_superuser
 from app.core.security import encrypt_value
 from app.database import get_db
 from app.models import User
@@ -58,10 +58,10 @@ def list_channels(
 def create_channel(
     data: ChannelConfigCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """为社区创建一个渠道配置。"""
+    """为社区创建渠道配置。仅平台超级管理员可操作（渠道凭证属于高敏感信息）。"""
     if data.channel not in SUPPORTED_CHANNELS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,10 +107,10 @@ def update_channel(
     channel_id: int,
     data: ChannelConfigUpdate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """更新渠道配置。"""
+    """更新渠道配置。仅平台超级管理员可操作。"""
     cfg = (
         db.query(ChannelConfig)
         .filter(
@@ -147,10 +147,10 @@ def update_channel(
 def delete_channel(
     channel_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """删除社区的渠道配置。"""
+    """删除社区的渠道配置。仅平台超级管理员可操作。"""
     cfg = (
         db.query(ChannelConfig)
         .filter(

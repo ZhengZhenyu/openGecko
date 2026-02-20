@@ -7,6 +7,8 @@ import httpx
 import markdown
 from bs4 import BeautifulSoup
 
+from app.core.logging import get_logger
+
 # WeChat-compatible inline styles
 WECHAT_STYLES = {
     "h1": "font-size:22px;font-weight:bold;color:#1a1a1a;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid #eee;",
@@ -29,6 +31,8 @@ WECHAT_STYLES = {
 
 # WeChat API base URL (public, not a secret)
 WECHAT_API_BASE = "https://api.weixin.qq.com"
+
+_logger = get_logger(__name__)
 
 
 class WechatService:
@@ -167,7 +171,7 @@ class WechatService:
 
             if not full_path.exists():
                 # 图片不存在，保留原样并记录警告
-                print(f"警告: 图片文件不存在 {img_path}")
+                _logger.warning("图片文件不存在", extra={"img_path": img_path})
                 return match.group(0)
 
             try:
@@ -176,7 +180,7 @@ class WechatService:
                 return f'![{alt_text}]({wechat_url})'
             except Exception as e:
                 # 上传失败，记录错误但不中断流程
-                print(f"警告: 图片上传失败 {img_path}: {e}")
+                _logger.warning("图片上传失败", extra={"img_path": img_path, "error": str(e)})
                 return match.group(0)
 
         # 查找所有图片并替换

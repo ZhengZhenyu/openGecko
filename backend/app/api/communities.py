@@ -5,7 +5,13 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, attributes
 from sqlalchemy import update, select, insert
 
-from app.core.dependencies import get_current_user, get_current_active_superuser
+from app.core.dependencies import (
+    get_current_user,
+    get_current_active_superuser,
+    get_community_admin,
+    get_user_community_role,
+)
+from app.core.logging import get_logger
 from app.database import get_db
 from app.models import User, Community
 from app.models.user import community_users
@@ -22,6 +28,7 @@ from app.schemas.email import EmailSettings, EmailSettingsOut
 
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 class TestEmailRequest(BaseModel):
@@ -162,21 +169,7 @@ def update_community(
     Update community information.
 
     Only superusers and community admins can update community information.
-
-    Args:
-        community_id: Community ID
-        community_update: Community update data
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        CommunityOut: Updated community
-
-    Raises:
-        HTTPException: If community not found or user has no admin access
     """
-    from app.core.dependencies import get_user_community_role
-    
     community = db.query(Community).filter(Community.id == community_id).first()
 
     if not community:
@@ -201,6 +194,47 @@ def update_community(
     db.commit()
     db.refresh(community)
 
+    return community
+
+
+class CommunityBasicUpdate(BaseModel):
+    """社区基本信息更新（社区管理员可操作的字段）"""
+    name: str | None = None
+    description: str | None = None
+    logo_url: str | None = None
+    url: str | None = None
+
+
+@router.put("/{community_id}/basic", response_model=CommunityOut)
+def update_community_basic(
+    community_id: int,
+    data: CommunityBasicUpdate,
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    更新社区基本信息（名称、描述、Logo、官网链接）。
+
+    社区管理员（Admin）和超级管理员（Superuser）均可操作。
+    关键配置（SMTP、渠道凭证）请通过各自专用端点修改。
+    """
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    for field, value in update_data.items():
+        setattr(community, field, value)
+
+    db.commit()
+    db.refresh(community)
+    logger.info(
+        "社区基本信息已更新",
+        extra={"community_id": community_id, "updated_by": current_user.username},
+    )
     return community
 
 
@@ -284,27 +318,21 @@ def get_community_users(
 def add_user_to_community(
     community_id: int,
     member_add: CommunityMemberAdd,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Add a user to a community.
 
-    Only superusers can manage community members.
-
-    Args:
-        community_id: Community ID
-        member_add: Member addition data
-        current_user: Current authenticated superuser
-        db: Database session
-
-    Returns:
-        dict: Success message
-
-    Raises:
-        HTTPException: If community or user not found, or user already a member
+    Community admins and superusers can manage community members.
     """
-    community = db.query(Community).filter(Community.id == community_id).first()
+    # 权限检查：社区管理员或超级管理员可操作
+    role = get_user_community_role(current_user, community_id, db)
+    if role not in ["superuser", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Community admin permissions required",
+        )
     if not community:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -336,23 +364,22 @@ def add_user_to_community(
 def remove_user_from_community(
     community_id: int,
     user_id: int,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Remove a user from a community.
 
-    Only superusers can manage community members.
-
-    Args:
-        community_id: Community ID
-        user_id: User ID to remove
-        current_user: Current authenticated superuser
-        db: Database session
-
-    Raises:
-        HTTPException: If community or user not found, or user not a member
+    Community admins and superusers can remove members.
     """
+    # 权限检查：社区管理员或超级管理员可操作
+    role = get_user_community_role(current_user, community_id, db)
+    if role not in ["superuser", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Community admin permissions required",
+        )
+
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
@@ -384,28 +411,23 @@ def update_user_role(
     community_id: int,
     user_id: int,
     role: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Update a user's role in a community.
-    
-    Only superusers can update user roles.
+
+    Community admins and superusers can update user roles.
     Valid roles: 'admin', 'user'
-    
-    Args:
-        community_id: Community ID
-        user_id: User ID
-        role: New role ('admin' or 'user')
-        current_user: Current authenticated superuser
-        db: Database session
-    
-    Returns:
-        dict: Success message
-    
-    Raises:
-        HTTPException: If community/user not found, invalid role, or user not a member
     """
+    # 权限检查：社区管理员或超级管理员可操作
+    caller_role = get_user_community_role(current_user, community_id, db)
+    if caller_role not in ["superuser", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Community admin permissions required",
+        )
+
     if role not in ['admin', 'user']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -449,10 +471,10 @@ def update_user_role(
 @router.get("/{community_id}/email-settings", response_model=EmailSettingsOut)
 def get_email_settings(
     community_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """Get email settings for a community."""
+    """获取社区 SMTP 邮件配置（仅超级管理员可访问，凭证属于敏感信息）。"""
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
@@ -498,10 +520,10 @@ def get_email_settings(
 def update_email_settings(
     community_id: int,
     settings: EmailSettings,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """Update email settings for a community. Admin only."""
+    """更新社区 SMTP 邮件配置（仅超级管理员可操作，避免 SMTP 凭证泄露）。"""
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
@@ -549,10 +571,10 @@ def update_email_settings(
 def test_email_settings(
     community_id: int,
     request_data: TestEmailRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
-    """Test email settings by sending a test email. Admin only."""
+    """发送 SMTP 测试邮件（仅超级管理员可操作）。"""
     to_email = request_data.to_email
     if not to_email:
         raise HTTPException(
