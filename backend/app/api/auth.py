@@ -1,10 +1,12 @@
 import secrets
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_current_active_superuser
+from app.core.logging import get_logger
+from app.core.rate_limit import limiter
 from app.core.security import create_access_token, verify_password, get_password_hash
 from app.config import settings
 from app.database import get_db
@@ -17,6 +19,8 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.get("/status", response_model=SystemStatusResponse)
@@ -38,7 +42,8 @@ def get_system_status(db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(login_request: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+def login(request: Request, login_request: LoginRequest, db: Session = Depends(get_db)):
     """
     User login endpoint.
     If the logged-in user is the default admin, the response will include
@@ -382,7 +387,7 @@ def request_password_reset(
             _send_password_reset_email(user.email, token_value)
             return {"message": "如果该邮箱已注册，您将收到密码重置邮件。"}
         except Exception as e:
-            print(f"[WARN] Failed to send password reset email: {e}")
+            logger.warning("发送密码重置邮件失败", extra={"email": user.email, "error": str(e)})
             # Fall through to return token directly in dev mode
 
     # In development mode (no SMTP), return the token directly

@@ -1,11 +1,30 @@
 import os
 from pathlib import Path
+from typing import List
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "openGecko"
     DEBUG: bool = False
+
+    # CORS
+    # 生产环境请通过环境变量设置允许的域名列表，多个域名用逗号分隔
+    # 示例: CORS_ORIGINS=https://app.example.com,https://admin.example.com
+    # 开发环境默认允许本地前端调试地址
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """将逗号分隔的 CORS_ORIGINS 字符串转换为列表"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    # Rate Limiting（速率限制）
+    # 登录端点限制（防止暴力破解）
+    RATE_LIMIT_LOGIN: str = "10/minute"
+    # 默认 API 端点限制
+    RATE_LIMIT_DEFAULT: str = "120/minute"
 
     # Database
     DATABASE_URL: str = "sqlite:///./opengecko.db"

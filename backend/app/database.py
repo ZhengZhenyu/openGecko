@@ -58,9 +58,11 @@ def init_db():
 def seed_default_admin():
     """Create the default admin account if no users exist."""
     from app.config import settings
+    from app.core.logging import get_logger
     from app.core.security import get_password_hash
     from app.models.user import User
 
+    _logger = get_logger(__name__)
     db = SessionLocal()
     try:
         user_count = db.query(User).count()
@@ -76,6 +78,9 @@ def seed_default_admin():
             )
             db.add(default_admin)
             db.commit()
-            print(f"[INFO] Default admin account created: {settings.DEFAULT_ADMIN_USERNAME}")
+            _logger.info(
+                "默认管理员账号已创建",
+                extra={"username": settings.DEFAULT_ADMIN_USERNAME},
+            )
     finally:
         db.close()

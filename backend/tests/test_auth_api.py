@@ -21,7 +21,7 @@ class TestLogin:
         """Test successful login with correct credentials."""
         response = client.post(
             "/api/auth/login",
-            data={"username": "testuser", "password": "testpass123"},
+            json={"username": "testuser", "password": "testpass123"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -32,7 +32,7 @@ class TestLogin:
         """Test login fails with wrong password."""
         response = client.post(
             "/api/auth/login",
-            data={"username": "testuser", "password": "wrongpassword"},
+            json={"username": "testuser", "password": "wrongpassword"},
         )
         assert response.status_code == 401
         assert "detail" in response.json()
@@ -41,7 +41,7 @@ class TestLogin:
         """Test login fails with non-existent username."""
         response = client.post(
             "/api/auth/login",
-            data={"username": "nonexistent", "password": "anypassword"},
+            json={"username": "nonexistent", "password": "anypassword"},
         )
         assert response.status_code == 401
         assert "detail" in response.json()
@@ -66,16 +66,18 @@ class TestLogin:
 
         response = client.post(
             "/api/auth/login",
-            data={"username": "inactive", "password": "pass123"},
+            json={"username": "inactive", "password": "pass123"},
         )
-        assert response.status_code == 401
-        assert "Inactive user" in response.json()["detail"]
+        assert response.status_code == 403
+        assert "用户已被禁用" in response.json()["detail"]
 
 
 class TestRegister:
     """Tests for POST /api/auth/register"""
 
-    def test_register_success(self, client: TestClient, test_community: Community):
+    def test_register_success(
+        self, client: TestClient, test_community: Community, superuser_auth_headers: dict
+    ):
         """Test successful user registration."""
         response = client.post(
             "/api/auth/register",
@@ -85,6 +87,7 @@ class TestRegister:
                 "password": "newpass123",
                 "full_name": "New User",
             },
+            headers=superuser_auth_headers,
         )
         assert response.status_code == 201
         data = response.json()
@@ -95,7 +98,9 @@ class TestRegister:
         assert data["is_superuser"] is False
         assert "hashed_password" not in data  # Should not expose password hash
 
-    def test_register_duplicate_username(self, client: TestClient, test_user: User):
+    def test_register_duplicate_username(
+        self, client: TestClient, test_user: User, superuser_auth_headers: dict
+    ):
         """Test registration fails with duplicate username."""
         response = client.post(
             "/api/auth/register",
@@ -105,11 +110,14 @@ class TestRegister:
                 "password": "pass123",
                 "full_name": "Different User",
             },
+            headers=superuser_auth_headers,
         )
         assert response.status_code == 400
         assert "Username already registered" in response.json()["detail"]
 
-    def test_register_duplicate_email(self, client: TestClient, test_user: User):
+    def test_register_duplicate_email(
+        self, client: TestClient, test_user: User, superuser_auth_headers: dict
+    ):
         """Test registration fails with duplicate email."""
         response = client.post(
             "/api/auth/register",
@@ -119,11 +127,12 @@ class TestRegister:
                 "password": "pass123",
                 "full_name": "Different User",
             },
+            headers=superuser_auth_headers,
         )
         assert response.status_code == 400
         assert "Email already registered" in response.json()["detail"]
 
-    def test_register_invalid_email(self, client: TestClient):
+    def test_register_invalid_email(self, client: TestClient, superuser_auth_headers: dict):
         """Test registration fails with invalid email format."""
         response = client.post(
             "/api/auth/register",
@@ -133,10 +142,11 @@ class TestRegister:
                 "password": "pass123",
                 "full_name": "New User",
             },
+            headers=superuser_auth_headers,
         )
         assert response.status_code == 422  # Validation error
 
-    def test_register_short_password(self, client: TestClient):
+    def test_register_short_password(self, client: TestClient, superuser_auth_headers: dict):
         """Test registration validates password length."""
         response = client.post(
             "/api/auth/register",
@@ -146,6 +156,7 @@ class TestRegister:
                 "password": "123",  # Too short
                 "full_name": "New User",
             },
+            headers=superuser_auth_headers,
         )
         assert response.status_code == 422  # Validation error
 
