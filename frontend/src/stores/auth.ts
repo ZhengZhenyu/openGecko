@@ -32,6 +32,22 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isSuperuser = computed(() => user.value?.is_superuser || false)
 
+  // Role utilities — 使用 community_id 查询当前用户在该社区中的角色
+  function getRoleInCommunity(communityId: number): string | null {
+    if (user.value?.is_superuser) return 'superuser'
+    const community = communities.value.find((c) => c.id === communityId)
+    return community?.role ?? null
+  }
+
+  function isAdminInCommunity(communityId: number): boolean {
+    const role = getRoleInCommunity(communityId)
+    return role === 'superuser' || role === 'admin'
+  }
+
+  function getCommunityById(communityId: number): Community | null {
+    return communities.value.find((c) => c.id === communityId) ?? null
+  }
+
   // Actions
   function setToken(newToken: string) {
     token.value = newToken
@@ -73,6 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
     // Computed
     isAuthenticated,
     isSuperuser,
+    // Role utilities
+    getRoleInCommunity,
+    isAdminInCommunity,
+    getCommunityById,
     // Actions
     setToken,
     setUser,

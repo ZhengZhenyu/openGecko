@@ -18,12 +18,10 @@
       <el-row :gutter="20">
         <el-col :span="12" v-for="ch in channelList" :key="ch.key">
           <div class="section-card" style="margin-bottom: 20px">
-            <template #header>
-              <div class="card-header">
-                <span>{{ ch.label }}</span>
-                <el-switch v-model="ch.enabled" @change="handleToggle(ch)" />
-              </div>
-            </template>
+            <div class="card-header">
+              <span>{{ ch.label }}</span>
+              <el-switch v-model="ch.enabled" @change="handleToggle(ch)" />
+            </div>
 
             <template v-if="ch.key === 'wechat'">
               <el-form label-width="100px" size="default">
@@ -109,6 +107,17 @@ const channelList = ref<ChannelItem[]>([
   { key: 'csdn', label: 'CSDN', enabled: false, config: {} },
   { key: 'zhihu', label: '知乎', enabled: false, config: {} },
 ])
+
+/** 返回渠道默认配置 */
+function getDefaultConfig(key: string): Record<string, string> {
+  const defaults: Record<string, Record<string, string>> = {
+    wechat: { app_id: '', app_secret: '' },
+    hugo: { repo_path: '', content_dir: 'content/posts' },
+    csdn: {},
+    zhihu: {},
+  }
+  return { ...(defaults[key] ?? {}) }
+}
 
 /** Check if a value is a masked placeholder from backend */
 function isSecretMasked(val: string): boolean {

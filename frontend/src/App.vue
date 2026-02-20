@@ -17,14 +17,16 @@
         text-color="#64748b"
         active-text-color="#0095ff"
       >
-        <el-menu-item index="/community-overview">
-          <el-icon><OfficeBuilding /></el-icon>
-          <span>社区总览</span>
+        <!-- 社区工作台 - 核心入口 -->
+        <el-menu-item index="/community">
+          <el-icon><House /></el-icon>
+          <span>社区工作台</span>
         </el-menu-item>
         <el-menu-item index="/my-work">
           <el-icon><Checked /></el-icon>
           <span>我的工作</span>
         </el-menu-item>
+        <!-- 内容管理 -->
         <el-sub-menu index="content">
           <template #title>
             <el-icon><Document /></el-icon>
@@ -43,6 +45,7 @@
           <el-icon><Promotion /></el-icon>
           <span>发布管理</span>
         </el-menu-item>
+        <!-- 社区治理 -->
         <el-sub-menu index="governance">
           <template #title>
             <el-icon><Stamp /></el-icon>
@@ -60,33 +63,33 @@
             <el-icon><Calendar /></el-icon>
             <span>会议管理</span>
           </el-menu-item>
-          <el-menu-item index="/committees/batch-manage">
-            <el-icon><Upload /></el-icon>
-            <span>批量管理</span>
-          </el-menu-item>
         </el-sub-menu>
-        <el-menu-item v-if="isSuperuser" index="/communities">
-          <el-icon><OfficeBuilding /></el-icon>
-          <span>社区管理</span>
-        </el-menu-item>
-        <el-sub-menu v-if="isSuperuser" index="people">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span>人员管理</span>
-          </template>
-          <el-menu-item index="/users">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
+        <!-- 超管专属区 -->
+        <template v-if="isSuperuser">
+          <el-divider style="margin: 8px 0" />
+          <el-menu-item index="/community-overview">
+            <el-icon><OfficeBuilding /></el-icon>
+            <span>社区总览</span>
           </el-menu-item>
-          <el-menu-item index="/workload">
-            <el-icon><TrendCharts /></el-icon>
-            <span>工作量总览</span>
+          <el-menu-item index="/communities">
+            <el-icon><Setting /></el-icon>
+            <span>社区管理</span>
           </el-menu-item>
-        </el-sub-menu>
-        <el-menu-item index="/">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>仪表板</span>
-        </el-menu-item>
+          <el-sub-menu index="people">
+            <template #title>
+              <el-icon><UserFilled /></el-icon>
+              <span>人员管理</span>
+            </template>
+            <el-menu-item index="/users">
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </el-menu-item>
+            <el-menu-item index="/workload">
+              <el-icon><TrendCharts /></el-icon>
+              <span>工作量总览</span>
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
       </el-menu>
     </el-aside>
     <el-container>
@@ -121,7 +124,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   DataAnalysis, Document, Promotion, Setting,
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar,
-  Calendar, Upload, List, Checked, TrendCharts
+  Calendar, Upload, List, Checked, TrendCharts, House
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { getUserInfo } from './api/auth'
@@ -149,8 +152,7 @@ const showCommunitySwitcher = computed(() => {
     'CommunityManage',
     'UserManage',
     'WorkloadOverview',
-    'Dashboard',
-    'MyWork'
+    'MyWork',
   ]
   return !hideSwitcherRoutes.includes(route.name as string)
 })

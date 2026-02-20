@@ -31,6 +31,16 @@ const router = createRouter({
     },
     {
       path: '/',
+      redirect: '/community',
+    },
+    {
+      path: '/community',
+      name: 'CommunitySandbox',
+      component: () => import('../views/CommunitySandbox.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/dashboard',
       name: 'Dashboard',
       component: () => import('../views/Dashboard.vue'),
       meta: { requiresAuth: true },
@@ -189,13 +199,13 @@ router.beforeEach(async (to, from, next) => {
     console.log('[Router Guard] Redirecting to login - not authenticated')
     next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (requiresSuperuser && !authStore.isSuperuser) {
-    // Redirect to dashboard if not superuser
-    console.log('[Router Guard] Redirecting to dashboard - not superuser')
-    next({ name: 'Dashboard' })
+    // Redirect to community sandbox if not superuser
+    console.log('[Router Guard] Redirecting to CommunitySandbox - not superuser')
+    next({ name: 'CommunitySandbox' })
   } else if (to.name === 'Login' && authStore.isAuthenticated) {
-    // Redirect to dashboard if already logged in
-    console.log('[Router Guard] Redirecting to dashboard - already logged in')
-    next({ name: 'Dashboard' })
+    // Redirect to community sandbox if already logged in
+    console.log('[Router Guard] Redirecting to CommunitySandbox - already logged in')
+    next({ name: 'CommunitySandbox' })
   } else {
     console.log('[Router Guard] Allowing navigation')
     next()

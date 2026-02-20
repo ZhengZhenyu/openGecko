@@ -60,10 +60,9 @@ const handleCommunityChange = (communityId: number) => {
   if (community) {
     communityStore.setCommunity(communityId)
     ElMessage.success(`已切换到社区: ${community.name}`)
-    
-    // Navigate to community overview instead of reloading
-    // This allows the app to handle data refresh internally
-    router.push('/community-overview')
+
+    // 切换社区后跳转到社区工作台，实现上下文联动刷新
+    router.push('/community')
   }
 }
 </script>
