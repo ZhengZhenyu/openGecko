@@ -61,6 +61,15 @@ class AnalyticsOverview(BaseModel):
     channels: dict[str, int]  # channel -> published count
 
 
+class ContentAnalyticsDetail(BaseModel):
+    """内容分析详情（含发布记录列表）"""
+    content_id: int
+    title: str
+    analytics: list["PublishRecordOut"] = []
+
+    model_config = {"from_attributes": True}
+
+
 class ChannelConfigOut(BaseModel):
     id: int
     channel: str

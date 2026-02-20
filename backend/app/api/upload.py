@@ -10,6 +10,9 @@ from app.models.content import Content
 from app.schemas.content import ContentOut
 from app.services.converter import convert_docx_to_markdown, convert_markdown_to_html, read_markdown_file
 
+from app.core.dependencies import get_current_community, get_current_user
+from app.models.user import User
+
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".docx", ".md", ".markdown"}
@@ -20,6 +23,8 @@ ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 async def upload_file(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_community: int = Depends(get_current_community),
 ):
     if not file.filename:
         raise HTTPException(400, "No filename provided")
@@ -56,6 +61,8 @@ async def upload_file(
         source_type="contribution",
         source_file=save_name,
         status="draft",
+        community_id=current_community,
+        created_by_user_id=current_user.id,
     )
     db.add(content)
     db.commit()
@@ -68,6 +75,7 @@ async def upload_cover_image(
     content_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     content = db.query(Content).filter(Content.id == content_id).first()
     if not content:

@@ -205,105 +205,6 @@ def add_member(
     return member
 
 
-@router.get(
-    "/{committee_id}/members/{member_id}",
-    response_model=CommitteeMemberOut,
-)
-def get_member(
-    committee_id: int,
-    member_id: int,
-    community_id: int = Depends(get_current_community),
-    db: Session = Depends(get_db),
-):
-    """获取成员详情。"""
-    _get_committee_or_404(committee_id, community_id, db)
-
-    member = (
-        db.query(CommitteeMember)
-        .filter(
-            CommitteeMember.id == member_id,
-            CommitteeMember.committee_id == committee_id,
-        )
-        .first()
-    )
-    if not member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found",
-        )
-    return member
-
-
-@router.put(
-    "/{committee_id}/members/{member_id}",
-    response_model=CommitteeMemberOut,
-)
-def update_member(
-    committee_id: int,
-    member_id: int,
-    data: CommitteeMemberUpdate,
-    community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
-    db: Session = Depends(get_db),
-):
-    """更新成员信息（需要社区管理员权限）。"""
-    _get_committee_or_404(committee_id, community_id, db)
-
-    member = (
-        db.query(CommitteeMember)
-        .filter(
-            CommitteeMember.id == member_id,
-            CommitteeMember.committee_id == committee_id,
-        )
-        .first()
-    )
-    if not member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found",
-        )
-
-    update_data = data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(member, field, value)
-
-    db.commit()
-    db.refresh(member)
-    return member
-
-
-@router.delete(
-    "/{committee_id}/members/{member_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-def remove_member(
-    committee_id: int,
-    member_id: int,
-    community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
-    db: Session = Depends(get_db),
-):
-    """移除委员会成员（需要社区管理员权限）。"""
-    _get_committee_or_404(committee_id, community_id, db)
-
-    member = (
-        db.query(CommitteeMember)
-        .filter(
-            CommitteeMember.id == member_id,
-            CommitteeMember.committee_id == committee_id,
-        )
-        .first()
-    )
-    if not member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found",
-        )
-
-    db.delete(member)
-    db.commit()
-
-
 # ==================== CSV Import/Export ====================
 
 @router.get("/{committee_id}/members/export")
@@ -501,3 +402,102 @@ def import_members_csv(
         "error_count": error_count,
         "errors": errors[:10] if errors else []  # Limit to first 10 errors
     }
+@router.get(
+    "/{committee_id}/members/{member_id}",
+    response_model=CommitteeMemberOut,
+)
+def get_member(
+    committee_id: int,
+    member_id: int,
+    community_id: int = Depends(get_current_community),
+    db: Session = Depends(get_db),
+):
+    """获取成员详情。"""
+    _get_committee_or_404(committee_id, community_id, db)
+
+    member = (
+        db.query(CommitteeMember)
+        .filter(
+            CommitteeMember.id == member_id,
+            CommitteeMember.committee_id == committee_id,
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+    return member
+
+
+@router.put(
+    "/{committee_id}/members/{member_id}",
+    response_model=CommitteeMemberOut,
+)
+def update_member(
+    committee_id: int,
+    member_id: int,
+    data: CommitteeMemberUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """更新成员信息（需要社区管理员权限）。"""
+    _get_committee_or_404(committee_id, community_id, db)
+
+    member = (
+        db.query(CommitteeMember)
+        .filter(
+            CommitteeMember.id == member_id,
+            CommitteeMember.committee_id == committee_id,
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(member, field, value)
+
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@router.delete(
+    "/{committee_id}/members/{member_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_member(
+    committee_id: int,
+    member_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """移除委员会成员（需要社区管理员权限）。"""
+    _get_committee_or_404(committee_id, community_id, db)
+
+    member = (
+        db.query(CommitteeMember)
+        .filter(
+            CommitteeMember.id == member_id,
+            CommitteeMember.committee_id == committee_id,
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    db.delete(member)
+    db.commit()
+
+

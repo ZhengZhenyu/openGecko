@@ -14,6 +14,8 @@ Endpoints tested:
 - DELETE /api/committees/{id}/members/{mid}
 """
 
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -627,8 +629,8 @@ class TestCommitteeCSVExport:
             wechat="zhangsan_wx",
             organization="测试公司",
             roles=["主席", "秘书"],
-            term_start="2024-01-01",
-            term_end="2025-12-31",
+            term_start=date(2024, 1, 1),
+            term_end=date(2025, 12, 31),
             is_active=True,
             bio="测试成员简介",
         )
@@ -768,7 +770,7 @@ class TestCommitteeCSVImport:
             )
 
         assert response.status_code == 400
-        assert "Only CSV files" in response.json()["detail"]
+        assert "File must be a CSV file" in response.json()["detail"]
 
     def test_import_missing_required_field(
         self,

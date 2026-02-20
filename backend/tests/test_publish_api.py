@@ -483,12 +483,10 @@ class TestPublishToWechat:
         db_session: Session,
         test_community: Community,
         auth_headers: dict,
-        httpx_mock,
         tmp_path,
     ):
-        """Test complete WeChat publishing flow with mocked API calls."""
-        import re
-        from unittest.mock import patch
+        """Test complete WeChat publishing flow with mocked service calls."""
+        from unittest.mock import patch, AsyncMock
         from app.models.channel import ChannelConfig
         from app.core.security import encrypt_value
 
@@ -522,43 +520,26 @@ class TestPublishToWechat:
         db_session.commit()
         db_session.refresh(content)
 
-        # 3. Mock: WeChat API responses
-        # Mock access_token request
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/token\?.*"),
-            json={"access_token": "mock_access_token_123", "expires_in": 7200}
-        )
+        # 3. Mock wechat_service methods directly (avoid real HTTP calls)
+        with patch('app.api.publish.wechat_service._replace_local_images_with_wechat_urls',
+                   new_callable=AsyncMock) as mock_replace, \
+             patch('app.api.publish.wechat_service.upload_thumb_media',
+                   new_callable=AsyncMock) as mock_upload, \
+             patch('app.api.publish.wechat_service.create_draft',
+                   new_callable=AsyncMock) as mock_draft, \
+             patch('os.path.isfile', return_value=True):
 
-        # Mock thumb_media upload
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/material/add_material\?.*type=thumb.*"),
-            json={"media_id": "mock_thumb_media_id_456", "type": "thumb"}
-        )
+            mock_replace.return_value = "# Hello\n\nThis is a test article."
+            mock_upload.return_value = "mock_thumb_media_id_456"
+            mock_draft.return_value = {"media_id": "mock_draft_media_id_789", "status": "draft"}
 
-        # Mock draft creation
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/draft/add\?.*"),
-            json={"media_id": "mock_draft_media_id_789"}
-        )
-
-        # 4. Mock: Database session for WechatService credential loading
-        with patch('app.database.SessionLocal') as mock_session_local, \
-             patch('os.path.isfile', return_value=True), \
-             patch('builtins.open', create=True) as mock_open:
-            # Setup mock session
-            mock_session = db_session
-            mock_session_local.return_value = mock_session
-            mock_session.close = lambda: None
-
-            mock_open.return_value.__enter__.return_value.read.return_value = b"fake_jpg_data"
-
-            # 5. Execute: Call publish API
+            # 4. Execute: Call publish API
             response = client.post(
                 f"/api/publish/{content.id}/wechat",
                 headers=auth_headers
             )
 
-        # 6. Assert: Check response
+        # 5. Assert: Check response
         if response.status_code != 201:
             print(f"Response status: {response.status_code}")
             print(f"Response body: {response.text}")
@@ -570,7 +551,7 @@ class TestPublishToWechat:
         assert data["content_id"] == content.id
         assert data["community_id"] == test_community.id  # ← KEY: Check community_id
 
-        # 7. Assert: Verify database record
+        # 6. Assert: Verify database record
         from app.models.publish_record import PublishRecord
         record = db_session.query(PublishRecord).filter(
             PublishRecord.content_id == content.id
@@ -588,11 +569,10 @@ class TestPublishToWechat:
         db_session: Session,
         test_community: Community,
         auth_headers: dict,
-        httpx_mock,
         tmp_path,
     ):
         """Test that failed publish records also include community_id."""
-        import re
+        from unittest.mock import patch, AsyncMock
         from app.models.channel import ChannelConfig
         from app.core.security import encrypt_value
 
@@ -625,34 +605,18 @@ class TestPublishToWechat:
         db_session.add(content)
         db_session.commit()
 
-        # Mock access token success
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/token\?.*"),
-            json={"access_token": "mock_token", "expires_in": 7200}
-        )
+        # Mock wechat_service: replace_images and upload_thumb succeed, create_draft fails
+        with patch('app.api.publish.wechat_service._replace_local_images_with_wechat_urls',
+                   new_callable=AsyncMock) as mock_replace, \
+             patch('app.api.publish.wechat_service.upload_thumb_media',
+                   new_callable=AsyncMock) as mock_upload, \
+             patch('app.api.publish.wechat_service.create_draft',
+                   new_callable=AsyncMock) as mock_draft, \
+             patch('os.path.isfile', return_value=True):
 
-        # Mock thumb upload success
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/material/add_material\?.*type=thumb.*"),
-            json={"media_id": "thumb_123", "type": "thumb"}
-        )
-
-        # Mock draft creation FAILURE
-        httpx_mock.add_response(
-            url=re.compile(r"https://api\.weixin\.qq\.com/cgi-bin/draft/add\?.*"),
-            json={"errcode": 40001, "errmsg": "invalid credential"}
-        )
-
-        from unittest.mock import patch
-        with patch('app.database.SessionLocal') as mock_session_local, \
-             patch('os.path.isfile', return_value=True), \
-             patch('builtins.open', create=True) as mock_open:
-            # Setup mock session
-            mock_session = db_session
-            mock_session_local.return_value = mock_session
-            mock_session.close = lambda: None
-
-            mock_open.return_value.__enter__.return_value.read.return_value = b"fake_jpg_data"
+            mock_replace.return_value = "Test"
+            mock_upload.return_value = "thumb_123"
+            mock_draft.side_effect = Exception("草稿创建失败 [errcode=40001]: invalid credential")
 
             # Call API (should fail)
             response = client.post(

@@ -58,10 +58,10 @@ class CommitteeBrief(BaseModel):
 
 class CommitteeMemberCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    email: str = Field(..., min_length=1, max_length=200)
+    email: Optional[str] = Field(None, max_length=200)
     phone: Optional[str] = None
     wechat: Optional[str] = None
-    organization: str = Field(..., min_length=1, max_length=200)
+    organization: Optional[str] = Field(None, max_length=200)
     gitcode_id: Optional[str] = None
     github_id: Optional[str] = None
     roles: list[str] = []
@@ -90,10 +90,10 @@ class CommitteeMemberOut(BaseModel):
     id: int
     committee_id: int
     name: str
-    email: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     wechat: Optional[str] = None
-    organization: str
+    organization: Optional[str] = None
     gitcode_id: Optional[str] = None
     github_id: Optional[str] = None
     roles: list[str] = []
