@@ -14,7 +14,7 @@ from app.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.database import init_db
-from app.api import contents, upload, publish, analytics, auth, communities, committees, channels, meetings, dashboard
+from app.api import contents, upload, publish, analytics, auth, communities, committees, channels, meetings, dashboard, community_dashboard
 
 # 初始化日志系统
 setup_logging()
@@ -125,6 +125,7 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(channels.router, prefix="/api/channels", tags=["Channels"])
 app.include_router(committees.router, prefix="/api/committees", tags=["Governance"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["Governance"])
+app.include_router(community_dashboard.router, prefix="/api/communities", tags=["Community Dashboard"])
 
 
 @app.get("/api/health")
