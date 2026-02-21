@@ -124,15 +124,6 @@
               <div class="metric-label">委员会</div>
             </div>
           </div>
-          <div class="metric-card" @click="$router.push('/communities')">
-            <div class="metric-icon-wrap member-icon">
-              <el-icon><UserFilled /></el-icon>
-            </div>
-            <div class="metric-body">
-              <div class="metric-value">{{ dashboardData.metrics.total_members }}</div>
-              <div class="metric-label">成员数</div>
-            </div>
-          </div>
           <div class="metric-card highlight-blue" @click="$router.push('/meetings')">
             <div class="metric-icon-wrap meeting-icon">
               <el-icon><Calendar /></el-icon>
@@ -262,7 +253,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions } from '@fullcalendar/core'
 import {
-  Document, Promotion, Clock, EditPen, Stamp, UserFilled,
+  Document, Promotion, Clock, EditPen, Stamp,
   Calendar, Connection, Plus, Setting,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
@@ -298,7 +289,7 @@ const isCurrentCommunityAdmin = computed(() =>
 const isNewCommunity = computed(() => {
   if (!dashboardData.value) return false
   const m = dashboardData.value.metrics
-  return (m.total_contents || 0) === 0 && (m.total_members || 0) <= 1
+  return (m.total_contents || 0) === 0
 })
 
 // ===== 数据加载 =====
