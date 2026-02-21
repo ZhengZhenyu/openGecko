@@ -305,34 +305,6 @@ def get_community_dashboard(
                     )
                 )
 
-    # 成员加入事件（橙色 #f59e0b）
-    member_join_rows = db.execute(
-        select(
-            community_users.c.user_id,
-            community_users.c.joined_at,
-        ).where(
-            community_users.c.community_id == community_id,
-            community_users.c.joined_at >= cal_start,
-            community_users.c.joined_at <= cal_end,
-        )
-    ).all()
-    for user_id, joined_at in member_join_rows:
-        if joined_at:
-            member = db.query(User).filter(User.id == user_id).first()
-            if member:
-                display_name = member.full_name or member.username
-                calendar_events.append(
-                    CalendarEvent(
-                        id=user_id,
-                        type="member_join",
-                        title=f"{display_name} 加入社区",
-                        date=joined_at,
-                        color="#f59e0b",
-                        resource_id=user_id,
-                        resource_type="user",
-                    )
-                )
-
     # 按日期排序
     calendar_events.sort(key=lambda e: e.date)
 
