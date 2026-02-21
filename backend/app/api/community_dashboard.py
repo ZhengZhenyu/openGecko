@@ -133,12 +133,12 @@ def get_community_dashboard(
     metrics = CommunityMetrics(
         total_contents=total_contents,
         published_contents=published_contents,
-        pending_review_contents=pending_review_contents,
+        reviewing_contents=pending_review_contents,
         draft_contents=draft_contents,
-        committees_count=committees_count,
-        members_count=members_count,
-        upcoming_meetings_count=upcoming_meetings_count,
-        active_channels_count=active_channels_count,
+        total_committees=committees_count,
+        total_members=members_count,
+        upcoming_meetings=upcoming_meetings_count,
+        active_channels=active_channels_count,
     )
 
     # ── 2. 发布趋势（近 6 个月）──────────────────────────────────────────
@@ -351,7 +351,7 @@ def get_community_dashboard(
         community_name=community.name,
         community_logo=community.logo_url,
         metrics=metrics,
-        publish_trend=publish_trend,
+        monthly_trend=publish_trend,
         channel_stats=channel_stats,
         recent_contents=recent_contents,
         upcoming_meetings=upcoming_meetings,

@@ -99,7 +99,7 @@ class TestCommunityDashboard:
 
         # 验证顶层结构
         assert "metrics" in data
-        assert "publish_trend" in data
+        assert "monthly_trend" in data
         assert "channel_stats" in data
         assert "recent_contents" in data
         assert "upcoming_meetings" in data
@@ -142,12 +142,12 @@ class TestCommunityDashboard:
         required_fields = [
             "total_contents",
             "published_contents",
-            "pending_review_contents",
+            "reviewing_contents",
             "draft_contents",
-            "members_count",
-            "committees_count",
-            "upcoming_meetings_count",
-            "active_channels_count",
+            "total_members",
+            "total_committees",
+            "upcoming_meetings",
+            "active_channels",
         ]
         for field in required_fields:
             assert field in metrics, f"指标字段 '{field}' 缺失"
@@ -155,7 +155,7 @@ class TestCommunityDashboard:
         # 验证内容统计数值
         assert metrics["total_contents"] >= 3
         assert metrics["published_contents"] >= 1
-        assert metrics["pending_review_contents"] >= 1
+        assert metrics["reviewing_contents"] >= 1
         assert metrics["draft_contents"] >= 1
 
     def test_dashboard_upcoming_meetings(
@@ -251,7 +251,7 @@ class TestCommunityDashboard:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        trend = response.json()["publish_trend"]
+        trend = response.json()["monthly_trend"]
         assert isinstance(trend, list)
         # 应有 6 个月的数据（即使 count 都是 0）
         assert len(trend) >= 6

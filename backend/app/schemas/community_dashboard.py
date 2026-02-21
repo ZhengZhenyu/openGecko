@@ -15,13 +15,13 @@ class CommunityMetrics(BaseModel):
     # 内容指标
     total_contents: int = 0
     published_contents: int = 0
-    pending_review_contents: int = 0
+    reviewing_contents: int = 0
     draft_contents: int = 0
     # 治理指标
-    committees_count: int = 0
-    members_count: int = 0
-    upcoming_meetings_count: int = 0
-    active_channels_count: int = 0
+    total_committees: int = 0
+    total_members: int = 0
+    upcoming_meetings: int = 0
+    active_channels: int = 0
 
 
 # ── 趋势图 ──────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ class CommunityDashboardResponse(BaseModel):
     metrics: CommunityMetrics
 
     # 趋势图：近 6 个月按月聚合
-    publish_trend: list[MonthlyTrend] = []
+    monthly_trend: list[MonthlyTrend] = []
 
     # 渠道统计
     channel_stats: ChannelStats = ChannelStats()
