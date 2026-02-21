@@ -31,6 +31,7 @@ class CommunityBrief(BaseModel):
     id: int
     name: str
     slug: str
+    description: str | None = None
     url: str | None = None
     logo_url: str | None = None
     is_active: bool

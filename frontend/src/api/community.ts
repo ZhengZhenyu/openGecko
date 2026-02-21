@@ -28,8 +28,8 @@ export interface CommunityUser {
 }
 
 export async function getCommunities(): Promise<Community[]> {
-  const { data } = await apiClient.get<Community[]>('/communities')
-  return data
+  const { data } = await apiClient.get<{ items: Community[]; total: number; page: number; page_size: number }>('/communities')
+  return data.items
 }
 
 export async function getCommunity(id: number): Promise<Community> {
