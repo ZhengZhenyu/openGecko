@@ -159,6 +159,12 @@ const router = createRouter({
       component: () => import('../views/MeetingDetail.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/wechat-stats',
+      name: 'WechatStats',
+      component: () => import('../views/WechatStats.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

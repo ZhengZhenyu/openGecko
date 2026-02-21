@@ -44,10 +44,20 @@
             <span>内容日历</span>
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="/publish">
-          <el-icon><Promotion /></el-icon>
-          <span>发布管理</span>
-        </el-menu-item>
+        <el-sub-menu index="publish">
+          <template #title>
+            <el-icon><Promotion /></el-icon>
+            <span>发布管理</span>
+          </template>
+          <el-menu-item index="/publish">
+            <el-icon><Promotion /></el-icon>
+            <span>发布渠道</span>
+          </el-menu-item>
+          <el-menu-item index="/wechat-stats">
+            <el-icon><TrendCharts /></el-icon>
+            <span>微信阅读统计</span>
+          </el-menu-item>
+        </el-sub-menu>
         <!-- 社区治理 -->
         <el-sub-menu index="governance">
           <template #title>

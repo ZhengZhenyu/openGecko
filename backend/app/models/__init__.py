@@ -7,6 +7,7 @@ from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
 from app.models.password_reset import PasswordResetToken
 from app.models.publish_record import PublishRecord
 from app.models.user import User, community_users
+from app.models.wechat_stats import WechatArticleStat, WechatStatsAggregate
 
 __all__ = [
     "User",
@@ -22,4 +23,6 @@ __all__ = [
     "Meeting",
     "MeetingReminder",
     "MeetingParticipant",
+    "WechatArticleStat",
+    "WechatStatsAggregate",
 ]
