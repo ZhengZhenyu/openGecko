@@ -505,10 +505,10 @@ npx vue-tsc --noEmit && npx vite build
 | [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | 分支策略与提交规范 |
 | [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 目录结构详解 |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | 贡献流程 |
-| [docs/design/01-系统架构设计.md](docs/design/01-系统架构设计.md) | 系统架构设计 |
-| [docs/design/02-数据库详细设计.md](docs/design/02-数据库详细设计.md) | 数据库详细设计 |
-| [docs/requirements/01-需求分析文档.md](docs/requirements/01-需求分析文档.md) | 需求分析文档 |
-| [docs/plannings/01-实施计划.md](docs/plannings/01-实施计划.md) | 实施计划与路线图 |
+| [docs/design/01-系统架构设计.md](docs/design/01-系统架构设计.md) | 系统架构设计（技术栈、API 端点、前端结构、安全机制）|
+| [docs/design/02-数据库详细设计.md](docs/design/02-数据库详细设计.md) | 数据库详细设计（17 张表结构、ER 图、索引策略）|
+| [docs/requirements/01-需求分析文档.md](docs/requirements/01-需求分析文档.md) | 产品需求分析文档（PRD，与代码实现同步）|
+| [docs/plannings/01-产品路线图.md](docs/plannings/01-产品路线图.md) | 已交付里程碑 + 未来规划 |
 
 ---
 
