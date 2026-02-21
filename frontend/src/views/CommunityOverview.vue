@@ -1,13 +1,5 @@
 <template>
   <div class="community-overview">
-    <!-- 社区沙盘（当前社区工作台，置顶展示） -->
-    <CommunitySandbox />
-
-    <!-- 全局总览分区标题 -->
-    <div class="overview-section-divider">
-      <span class="divider-label">全局运营总览</span>
-    </div>
-
     <!-- 页面标题 -->
     <div class="page-title-row">
       <div class="page-title">
@@ -143,7 +135,6 @@ import { getCommunities } from '../api/community'
 import type { Community } from '../stores/auth'
 import apiClient from '../api/index'
 import CommunityWizard from './CommunityWizard.vue'
-import CommunitySandbox from './CommunitySandbox.vue'
 
 const showWizard = ref(false)
 function handleWizardCompleted(cid: number) {
@@ -318,34 +309,6 @@ onMounted(() => {
   --radius: 12px;
 
   padding: 0;
-}
-
-/* 全局总览分区分隔 */
-.overview-section-divider {
-  display: flex;
-  align-items: center;
-  margin: 28px 0 20px;
-  gap: 12px;
-
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .divider-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    padding: 4px 12px;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-  }
 }
 
 /* Page Title Row */
