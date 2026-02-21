@@ -1,34 +1,23 @@
 <template>
   <div class="meeting-calendar">
-    <el-empty v-if="!communityStore.currentCommunityId"
-      description="请先选择一个社区"
-      :image-size="150"
-    >
-      <p style="color: #909399; font-size: 14px;">使用顶部的社区切换器选择要管理的社区</p>
-    </el-empty>
-
-    <template v-else>
-      <div class="page-title">
+    <!-- 顶部工具栏 -->
+    <div class="page-title">
+      <div class="header-left">
         <div>
           <h2>会议日历</h2>
           <p class="subtitle">查看和管理委员会会议</p>
         </div>
-        <el-button
-          v-if="isAdmin"
-          type="primary"
-          @click="showCreateDialog = true"
-        >
-          <el-icon><Plus /></el-icon>
-          创建会议
-        </el-button>
+        <el-tag type="info" size="small" style="margin-left: 12px">
+          {{ meetings.length }} 场会议
+        </el-tag>
       </div>
-
-      <div class="section-card filter-section">
+      <div class="header-actions">
         <el-select
           v-model="selectedCommittee"
-          placeholder="选择委员会"
+          placeholder="全部委员会"
           clearable
-          style="width: 200px"
+          size="default"
+          style="width: 160px; margin-right: 12px"
           @change="loadMeetings"
         >
           <el-option
@@ -38,12 +27,29 @@
             :value="committee.id"
           />
         </el-select>
-
-        <el-radio-group v-model="viewMode" @change="handleViewModeChange">
+        <el-radio-group v-model="viewMode" @change="handleViewModeChange" style="margin-right: 12px">
           <el-radio-button value="month">月视图</el-radio-button>
           <el-radio-button value="list">列表视图</el-radio-button>
         </el-radio-group>
+        <el-button
+          v-if="isAdmin"
+          type="primary"
+          :icon="Plus"
+          @click="showCreateDialog = true"
+        >
+          创建会议
+        </el-button>
       </div>
+    </div>
+
+    <!-- 社区未选择提示 -->
+    <el-empty
+      v-if="!communityStore.currentCommunityId"
+      description="请先在顶部选择一个社区"
+      :image-size="120"
+    />
+
+    <template v-else>
 
       <!-- Calendar View -->
       <div v-if="viewMode === 'month'" v-loading="loading" class="section-card calendar-card">
@@ -569,143 +575,278 @@ function getCommitteeName(committeeId: number) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .meeting-calendar {
-  padding: 24px;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --blue: #0095ff;
+  --orange: #E6A23C;
+  --green: #67C23A;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --radius: 12px;
+
+  padding: 32px 40px 60px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
+
+// ==================== 页面标题 ====================
 
 .page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
+
+  h2 {
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+  }
 }
 
-.page-title h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
-}
-
-.page-title .subtitle {
-  margin: 0;
-  color: #86909c;
-  font-size: 14px;
-}
+// ==================== 通用卡片样式 ====================
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
-.filter-section {
-  padding: 16px 24px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+// ==================== 月视图：el-calendar 深度定制 ====================
 
-.calendar-card {
-  margin-bottom: 24px;
+:deep(.el-calendar) {
+  border: none;
+  --el-calendar-border: transparent;
+
+  .el-calendar__header {
+    padding: 0 0 16px;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 8px;
+
+    .el-calendar__title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .el-button-group {
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+      border: none;
+      box-shadow: none;
+
+      .el-button {
+        border: none !important;
+        background: transparent;
+        border-radius: 7px !important;
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 4px 12px;
+        box-shadow: none !important;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.7);
+          color: var(--text-primary);
+        }
+      }
+    }
+  }
+
+  .el-calendar__body {
+    padding: 0;
+
+    thead th {
+      padding: 10px 0 8px;
+      font-weight: 700;
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .el-calendar-day {
+      padding: 0;
+      min-height: 100px;
+      border-color: #f1f5f9;
+      transition: background 0.12s;
+
+      &:hover {
+        background: #fafbfc;
+      }
+    }
+
+    .el-calendar-table__row td.is-today {
+      background: linear-gradient(160deg, rgba(0, 149, 255, 0.07) 0%, rgba(0, 149, 255, 0.01) 100%);
+
+      .day-number {
+        background: var(--blue);
+        color: #fff;
+        border-radius: 14px;
+        padding: 2px 8px;
+        font-weight: 700;
+        display: inline-block;
+        box-shadow: 0 2px 8px rgba(0, 149, 255, 0.35);
+      }
+    }
+
+    .el-calendar-table__row td.is-in-month:not(.is-today):hover {
+      background: #fafbfc;
+    }
+
+    .el-calendar-table__row td:not(.is-in-month) {
+      .day-number { color: #cbd5e1; }
+    }
+  }
 }
 
 .calendar-day {
-  min-height: 80px;
-  padding: 4px;
+  padding: 6px 4px 4px;
+  min-height: 100px;
 }
 
 .day-number {
-  text-align: center;
-  font-weight: 600;
-  margin-bottom: 4px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  padding: 0 6px 4px;
+  line-height: 1.8;
 }
 
 .meeting-item {
   font-size: 12px;
-  padding: 2px 4px;
-  margin-bottom: 2px;
-  border-radius: 2px;
+  padding: 3px 6px;
+  margin-bottom: 3px;
+  border-radius: 5px;
   cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-left: 3px solid;
+  transition: transform 0.12s, box-shadow 0.12s;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+  }
 }
 
 .meeting-item.status-scheduled {
-  background: rgba(0, 149, 255, 0.08);
+  background: rgba(0, 149, 255, 0.07);
   border-color: #0095ff;
 }
 
+.meeting-item.status-in_progress {
+  background: rgba(103, 194, 58, 0.08);
+  border-color: #67C23A;
+}
+
 .meeting-item.status-completed {
-  background: var(--el-color-info-light-9);
-  border-color: var(--el-color-info);
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 .meeting-item.status-cancelled {
-  background: var(--el-color-danger-light-9);
-  border-color: var(--el-color-danger);
+  background: rgba(245, 108, 108, 0.07);
+  border-color: #F56C6C;
 }
 
 .meeting-time {
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  font-size: 11px;
+  color: var(--text-primary);
 }
 
 .meeting-committee {
   font-size: 11px;
-  color: var(--el-text-color-secondary);
+  color: var(--text-muted);
   margin: 1px 0;
 }
 
 .meeting-title {
+  font-size: 12px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
-.list-card {
-  margin-bottom: 24px;
-}
+// ==================== 列表视图 ====================
 
 .meeting-list-item {
   display: flex;
   gap: 16px;
   padding: 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: background 0.2s;
-}
+  border-radius: 8px;
 
-.meeting-list-item:hover {
-  background: var(--el-fill-color-light);
+  &:last-child { border-bottom: none; }
+
+  &:hover {
+    background: #f8fafc;
+  }
 }
 
 .meeting-date-block {
   flex-shrink: 0;
-  width: 60px;
+  width: 56px;
   text-align: center;
-  padding: 8px;
-  background: rgba(0, 149, 255, 0.08);
-  border-radius: 8px;
+  padding: 8px 6px;
+  background: rgba(0, 149, 255, 0.07);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 149, 255, 0.15);
 }
 
 .date-month {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .date-day {
   font-size: 24px;
   font-weight: 700;
-  color: #0095ff;
+  color: var(--blue);
+  line-height: 1.2;
 }
 
 .meeting-content {
   flex: 1;
+  min-width: 0;
 }
 
 .meeting-header {
@@ -717,8 +858,9 @@ function getCommitteeName(committeeId: number) {
 
 .meeting-header h4 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .header-tags {
@@ -729,33 +871,61 @@ function getCommitteeName(committeeId: number) {
 
 .meeting-meta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--text-secondary);
   margin-bottom: 8px;
-}
 
-.meeting-meta span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 }
 
 .meeting-description {
-  font-size: 14px;
-  color: var(--el-text-color-regular);
+  font-size: 13px;
+  color: var(--text-secondary);
   line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .meeting-actions {
   flex-shrink: 0;
   display: flex;
   gap: 8px;
+  align-items: flex-start;
 }
 
 .form-tip {
   margin-left: 8px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--text-muted);
+}
+
+// ==================== 响应式 ====================
+
+@media (max-width: 1200px) {
+  .meeting-calendar { padding: 28px 24px; }
+}
+
+@media (max-width: 768px) {
+  .meeting-calendar { padding: 20px 16px; }
+
+  .page-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    .header-actions {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
 }
 </style>
