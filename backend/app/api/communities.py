@@ -1,31 +1,27 @@
-from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session, attributes
-from sqlalchemy import update, select, insert
 
 from app.core.dependencies import (
-    get_current_user,
-    get_current_active_superuser,
     get_community_admin,
+    get_current_active_superuser,
+    get_current_user,
     get_user_community_role,
 )
 from app.core.logging import get_logger
 from app.database import get_db
-from app.models import User, Community
+from app.models import Community, User
 from app.models.user import community_users
 from app.schemas import (
     CommunityCreate,
-    CommunityUpdate,
-    CommunityOut,
-    CommunityBrief,
-    CommunityWithMembers,
     CommunityMemberAdd,
-    UserBrief,
+    CommunityOut,
+    CommunityUpdate,
+    CommunityWithMembers,
 )
+from app.schemas.community import PaginatedCommunities
 from app.schemas.email import EmailSettings, EmailSettingsOut
-
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -35,32 +31,30 @@ class TestEmailRequest(BaseModel):
     to_email: str
 
 
-@router.get("", response_model=List[CommunityBrief])
+@router.get("", response_model=PaginatedCommunities)
 def list_communities(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Get list of communities accessible to current user.
+    Get paginated list of communities accessible to current user.
 
     Superusers can see all communities.
     Regular users can only see communities they are members of.
-
-    Args:
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        List[CommunityBrief]: List of accessible communities
     """
     if current_user.is_superuser:
-        # Superusers can see all communities
-        communities = db.query(Community).all()
+        query = db.query(Community)
     else:
-        # Regular users see only their communities
-        communities = current_user.communities
+        query = db.query(Community).filter(
+            Community.members.any(User.id == current_user.id)
+        )
 
-    return communities
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return PaginatedCommunities(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post("", response_model=CommunityOut, status_code=status.HTTP_201_CREATED)
@@ -314,25 +308,17 @@ def get_community_users(
     ]
 
 
-@router.post("/{community_id}/users", status_code=status.HTTP_201_CREATED)
+@router.post("/{community_id}/users", response_model=CommunityWithMembers)
 def add_user_to_community(
     community_id: int,
     member_add: CommunityMemberAdd,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
     """
-    Add a user to a community.
-
-    Community admins and superusers can manage community members.
+    Add a user to a community. Superuser only.
     """
-    # 权限检查：社区管理员或超级管理员可操作
-    role = get_user_community_role(current_user, community_id, db)
-    if role not in ["superuser", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Community admin permissions required",
-        )
+    community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -356,30 +342,20 @@ def add_user_to_community(
     # Add user to community
     community.members.append(user)
     db.commit()
+    db.refresh(community)
+    return community
 
-    return {"message": "User added to community successfully"}
 
-
-@router.delete("/{community_id}/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{community_id}/users/{user_id}", status_code=status.HTTP_200_OK, response_model=CommunityWithMembers)
 def remove_user_from_community(
     community_id: int,
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_superuser),
     db: Session = Depends(get_db),
 ):
     """
-    Remove a user from a community.
-
-    Community admins and superusers can remove members.
+    Remove a user from a community. Superuser only.
     """
-    # 权限检查：社区管理员或超级管理员可操作
-    role = get_user_community_role(current_user, community_id, db)
-    if role not in ["superuser", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Community admin permissions required",
-        )
-
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
@@ -397,13 +373,15 @@ def remove_user_from_community(
     # Check if user is a member
     if user not in community.members:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User is not a member of this community",
         )
 
     # Remove user from community
     community.members.remove(user)
     db.commit()
+    db.refresh(community)
+    return community
 
 
 @router.put("/{community_id}/users/{user_id}/role", status_code=status.HTTP_200_OK)
@@ -433,28 +411,28 @@ def update_user_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid role. Must be 'admin' or 'user'",
         )
-    
+
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Community not found",
         )
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     # Check if user is a member
     if user not in community.members:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User is not a member of this community",
         )
-    
+
     # Update role in community_users table
     stmt = (
         update(community_users)
@@ -464,7 +442,7 @@ def update_user_role(
     )
     db.execute(stmt)
     db.commit()
-    
+
     return {"message": f"User role updated to {role} successfully"}
 
 
@@ -481,17 +459,17 @@ def get_email_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Community not found",
         )
-    
+
     # Check if user has access to this community
     if not current_user.is_superuser and community not in current_user.communities:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    
+
     settings_data = community.settings or {}
     email_config = settings_data.get("email") if isinstance(settings_data, dict) else None
-    
+
     if not email_config:
         # Return default empty settings
         return EmailSettingsOut(
@@ -500,12 +478,12 @@ def get_email_settings(
             from_email="",
             smtp={}
         )
-    
+
     # Return all SMTP config including password (admin has permission to view)
     smtp_config = email_config.get("smtp", {})
     if not isinstance(smtp_config, dict):
         smtp_config = {}
-    
+
     return EmailSettingsOut(
         enabled=email_config.get("enabled", False),
         provider=email_config.get("provider", "smtp"),
@@ -530,7 +508,7 @@ def update_email_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Community not found",
         )
-    
+
     # Check if user is admin of this community or superuser
     is_admin = False
     if current_user.is_superuser:
@@ -544,26 +522,26 @@ def update_email_settings(
         ).first()
         if result and result[0] == 'admin':
             is_admin = True
-    
+
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
-    
+
     # Update settings
     current_settings = community.settings or {}
     if not isinstance(current_settings, dict):
         current_settings = {}
-    
+
     current_settings["email"] = settings.model_dump()
     community.settings = current_settings
     # Mark the JSON field as modified so SQLAlchemy detects the change
     attributes.flag_modified(community, "settings")
-    
+
     db.commit()
     db.refresh(community)
-    
+
     return {"message": "Email settings updated successfully"}
 
 
@@ -581,14 +559,14 @@ def test_email_settings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="to_email is required",
         )
-    
+
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Community not found",
         )
-    
+
     # Check if user is admin of this community or superuser
     is_admin = False
     if current_user.is_superuser:
@@ -602,25 +580,25 @@ def test_email_settings(
         ).first()
         if result and result[0] == 'admin':
             is_admin = True
-    
+
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
-    
+
     # Send test email
-    from app.services.email import send_email, EmailMessage, get_sender_info, get_smtp_config
-    
+    from app.services.email import EmailMessage, get_sender_info, get_smtp_config, send_email
+
     smtp_config, email_cfg = get_smtp_config(community)
     if not smtp_config:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="SMTP not configured",
         )
-    
+
     from_email, from_name, reply_to = get_sender_info(community, email_cfg)
-    
+
     message = EmailMessage(
         subject=f"[{community.name}] Email Configuration Test",
         to_emails=[to_email],
@@ -630,7 +608,7 @@ def test_email_settings(
         from_name=from_name,
         reply_to=reply_to,
     )
-    
+
     try:
         send_email(community, message)
         return {"message": "Test email sent successfully"}
@@ -638,4 +616,4 @@ def test_email_settings(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send email: {str(e)}",
-        )
+        ) from e

@@ -105,7 +105,7 @@ class TestWechatServiceCredentials:
         token = await service._get_access_token(test_community.id)
 
         assert token == "mock_access_token_123"
-        assert service._access_token == "mock_access_token_123"
+        assert service._token_cache[test_community.id]["token"] == "mock_access_token_123"
 
     @pytest.mark.asyncio
     async def test_get_access_token_cached(

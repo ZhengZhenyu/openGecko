@@ -4,18 +4,25 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_current_active_superuser
+from app.config import settings
+from app.core.dependencies import get_current_active_superuser, get_current_user
 from app.core.logging import get_logger
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token, verify_password, get_password_hash
-from app.config import settings
+from app.core.security import create_access_token, get_password_hash, verify_password
 from app.database import get_db
 from app.models import User
 from app.models.password_reset import PasswordResetToken
 from app.schemas import (
-    LoginRequest, Token, UserCreate, UserUpdate, UserOut, UserInfoResponse,
-    InitialSetupRequest, PasswordResetRequest,
-    PasswordResetConfirm, SystemStatusResponse,
+    InitialSetupRequest,
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    SystemStatusResponse,
+    Token,
+    UserCreate,
+    UserInfoResponse,
+    UserOut,
+    UserUpdate,
 )
 
 router = APIRouter()
@@ -206,8 +213,8 @@ def get_current_user_info(
     Get current user information and their accessible communities with roles.
     """
     from app.core.dependencies import get_user_community_role
-    from app.schemas.community import CommunityWithRole
     from app.models.community import Community
+    from app.schemas.community import CommunityWithRole
 
     # Superusers can see all communities
     if current_user.is_superuser:
@@ -230,7 +237,7 @@ def get_current_user_info(
                 role=role or "user",
             )
         )
-    
+
     return UserInfoResponse(
         user=current_user,
         communities=communities_with_roles
@@ -443,8 +450,8 @@ def confirm_password_reset(
 def _send_password_reset_email(to_email: str, token: str) -> None:
     """Send a password reset email via SMTP."""
     import smtplib
-    from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
 

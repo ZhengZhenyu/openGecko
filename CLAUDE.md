@@ -242,13 +242,42 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 ## Testing Requirements
 
 ### Backend Testing
-- Minimum 80% code coverage required
-- Test naming: `test_{module}_api.py` for API tests
+- **Minimum 80% code coverage required** — CI will fail if total coverage drops below 80%
+- Run full suite with coverage: `pytest --cov=app --cov-report=term-missing -q`
+- Test naming conventions:
+  - API 端点测试：`tests/test_{module}_api.py`（如 `test_contents_api.py`）
+  - 服务层单元测试：`tests/test_services.py`（统一放置所有纯 Python 服务的单元测试）
+  - 特定服务测试：`tests/test_{service}_service.py`（如 `test_wechat_service.py`）
 - Use pytest as test framework
-- Mock external services (WeChat, email, etc.)
+- Mock external services (WeChat, email, SMTP) with `unittest.mock.patch` or `pytest-mock`
+  - 优先用 `mock.patch` 直接 patch service 方法，而非 `httpx_mock` 匹配 URL（URL 参数易变）
 - Test both success and error paths
 - Test RBAC permissions (admin/user/superuser)
 - Test multi-tenant isolation
+
+### Critical Route & Dependency Facts
+这些是容易搞错的细节，写测试时务必核对：
+- `upload.router` 注册在 `/api/contents` 前缀下，实际路径为 `/api/contents/upload` 和 `/api/contents/{id}/cover`
+- `dashboard.router` 注册在 `/api/users/me` 前缀下，实际路径为 `/api/users/me/dashboard`、`/api/users/me/assigned/contents` 等
+- `get_current_community` 依赖返回的是 `int`（community_id），**不是** Community 对象
+- `Meeting` 模型的 `committee_id` 字段为 NOT NULL，创建 Meeting 时必须先创建 Committee
+- `Committee` 模型的 `slug` 字段为 NOT NULL，创建时必须提供 slug
+- `conftest.py` 中的 `test_user` 在 `community_users` 表中角色为 `admin`（非 `user`）
+
+### Service Unit Test Patterns
+对纯 Python 服务（email、ics、notification、converter 等）编写单元测试时：
+- 使用 `MagicMock()` 模拟 SQLAlchemy 模型对象（无需真实数据库）
+- SMTP 测试通过 `patch('smtplib.SMTP')` / `patch('smtplib.SMTP_SSL')` 拦截网络调用
+- 对 `db.query(Model).filter(...).first()` 链式调用，用 `side_effect` 按 model 类型分发返回值
+
+### Coverage Improvement Checklist
+当覆盖率低于 80% 时，优先补充以下模块：
+1. `app/services/email.py` - SMTP 发送逻辑（用 mock 拦截 smtplib）
+2. `app/services/ics.py` - ICS 格式生成（纯函数，无需 mock）
+3. `app/services/notification.py` - 邮件提醒（mock DB + email）
+4. `app/services/converter.py` - Markdown/HTML 转换（纯函数）
+5. `app/api/dashboard.py` - 个人工作台端点
+6. `app/api/upload.py` - 文件上传端点
 
 ### Frontend Testing
 - Unit tests for utilities and stores
@@ -288,6 +317,7 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 - Make atomic commits (one logical change per commit)
 - Run tests before committing
 - Run linting before committing
+- **在执行 `git push` 操作前，必须先询问用户**："是否现在推送到远程，还是等后续改动一并推送？"，得到明确确认后再执行；`git commit` 可由 AI 自行执行，无需询问
 
 ### Pull Request Process
 - Create PR from feature branch to develop
@@ -360,3 +390,43 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 - Avoid database-specific features in models
 - Test migrations on both databases before merging
 - Use Alembic batch mode for SQLite schema changes
+
+## Claude Code Workflow Tips
+
+### 分步生成大文件以避免超时
+
+当需要生成较大的代码文件（测试文件、服务文件等，通常 > 200 行）时，**不要试图一次性生成整个文件**，应分步完成：
+
+1. **先创建骨架**：用 `create_file` 写入文件头部、imports 和第一个测试类（~50-80 行）
+2. **逐类追加**：用 `replace_string_in_file` 在文件末尾依次追加后续测试类
+3. **最后验证**：运行 `pytest tests/该文件.py --no-cov -q` 确认全部通过
+
+```python
+# 步骤 1：create_file 写入头部 + 第一个类（~50-80 行）
+# 步骤 2：replace_string_in_file 追加第二个类
+# 步骤 3：replace_string_in_file 追加第三个类
+# ...
+# 步骤 N：运行测试验证
+```
+
+### 调试测试失败的高效流程
+
+1. 先隔离失败的测试类/函数，避免受其他测试干扰：
+   ```bash
+   pytest tests/test_xxx.py::ClassName::test_method --no-cov -q --tb=short
+   ```
+2. 查看实际 HTTP 响应体（不只看 status code）：
+   ```python
+   print(response.json())  # 临时加入测试中
+   ```
+3. 检查路由注册前缀（`app/main.py` 中 `include_router` 的 `prefix` 参数）
+4. 检查依赖注入返回类型（`get_current_community` 返回 `int`，不是对象）
+
+### 覆盖率未达标时的排查步骤
+
+```bash
+# 查看每个文件的未覆盖行
+pytest --cov=app --cov-report=term-missing -q 2>&1 | grep -E "[0-9]+%"
+```
+
+找到覆盖率低的模块后，优先针对**纯函数**和**独立服务类**补充单元测试（无需 HTTP client，速度快，覆盖率提升效果好）。

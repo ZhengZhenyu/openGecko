@@ -124,6 +124,13 @@ function isSecretMasked(val: string): boolean {
   return !!val && val.startsWith('••••')
 }
 
+/** Clear masked secret on focus so user can type a new value */
+function handleSecretFocus(ch: ChannelItem, field: string) {
+  if (isSecretMasked(ch.config[field])) {
+    ch.config[field] = ''
+  }
+}
+
 // Reload channels when community changes
 watch(currentCommunityId, () => {
   loadChannels()

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 class CommunityBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     slug: str = Field(..., min_length=1, max_length=100, pattern="^[a-z0-9-]+$")
-    description: Optional[str] = ""
-    url: Optional[str] = None
-    logo_url: Optional[str] = None
-    settings: Optional[Dict[str, Any]] = {}
+    description: str | None = ""
+    url: str | None = None
+    logo_url: str | None = None
+    settings: dict[str, Any] | None = {}
 
 
 class CommunityCreate(CommunityBase):
@@ -18,12 +18,12 @@ class CommunityCreate(CommunityBase):
 
 
 class CommunityUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = None
-    url: Optional[str] = None
-    logo_url: Optional[str] = None
-    settings: Optional[Dict[str, Any]] = None
-    is_active: Optional[bool] = None
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
+    url: str | None = None
+    logo_url: str | None = None
+    settings: dict[str, Any] | None = None
+    is_active: bool | None = None
 
 
 class CommunityBrief(BaseModel):
@@ -31,11 +31,19 @@ class CommunityBrief(BaseModel):
     id: int
     name: str
     slug: str
-    url: Optional[str] = None
-    logo_url: Optional[str] = None
+    url: str | None = None
+    logo_url: str | None = None
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedCommunities(BaseModel):
+    """Paginated response for community list."""
+    items: list[CommunityBrief]
+    total: int
+    page: int
+    page_size: int
 
 
 class CommunityWithRole(CommunityBrief):
@@ -54,7 +62,7 @@ class CommunityOut(CommunityBase):
 
 class CommunityWithMembers(CommunityOut):
     """Community with member list."""
-    members: List["UserBrief"] = []
+    members: list["UserBrief"] = []
 
 
 class UserBrief(BaseModel):
@@ -62,7 +70,7 @@ class UserBrief(BaseModel):
     id: int
     username: str
     email: str
-    full_name: Optional[str] = ""
+    full_name: str | None = ""
     is_superuser: bool
 
     model_config = {"from_attributes": True}

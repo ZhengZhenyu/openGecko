@@ -10,12 +10,11 @@
 
 import logging
 import sys
-from typing import Optional
 
 from app.config import settings
 
 
-def setup_logging(level: Optional[str] = None) -> None:
+def setup_logging(level: str | None = None) -> None:
     """
     初始化应用程序日志系统。
 

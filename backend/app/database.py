@@ -41,15 +41,15 @@ def get_db():
 
 def init_db():
     from app.models import (  # noqa: F401
-        user,
-        community,
         audit,
-        content,
         channel,
-        publish_record,
-        password_reset,
         committee,
+        community,
+        content,
         meeting,
+        password_reset,
+        publish_record,
+        user,
     )
     Base.metadata.create_all(bind=engine)
     seed_default_admin()

@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional, Any
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 
 
 class ContentCreate(BaseModel):
@@ -11,24 +10,24 @@ class ContentCreate(BaseModel):
     author: str = ""
     tags: list[str] = []
     category: str = ""
-    cover_image: Optional[str] = None
-    scheduled_publish_at: Optional[datetime] = None
+    cover_image: str | None = None
+    scheduled_publish_at: datetime | None = None
     work_status: str = "planning"
     assignee_ids: list[int] = []
 
 
 class ContentUpdate(BaseModel):
-    title: Optional[str] = None
-    content_markdown: Optional[str] = None
-    content_html: Optional[str] = None
-    source_type: Optional[str] = None
-    author: Optional[str] = None
-    tags: Optional[list[str]] = None
-    category: Optional[str] = None
-    cover_image: Optional[str] = None
-    scheduled_publish_at: Optional[datetime] = None
-    work_status: Optional[str] = None
-    assignee_ids: Optional[list[int]] = None
+    title: str | None = None
+    content_markdown: str | None = None
+    content_html: str | None = None
+    source_type: str | None = None
+    author: str | None = None
+    tags: list[str] | None = None
+    category: str | None = None
+    cover_image: str | None = None
+    scheduled_publish_at: datetime | None = None
+    work_status: str | None = None
+    assignee_ids: list[int] | None = None
 
 
 class ContentStatusUpdate(BaseModel):
@@ -41,17 +40,17 @@ class ContentOut(BaseModel):
     content_markdown: str
     content_html: str
     source_type: str
-    source_file: Optional[str]
+    source_file: str | None
     author: str
     tags: list[str]
     category: str
-    cover_image: Optional[str]
+    cover_image: str | None
     status: str
     work_status: str
     community_id: int
-    created_by_user_id: Optional[int]
-    owner_id: Optional[int]
-    scheduled_publish_at: Optional[datetime]
+    created_by_user_id: int | None
+    owner_id: int | None
+    scheduled_publish_at: datetime | None
     created_at: datetime
     updated_at: datetime
     assignee_ids: list[int] = []
@@ -67,8 +66,8 @@ class ContentListOut(BaseModel):
     tags: list[str]
     category: str
     status: str
-    owner_id: Optional[int] = None
-    scheduled_publish_at: Optional[datetime] = None
+    owner_id: int | None = None
+    scheduled_publish_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -83,7 +82,7 @@ class ContentCalendarOut(BaseModel):
     source_type: str
     author: str
     category: str
-    scheduled_publish_at: Optional[datetime] = None
+    scheduled_publish_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -91,7 +90,7 @@ class ContentCalendarOut(BaseModel):
 
 class ContentScheduleUpdate(BaseModel):
     """拖拽更新发布时间"""
-    scheduled_publish_at: Optional[datetime] = None
+    scheduled_publish_at: datetime | None = None
 
 
 class PaginatedContents(BaseModel):

@@ -1,15 +1,20 @@
 import os
 import uuid
-from pathlib import Path
 
+import html2text
 import mammoth
 import markdown
-import html2text
-from pygments.formatters import HtmlFormatter
-from pygments.lexers import get_lexer_by_name, guess_lexer
-from pygments import highlight as pygments_highlight
 
 from app.config import settings
+
+# Module-level constants — created once, reused across all calls
+_MD_EXTENSIONS = ["extra", "codehilite", "tables", "toc", "nl2br"]
+_MD_EXTENSION_CONFIGS = {
+    "codehilite": {
+        "css_class": "highlight",
+        "linenums": False,
+    }
+}
 
 
 def convert_docx_to_markdown(docx_path: str) -> tuple[str, list[str]]:
@@ -50,17 +55,10 @@ def convert_docx_to_markdown(docx_path: str) -> tuple[str, list[str]]:
 
 def convert_markdown_to_html(md_text: str) -> str:
     """Convert Markdown text to HTML."""
-    extensions = ["extra", "codehilite", "tables", "toc", "nl2br"]
-    extension_configs = {
-        "codehilite": {
-            "css_class": "highlight",
-            "linenums": False,
-        }
-    }
-    return markdown.markdown(md_text, extensions=extensions, extension_configs=extension_configs)
+    return markdown.markdown(md_text, extensions=_MD_EXTENSIONS, extension_configs=_MD_EXTENSION_CONFIGS)
 
 
 def read_markdown_file(file_path: str) -> str:
     """Read a .md file and return its content."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return f.read().strip()

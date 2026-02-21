@@ -1,27 +1,25 @@
-from typing import List, Optional
 import csv
 import io
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
-    get_current_user,
-    get_current_community,
     get_community_admin,
+    get_current_community,
 )
 from app.database import get_db
-from app.models import User, Committee, CommitteeMember
+from app.models import Committee, CommitteeMember, User
 from app.schemas.governance import (
     CommitteeCreate,
-    CommitteeUpdate,
-    CommitteeOut,
-    CommitteeWithMembers,
     CommitteeMemberCreate,
-    CommitteeMemberUpdate,
     CommitteeMemberOut,
+    CommitteeMemberUpdate,
+    CommitteeOut,
+    CommitteeUpdate,
+    CommitteeWithMembers,
 )
 
 router = APIRouter()
@@ -60,10 +58,10 @@ def _committee_to_out(committee: Committee) -> dict:
 
 # ==================== Committee CRUD ====================
 
-@router.get("", response_model=List[CommitteeOut])
+@router.get("", response_model=list[CommitteeOut])
 def list_committees(
     community_id: int = Depends(get_current_community),
-    is_active: Optional[bool] = Query(None),
+    is_active: bool | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """获取当前社区的委员会列表。"""
@@ -155,12 +153,12 @@ def delete_committee(
 
 # ==================== Member Management ====================
 
-@router.get("/{committee_id}/members", response_model=List[CommitteeMemberOut])
+@router.get("/{committee_id}/members", response_model=list[CommitteeMemberOut])
 def list_members(
     committee_id: int,
     community_id: int = Depends(get_current_community),
-    role: Optional[str] = Query(None, description="按角色筛选"),
-    is_active: Optional[bool] = Query(None),
+    role: str | None = Query(None, description="按角色筛选"),
+    is_active: bool | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """获取委员会成员列表。"""
@@ -205,6 +203,203 @@ def add_member(
     return member
 
 
+# ==================== CSV Import/Export ====================
+
+@router.get("/{committee_id}/members/export")
+def export_members_csv(
+    committee_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """导出委员会成员为CSV文件（需要社区管理员权限）。"""
+    committee = _get_committee_or_404(committee_id, community_id, db)
+
+    members = (
+        db.query(CommitteeMember)
+        .filter(CommitteeMember.committee_id == committee_id)
+        .all()
+    )
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        'name', 'email', 'phone', 'wechat', 'organization',
+        'roles', 'term_start', 'term_end', 'is_active', 'bio'
+    ])
+
+    # Write data
+    for member in members:
+        writer.writerow([
+            member.name,
+            member.email or '',
+            member.phone or '',
+            member.wechat or '',
+            member.organization or '',
+            ','.join(member.roles) if member.roles else '',
+            member.term_start.isoformat() if member.term_start else '',
+            member.term_end.isoformat() if member.term_end else '',
+            'true' if member.is_active else 'false',
+            member.bio or ''
+        ])
+
+    # Prepare response
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={committee.slug}_members.csv"
+        }
+    )
+
+
+@router.post("/{committee_id}/members/import")
+def import_members_csv(
+    committee_id: int,
+    file: UploadFile = File(...),
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_community_admin),
+    db: Session = Depends(get_db),
+):
+    """从CSV文件批量导入委员会成员（需要社区管理员权限）。
+
+    CSV格式要求：
+    - 第一行为表头（name, email, phone, wechat, organization, roles, term_start, term_end, is_active, bio）
+    - name 为必填字段
+    - roles 用逗号分隔（如：chair,secretary）
+    - term_start/term_end 格式：YYYY-MM-DD
+    - is_active: true/false
+
+    返回导入结果统计。
+    """
+    _get_committee_or_404(committee_id, community_id, db)
+
+    # Check file type
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be a CSV file"
+        )
+
+    # Read CSV content
+    try:
+        content = file.file.read().decode('utf-8-sig')  # Handle BOM
+        csv_file = io.StringIO(content)
+        reader = csv.DictReader(csv_file)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse CSV file: {str(e)}"
+        ) from e
+
+    # Validate required fields
+    required_fields = {'name'}
+    if not required_fields.issubset(set(reader.fieldnames or [])):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"CSV must contain required fields: {', '.join(required_fields)}"
+        )
+
+    # Process rows
+    success_count = 0
+    error_count = 0
+    errors = []
+
+    for row_num, row in enumerate(reader, start=2):  # Start from 2 (1 is header)
+        try:
+            # Validate name
+            name = row.get('name', '').strip()
+            if not name:
+                errors.append(f"Row {row_num}: name is required")
+                error_count += 1
+                continue
+
+            # Parse roles
+            roles_str = row.get('roles', '').strip()
+            roles = [r.strip() for r in roles_str.split(',') if r.strip()] if roles_str else []
+
+            # Parse dates
+            term_start = None
+            term_start_str = row.get('term_start', '').strip()
+            if term_start_str:
+                try:
+                    term_start = date.fromisoformat(term_start_str)
+                except ValueError:
+                    errors.append(f"Row {row_num}: invalid term_start format (use YYYY-MM-DD)")
+                    error_count += 1
+                    continue
+
+            term_end = None
+            term_end_str = row.get('term_end', '').strip()
+            if term_end_str:
+                try:
+                    term_end = date.fromisoformat(term_end_str)
+                except ValueError:
+                    errors.append(f"Row {row_num}: invalid term_end format (use YYYY-MM-DD)")
+                    error_count += 1
+                    continue
+
+            # Parse is_active
+            is_active_str = row.get('is_active', 'true').strip().lower()
+            is_active = is_active_str in ('true', '1', 'yes', 'y')
+
+            # Check for duplicate name in committee
+            existing = (
+                db.query(CommitteeMember)
+                .filter(
+                    CommitteeMember.committee_id == committee_id,
+                    CommitteeMember.name == name
+                )
+                .first()
+            )
+
+            if existing:
+                errors.append(f"Row {row_num}: member '{name}' already exists")
+                error_count += 1
+                continue
+
+            # Create member
+            member = CommitteeMember(
+                committee_id=committee_id,
+                name=name,
+                email=row.get('email', '').strip() or None,
+                phone=row.get('phone', '').strip() or None,
+                wechat=row.get('wechat', '').strip() or None,
+                organization=row.get('organization', '').strip() or None,
+                roles=roles,
+                term_start=term_start,
+                term_end=term_end,
+                is_active=is_active,
+                bio=row.get('bio', '').strip() or None
+            )
+
+            db.add(member)
+            success_count += 1
+
+        except Exception as e:
+            errors.append(f"Row {row_num}: {str(e)}")
+            error_count += 1
+
+    # Commit all successful imports
+    if success_count > 0:
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save members: {str(e)}"
+            ) from e
+
+    return {
+        "success_count": success_count,
+        "error_count": error_count,
+        "errors": errors[:10] if errors else []  # Limit to first 10 errors
+    }
 @router.get(
     "/{committee_id}/members/{member_id}",
     response_model=CommitteeMemberOut,
@@ -304,200 +499,3 @@ def remove_member(
     db.commit()
 
 
-# ==================== CSV Import/Export ====================
-
-@router.get("/{committee_id}/members/export")
-def export_members_csv(
-    committee_id: int,
-    community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
-    db: Session = Depends(get_db),
-):
-    """导出委员会成员为CSV文件（需要社区管理员权限）。"""
-    committee = _get_committee_or_404(committee_id, community_id, db)
-    
-    members = (
-        db.query(CommitteeMember)
-        .filter(CommitteeMember.committee_id == committee_id)
-        .all()
-    )
-    
-    # Create CSV in memory
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    # Write header
-    writer.writerow([
-        'name', 'email', 'phone', 'wechat', 'organization',
-        'roles', 'term_start', 'term_end', 'is_active', 'bio'
-    ])
-    
-    # Write data
-    for member in members:
-        writer.writerow([
-            member.name,
-            member.email or '',
-            member.phone or '',
-            member.wechat or '',
-            member.organization or '',
-            ','.join(member.roles) if member.roles else '',
-            member.term_start.isoformat() if member.term_start else '',
-            member.term_end.isoformat() if member.term_end else '',
-            'true' if member.is_active else 'false',
-            member.bio or ''
-        ])
-    
-    # Prepare response
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={committee.slug}_members.csv"
-        }
-    )
-
-
-@router.post("/{committee_id}/members/import")
-def import_members_csv(
-    committee_id: int,
-    file: UploadFile = File(...),
-    community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
-    db: Session = Depends(get_db),
-):
-    """从CSV文件批量导入委员会成员（需要社区管理员权限）。
-    
-    CSV格式要求：
-    - 第一行为表头（name, email, phone, wechat, organization, roles, term_start, term_end, is_active, bio）
-    - name 为必填字段
-    - roles 用逗号分隔（如：chair,secretary）
-    - term_start/term_end 格式：YYYY-MM-DD
-    - is_active: true/false
-    
-    返回导入结果统计。
-    """
-    committee = _get_committee_or_404(committee_id, community_id, db)
-    
-    # Check file type
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be a CSV file"
-        )
-    
-    # Read CSV content
-    try:
-        content = file.file.read().decode('utf-8-sig')  # Handle BOM
-        csv_file = io.StringIO(content)
-        reader = csv.DictReader(csv_file)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to parse CSV file: {str(e)}"
-        )
-    
-    # Validate required fields
-    required_fields = {'name'}
-    if not required_fields.issubset(set(reader.fieldnames or [])):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"CSV must contain required fields: {', '.join(required_fields)}"
-        )
-    
-    # Process rows
-    success_count = 0
-    error_count = 0
-    errors = []
-    
-    for row_num, row in enumerate(reader, start=2):  # Start from 2 (1 is header)
-        try:
-            # Validate name
-            name = row.get('name', '').strip()
-            if not name:
-                errors.append(f"Row {row_num}: name is required")
-                error_count += 1
-                continue
-            
-            # Parse roles
-            roles_str = row.get('roles', '').strip()
-            roles = [r.strip() for r in roles_str.split(',') if r.strip()] if roles_str else []
-            
-            # Parse dates
-            term_start = None
-            term_start_str = row.get('term_start', '').strip()
-            if term_start_str:
-                try:
-                    term_start = date.fromisoformat(term_start_str)
-                except ValueError:
-                    errors.append(f"Row {row_num}: invalid term_start format (use YYYY-MM-DD)")
-                    error_count += 1
-                    continue
-            
-            term_end = None
-            term_end_str = row.get('term_end', '').strip()
-            if term_end_str:
-                try:
-                    term_end = date.fromisoformat(term_end_str)
-                except ValueError:
-                    errors.append(f"Row {row_num}: invalid term_end format (use YYYY-MM-DD)")
-                    error_count += 1
-                    continue
-            
-            # Parse is_active
-            is_active_str = row.get('is_active', 'true').strip().lower()
-            is_active = is_active_str in ('true', '1', 'yes', 'y')
-            
-            # Check for duplicate name in committee
-            existing = (
-                db.query(CommitteeMember)
-                .filter(
-                    CommitteeMember.committee_id == committee_id,
-                    CommitteeMember.name == name
-                )
-                .first()
-            )
-            
-            if existing:
-                errors.append(f"Row {row_num}: member '{name}' already exists")
-                error_count += 1
-                continue
-            
-            # Create member
-            member = CommitteeMember(
-                committee_id=committee_id,
-                name=name,
-                email=row.get('email', '').strip() or None,
-                phone=row.get('phone', '').strip() or None,
-                wechat=row.get('wechat', '').strip() or None,
-                organization=row.get('organization', '').strip() or None,
-                roles=roles,
-                term_start=term_start,
-                term_end=term_end,
-                is_active=is_active,
-                bio=row.get('bio', '').strip() or None
-            )
-            
-            db.add(member)
-            success_count += 1
-            
-        except Exception as e:
-            errors.append(f"Row {row_num}: {str(e)}")
-            error_count += 1
-    
-    # Commit all successful imports
-    if success_count > 0:
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to save members: {str(e)}"
-            )
-    
-    return {
-        "success_count": success_count,
-        "error_count": error_count,
-        "errors": errors[:10] if errors else []  # Limit to first 10 errors
-    }

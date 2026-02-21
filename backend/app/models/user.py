@@ -1,10 +1,9 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Table, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-
 
 # Association table for many-to-many relationship between users and communities
 community_users = Table(

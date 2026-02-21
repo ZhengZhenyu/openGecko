@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -7,20 +6,20 @@ from pydantic import BaseModel, EmailStr, Field
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
-    full_name: Optional[str] = ""
+    full_name: str | None = ""
 
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
-    is_superuser: Optional[bool] = False  # Only superusers can set this to True
+    is_superuser: bool | None = False  # Only superusers can set this to True
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    password: Optional[str] = Field(None, min_length=6, max_length=100)
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
+    email: EmailStr | None = None
+    full_name: str | None = None
+    password: str | None = Field(None, min_length=6, max_length=100)
+    is_active: bool | None = None
+    is_superuser: bool | None = None
 
 
 class UserOut(UserBase):

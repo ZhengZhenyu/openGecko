@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from app.models.meeting import Meeting
 from app.models.community import Community
+from app.models.meeting import Meeting
 
 
 def _format_dt(dt: datetime) -> str:

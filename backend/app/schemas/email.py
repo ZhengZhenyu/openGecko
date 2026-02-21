@@ -1,5 +1,5 @@
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class EmailSmtpConfig(BaseModel):
@@ -14,8 +14,8 @@ class EmailSettings(BaseModel):
     enabled: bool = True
     provider: str = "smtp"
     from_email: str = Field(..., min_length=1, max_length=200)
-    from_name: Optional[str] = Field(None, max_length=200)
-    reply_to: Optional[str] = Field(None, max_length=200)
+    from_name: str | None = Field(None, max_length=200)
+    reply_to: str | None = Field(None, max_length=200)
     smtp: EmailSmtpConfig
 
 
@@ -23,6 +23,6 @@ class EmailSettingsOut(BaseModel):
     enabled: bool
     provider: str
     from_email: str
-    from_name: Optional[str] = None
-    reply_to: Optional[str] = None
+    from_name: str | None = None
+    reply_to: str | None = None
     smtp: dict  # Without password

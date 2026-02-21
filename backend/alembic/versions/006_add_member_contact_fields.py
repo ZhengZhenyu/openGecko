@@ -17,28 +17,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Make email and organization NOT NULL
-    op.alter_column('committee_members', 'email',
-                    existing_type=sa.String(200),
-                    nullable=False)
-    op.alter_column('committee_members', 'organization',
-                    existing_type=sa.String(200),
-                    nullable=False)
-    
-    # Add new optional contact fields
+    # Add new optional contact fields (gitcode_id and github_id)
     op.add_column('committee_members', sa.Column('gitcode_id', sa.String(100), nullable=True))
     op.add_column('committee_members', sa.Column('github_id', sa.String(100), nullable=True))
 
 
 def downgrade() -> None:
-    # Remove new fields
     op.drop_column('committee_members', 'github_id')
     op.drop_column('committee_members', 'gitcode_id')
-    
-    # Revert email and organization to nullable
-    op.alter_column('committee_members', 'organization',
-                    existing_type=sa.String(200),
-                    nullable=True)
-    op.alter_column('committee_members', 'email',
-                    existing_type=sa.String(200),
-                    nullable=True)

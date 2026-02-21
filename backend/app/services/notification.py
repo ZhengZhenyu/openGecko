@@ -6,9 +6,9 @@ from html import escape
 
 from sqlalchemy.orm import Session
 
-from app.models.meeting import MeetingReminder, MeetingParticipant, Meeting
 from app.models.community import Community
-from app.services.email import EmailAttachment, EmailMessage, get_sender_info, send_email, get_smtp_config
+from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
+from app.services.email import EmailAttachment, EmailMessage, get_sender_info, get_smtp_config, send_email
 from app.services.ics import build_meeting_ics
 
 
@@ -112,7 +112,7 @@ def _build_html_body(meeting: Meeting, community: Community) -> str:
     location = escape(meeting.location or "")
     agenda = escape(meeting.agenda or "")
     time_str = meeting.scheduled_at.strftime("%Y-%m-%d %H:%M")
-    
+
     return (
         "<html><body style=\"font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;\">"
         f"<h2>{title}</h2>"

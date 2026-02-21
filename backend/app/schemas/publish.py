@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -13,10 +12,10 @@ class PublishRecordOut(BaseModel):
     content_id: int
     channel: str
     status: str
-    platform_article_id: Optional[str]
-    platform_url: Optional[str]
-    published_at: Optional[datetime]
-    error_message: Optional[str]
+    platform_article_id: str | None
+    platform_url: str | None
+    published_at: datetime | None
+    error_message: str | None
     created_at: datetime
     community_id: int
 
@@ -61,6 +60,15 @@ class AnalyticsOverview(BaseModel):
     channels: dict[str, int]  # channel -> published count
 
 
+class ContentAnalyticsDetail(BaseModel):
+    """内容分析详情（含发布记录列表）"""
+    content_id: int
+    title: str
+    analytics: list["PublishRecordOut"] = []
+
+    model_config = {"from_attributes": True}
+
+
 class ChannelConfigOut(BaseModel):
     id: int
     channel: str
@@ -78,4 +86,4 @@ class ChannelConfigCreate(BaseModel):
 
 class ChannelConfigUpdate(BaseModel):
     config: dict = {}
-    enabled: Optional[bool] = None
+    enabled: bool | None = None

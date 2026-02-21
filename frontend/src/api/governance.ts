@@ -122,6 +122,7 @@ export interface MeetingCreate {
   location?: string
   agenda?: string
   reminder_before_hours?: number
+  assignee_ids?: number[]
 }
 
 export interface MeetingUpdate {
@@ -134,6 +135,7 @@ export interface MeetingUpdate {
   status?: string
   agenda?: string
   reminder_before_hours?: number
+  assignee_ids?: number[]
 }
 
 export interface MeetingReminder {
