@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.5+-green.svg)](https://vuejs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-teal.svg)](https://fastapi.tiangolo.com/)
-[![Backend CI](https://github.com/ZhengZhenyu/openGecko/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ZhengZhenyu/openGecko/actions/workflows/backend-ci.yml)
+[![Backend CI](https://github.com/opensourceways/openGecko/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/opensourceways/openGecko/actions/workflows/backend-ci.yml)
 
 </div>
 
@@ -98,7 +98,7 @@ Docker 方式（推荐）：
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/ZhengZhenyu/openGecko.git
+git clone https://github.com/opensourceways/openGecko.git
 cd openGecko
 
 # 2. 初始化配置文件
@@ -140,7 +140,7 @@ docker compose up -d
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/ZhengZhenyu/openGecko.git
+git clone https://github.com/opensourceways/openGecko.git
 cd openGecko
 
 # 2. 一键初始化（创建 Python venv、安装依赖、生成 .env）
