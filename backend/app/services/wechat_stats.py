@@ -4,15 +4,13 @@
 """
 
 from datetime import date, datetime, timedelta
-from typing import Optional
 
-from sqlalchemy import func, and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
 from app.models.wechat_stats import WechatArticleStat, WechatStatsAggregate
-
 
 # ── 分类标签映射 ──
 
@@ -70,8 +68,8 @@ class WechatStatsService:
         db: Session,
         *,
         publish_record_id: int,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[WechatArticleStat]:
         """获取某篇文章的每日统计列表。"""
         query = db.query(WechatArticleStat).filter(
@@ -201,9 +199,9 @@ class WechatStatsService:
         *,
         community_id: int,
         period_type: str = "daily",
-        category: Optional[str] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        category: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> dict:
         """获取趋势折线图数据。"""
         query = db.query(WechatStatsAggregate).filter(
@@ -252,8 +250,8 @@ class WechatStatsService:
         )
 
     def _compute_daily_trend(
-        self, db: Session, *, community_id: int, category: Optional[str],
-        start_date: Optional[date], end_date: Optional[date],
+        self, db: Session, *, community_id: int, category: str | None,
+        start_date: date | None, end_date: date | None,
     ) -> dict:
         """从原始表计算每日趋势。"""
         query = db.query(
@@ -297,7 +295,7 @@ class WechatStatsService:
 
     def _compute_period_trend(
         self, db: Session, *, community_id: int, period_type: str,
-        category: Optional[str], start_date: Optional[date], end_date: Optional[date],
+        category: str | None, start_date: date | None, end_date: date | None,
     ) -> dict:
         """从原始每日数据聚合出周/月/季/半年/年趋势。"""
         daily_result = self._compute_daily_trend(
@@ -335,7 +333,7 @@ class WechatStatsService:
 
     def rebuild_aggregates(
         self, db: Session, *, community_id: int, period_type: str = "daily",
-        start_date: Optional[date] = None, end_date: Optional[date] = None,
+        start_date: date | None = None, end_date: date | None = None,
     ) -> int:
         """重建聚合数据。返回更新/创建的记录数。"""
         if not end_date:
@@ -418,7 +416,7 @@ class WechatStatsService:
 
     def get_article_ranking(
         self, db: Session, *, community_id: int,
-        category: Optional[str] = None, limit: int = 100,
+        category: str | None = None, limit: int = 100,
     ) -> list[dict]:
         """获取最新前 N 篇文章的统计排名。"""
         latest_subq = db.query(
