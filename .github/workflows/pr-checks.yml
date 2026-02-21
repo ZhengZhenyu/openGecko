@@ -106,31 +106,3 @@ jobs:
           echo "- ⚙️ Configuration changed" >> $GITHUB_STEP_SUMMARY
         fi
 
-  code-review-checklist:
-    runs-on: ubuntu-latest
-    # Only run when PR is opened, not on subsequent pushes
-    if: github.event.action == 'opened'
-    permissions:
-      pull-requests: write
-      issues: write
-
-    steps:
-    - name: Post review checklist
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const checklist = `## PR Checklist
-
-          - [ ] 功能实现正确，无明显 Bug
-          - [ ] 测试通过（新增/修改功能已补充测试，覆盖率 ≥ 80%）
-          - [ ] 无敏感信息硬编码（密钥、密码、Token）
-          - [ ] 数据库有变更时迁移文件已生成并测试
-          - [ ] 必要的文档已同步更新
-          `;
-
-          await github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: checklist
-          });
