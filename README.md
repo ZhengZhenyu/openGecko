@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.5+-green.svg)](https://vuejs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-teal.svg)](https://fastapi.tiangolo.com/)
-[![Backend CI](https://github.com/your-org/openGecko/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/your-org/openGecko/actions/workflows/backend-ci.yml)
+[![Backend CI](https://github.com/opensourceways/openGecko/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/opensourceways/openGecko/actions/workflows/backend-ci.yml)
 
 </div>
 
@@ -98,7 +98,7 @@ Docker 方式（推荐）：
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-org/openGecko.git
+git clone https://github.com/opensourceways/openGecko.git
 cd openGecko
 
 # 2. 初始化配置文件
@@ -140,7 +140,7 @@ docker compose up -d
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-org/openGecko.git
+git clone https://github.com/opensourceways/openGecko.git
 cd openGecko
 
 # 2. 一键初始化（创建 Python venv、安装依赖、生成 .env）
@@ -278,7 +278,7 @@ fix: 修复跨社区数据隔离漏洞
 docs: 更新渠道配置说明
 ```
 
-> `git push` 前请先确认是否与后续改动一并推送。详见 [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)。
+> `git push` 前请先确认是否与后续改动一并推送。
 
 ---
 
@@ -463,7 +463,7 @@ PostgreSQL 模式下请自行配置数据卷和备份策略。
 - [ ] 内容模板库
 - [ ] Webhook / 外部集成
 
-详见 [docs/plannings/01-实施计划.md](docs/plannings/01-实施计划.md)
+详见 [docs/plannings/01-产品路线图.md](docs/plannings/01-产品路线图.md)
 
 ---
 
@@ -480,7 +480,6 @@ PostgreSQL 模式下请自行配置数据卷和备份策略。
 更多细节见：
 - [CONTRIBUTING.md](docs/CONTRIBUTING.md) — 贡献流程
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) — 开发环境与规范
-- [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) — 分支策略与提交规范
 
 ### 本地 CI 快速验证
 
@@ -502,7 +501,6 @@ npx vue-tsc --noEmit && npx vite build
 |------|------|
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | 环境变量、渠道配置、部署配置 |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发环境、代码规范、测试指南 |
-| [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | 分支策略与提交规范 |
 | [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 目录结构详解 |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | 贡献流程 |
 | [docs/design/01-系统架构设计.md](docs/design/01-系统架构设计.md) | 系统架构设计（技术栈、API 端点、前端结构、安全机制）|
