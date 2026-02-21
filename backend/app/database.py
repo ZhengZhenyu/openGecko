@@ -50,6 +50,7 @@ def init_db():
         password_reset,
         publish_record,
         user,
+        wechat_stats,
     )
     Base.metadata.create_all(bind=engine)
     seed_default_admin()

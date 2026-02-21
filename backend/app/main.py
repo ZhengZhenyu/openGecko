@@ -22,6 +22,7 @@ from app.api import (
     meetings,
     publish,
     upload,
+    wechat_stats,
 )
 from app.config import settings
 from app.core.logging import get_logger, setup_logging
@@ -143,6 +144,7 @@ app.include_router(channels.router, prefix="/api/channels", tags=["Channels"])
 app.include_router(committees.router, prefix="/api/committees", tags=["Governance"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["Governance"])
 app.include_router(community_dashboard.router, prefix="/api/communities", tags=["Community Dashboard"])
+app.include_router(wechat_stats.router, prefix="/api/wechat-stats", tags=["WeChat Statistics"])
 
 
 @app.get("/api/health")

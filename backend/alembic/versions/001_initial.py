@@ -13,7 +13,8 @@ Tables:
   contents, content_collaborators, content_assignees, content_analytics,
   publish_records,
   committees, committee_members,
-  meetings, meeting_reminders, meeting_assignees, meeting_participants
+  meetings, meeting_reminders, meeting_assignees, meeting_participants,
+  wechat_article_stats, wechat_stats_aggregates
 """
 
 from alembic import op
@@ -337,7 +338,84 @@ def upgrade():
     )
 
 
+    # ------------------------------------------------------------------
+    # wechat_article_stats
+    # ------------------------------------------------------------------
+    op.create_table(
+        "wechat_article_stats",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("publish_record_id", sa.Integer(),
+                  sa.ForeignKey("publish_records.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("article_category",
+                  sa.Enum("release", "technical", "activity", name="article_category_enum"),
+                  nullable=False, server_default="technical"),
+        sa.Column("stat_date", sa.Date(), nullable=False),
+        sa.Column("read_count", sa.Integer(), server_default="0"),
+        sa.Column("read_user_count", sa.Integer(), server_default="0"),
+        sa.Column("read_original_count", sa.Integer(), server_default="0"),
+        sa.Column("like_count", sa.Integer(), server_default="0"),
+        sa.Column("wow_count", sa.Integer(), server_default="0"),
+        sa.Column("share_count", sa.Integer(), server_default="0"),
+        sa.Column("comment_count", sa.Integer(), server_default="0"),
+        sa.Column("favorite_count", sa.Integer(), server_default="0"),
+        sa.Column("forward_count", sa.Integer(), server_default="0"),
+        sa.Column("new_follower_count", sa.Integer(), server_default="0"),
+        sa.Column("unfollow_count", sa.Integer(), server_default="0"),
+        sa.Column("community_id", sa.Integer(),
+                  sa.ForeignKey("communities.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("collected_at", sa.DateTime(), server_default=sa.func.now()),
+        sa.UniqueConstraint("publish_record_id", "stat_date", name="uq_article_stat_date"),
+    )
+    op.create_index("ix_wechat_article_stats_publish_record_id", "wechat_article_stats", ["publish_record_id"])
+    op.create_index("ix_wechat_article_stats_stat_date", "wechat_article_stats", ["stat_date"])
+    op.create_index("ix_wechat_article_stats_article_category", "wechat_article_stats", ["article_category"])
+    op.create_index("ix_wechat_article_stats_community_id", "wechat_article_stats", ["community_id"])
+    op.create_index("ix_wechat_stats_category_date", "wechat_article_stats", ["article_category", "stat_date"])
+    op.create_index("ix_wechat_stats_community_date", "wechat_article_stats", ["community_id", "stat_date"])
+
+    # ------------------------------------------------------------------
+    # wechat_stats_aggregates
+    # ------------------------------------------------------------------
+    op.create_table(
+        "wechat_stats_aggregates",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("community_id", sa.Integer(),
+                  sa.ForeignKey("communities.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("period_type",
+                  sa.Enum("daily", "weekly", "monthly", "quarterly",
+                          "semi_annual", "annual", name="period_type_enum"),
+                  nullable=False),
+        sa.Column("period_start", sa.Date(), nullable=False),
+        sa.Column("period_end", sa.Date(), nullable=False),
+        sa.Column("article_category",
+                  sa.Enum("release", "technical", "activity", name="article_category_enum"),
+                  nullable=True),
+        sa.Column("total_articles", sa.Integer(), server_default="0"),
+        sa.Column("total_read_count", sa.Integer(), server_default="0"),
+        sa.Column("total_read_user_count", sa.Integer(), server_default="0"),
+        sa.Column("total_like_count", sa.Integer(), server_default="0"),
+        sa.Column("total_wow_count", sa.Integer(), server_default="0"),
+        sa.Column("total_share_count", sa.Integer(), server_default="0"),
+        sa.Column("total_comment_count", sa.Integer(), server_default="0"),
+        sa.Column("total_favorite_count", sa.Integer(), server_default="0"),
+        sa.Column("total_forward_count", sa.Integer(), server_default="0"),
+        sa.Column("total_new_follower_count", sa.Integer(), server_default="0"),
+        sa.Column("avg_read_count", sa.Integer(), server_default="0"),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
+        sa.UniqueConstraint(
+            "community_id", "period_type", "period_start", "article_category",
+            name="uq_stats_aggregate",
+        ),
+    )
+    op.create_index("ix_wechat_stats_aggregates_community_id", "wechat_stats_aggregates", ["community_id"])
+    op.create_index("ix_wechat_stats_aggregates_period_type", "wechat_stats_aggregates", ["period_type"])
+    op.create_index("ix_wechat_stats_aggregates_period_start", "wechat_stats_aggregates", ["period_start"])
+    op.create_index("ix_aggregate_period", "wechat_stats_aggregates", ["community_id", "period_type", "period_start"])
+
+
 def downgrade():
+    op.drop_table("wechat_stats_aggregates")
+    op.drop_table("wechat_article_stats")
     op.drop_table("meeting_participants")
     op.drop_table("meeting_assignees")
     op.drop_index("idx_reminder_scheduled_status", table_name="meeting_reminders")
