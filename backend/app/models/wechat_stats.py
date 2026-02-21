@@ -7,8 +7,16 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, Integer, DateTime, ForeignKey,
-    Enum as SAEnum, Date, UniqueConstraint, Index,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import relationship
 

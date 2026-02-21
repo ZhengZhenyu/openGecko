@@ -1,10 +1,8 @@
 """微信公众号文章统计相关 Pydantic Schema。"""
 
 from datetime import date, datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
-
 
 # ── 文章分类 ──
 
@@ -76,7 +74,7 @@ class WechatStatsAggregateOut(BaseModel):
     period_type: str
     period_start: date
     period_end: date
-    article_category: Optional[str]
+    article_category: str | None
     total_articles: int
     total_read_count: int
     total_read_user_count: int
@@ -112,7 +110,7 @@ class TrendDataPoint(BaseModel):
 class TrendResponse(BaseModel):
     """折线图趋势响应。"""
     period_type: str
-    category: Optional[str] = Field(None, description="null 表示全部分类")
+    category: str | None = Field(None, description="null 表示全部分类")
     data_points: list[TrendDataPoint]
 
 
@@ -150,4 +148,4 @@ class ArticleRankItem(BaseModel):
     like_count: int
     share_count: int
     comment_count: int
-    published_at: Optional[datetime]
+    published_at: datetime | None

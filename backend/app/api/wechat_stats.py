@@ -5,7 +5,6 @@
 """
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -49,12 +48,12 @@ def get_wechat_stats_trend(
         description="统计周期: daily/weekly/monthly/quarterly/semi_annual/annual",
         pattern="^(daily|weekly|monthly|quarterly|semi_annual|annual)$",
     ),
-    category: Optional[str] = Query(
+    category: str | None = Query(
         default=None,
         description="文章分类: release/technical/activity，为空则全部",
     ),
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     community_id: int = Depends(get_current_community),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -74,7 +73,7 @@ def get_wechat_stats_trend(
 
 @router.get("/ranking", response_model=list[ArticleRankItem])
 def get_wechat_article_ranking(
-    category: Optional[str] = Query(default=None),
+    category: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
     community_id: int = Depends(get_current_community),
     user: User = Depends(get_current_user),
@@ -91,8 +90,8 @@ def get_wechat_article_ranking(
 @router.get("/articles/{publish_record_id}/daily", response_model=list[WechatArticleStatOut])
 def get_article_daily_stats(
     publish_record_id: int,
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -169,8 +168,8 @@ def rebuild_aggregates(
         default="daily",
         pattern="^(daily|weekly|monthly|quarterly|semi_annual|annual)$",
     ),
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     community_id: int = Depends(get_current_community),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
