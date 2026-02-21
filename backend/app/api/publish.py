@@ -42,11 +42,15 @@ async def publish_to_wechat(
     content = _get_content_or_404(content_id, db)
     community_id = content.community_id
 
-    # Replace local images with WeChat URLs before conversion
-    markdown_with_wechat_images = await wechat_service._replace_local_images_with_wechat_urls(
-        content.content_markdown, community_id
-    )
-    wechat_html = wechat_service.convert_to_wechat_html(markdown_with_wechat_images)
+    # 优先使用 content_html（如 135 编辑器导入的 HTML），否则从 Markdown 转换
+    if content.content_html and content.content_html.strip():
+        wechat_html = wechat_service.apply_wechat_styles(content.content_html)
+    else:
+        # Replace local images with WeChat URLs before conversion
+        markdown_with_wechat_images = await wechat_service._replace_local_images_with_wechat_urls(
+            content.content_markdown, community_id
+        )
+        wechat_html = wechat_service.convert_to_wechat_html(markdown_with_wechat_images)
 
     # Resolve thumb_media_id: explicit param > auto-upload cover_image
     thumb_media_id = data.thumb_media_id if data and data.thumb_media_id else ""

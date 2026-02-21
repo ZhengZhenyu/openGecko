@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class ContentCreate(BaseModel):
     title: str
     content_markdown: str = ""
+    content_html: str = ""
     source_type: str = "contribution"
     author: str = ""
     tags: list[str] = []

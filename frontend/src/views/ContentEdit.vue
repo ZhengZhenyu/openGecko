@@ -108,11 +108,39 @@
     </el-row>
 
     <el-card style="margin-top: 16px">
+      <template #header>
+        <div class="editor-header">
+          <span class="editor-title">正文内容</span>
+          <div class="editor-mode-toggle">
+            <button
+              class="mode-btn"
+              :class="{ active: editorMode === 'markdown' }"
+              @click="editorMode = 'markdown'"
+            >Markdown</button>
+            <button
+              class="mode-btn"
+              :class="{ active: editorMode === 'html' }"
+              @click="editorMode = 'html'"
+            >HTML（135 等富文本）</button>
+          </div>
+        </div>
+        <p v-if="editorMode === 'html'" class="editor-mode-hint">
+          粘贴从 135 编辑器、飞书、公众号等复制的 HTML 源码，发布微信时将直接使用，无需转换。
+        </p>
+      </template>
       <MdEditorV3
+        v-if="editorMode === 'markdown'"
         v-model="form.content_markdown"
         :preview="true"
         language="zh-CN"
         style="height: 600px"
+      />
+      <textarea
+        v-else
+        v-model="form.content_html"
+        class="html-editor"
+        placeholder="在此粘贴 HTML 源码..."
+        spellcheck="false"
       />
     </el-card>
 
@@ -240,6 +268,7 @@ const availableCommunityUsers = computed(() => {
 const form = ref({
   title: '',
   content_markdown: '',
+  content_html: '',
   source_type: 'contribution',
   author: '',
   category: '',
@@ -248,6 +277,8 @@ const form = ref({
 })
 const tagsInput = ref('')
 const assigneeIds = ref<number[]>([])
+// 编辑器模式：markdown（默认）或 html（135 等富文本粘贴）
+const editorMode = ref<'markdown' | 'html'>('markdown')
 
 onMounted(async () => {
   // Load community members first
@@ -265,11 +296,16 @@ onMounted(async () => {
     form.value = {
       title: data.title,
       content_markdown: data.content_markdown,
+      content_html: data.content_html,
       source_type: data.source_type,
       author: data.author,
       category: data.category,
       tags: data.tags,
       work_status: data.work_status || 'planning',
+    }
+    // 如果已有 HTML 内容则自动切换到 HTML 模式
+    if (data.content_html && data.content_html.trim()) {
+      editorMode.value = 'html'
     }
     tagsInput.value = data.tags.join(', ')
     coverImageUrl.value = data.cover_image || null
@@ -337,6 +373,9 @@ async function handleSave() {
       ...form.value,
       tags: tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean),
       assignee_ids: assigneeIds.value,
+      // HTML 模式下清空 markdown，避免发布时走 markdown 转换路径
+      content_markdown: editorMode.value === 'html' ? '' : form.value.content_markdown,
+      content_html: editorMode.value === 'markdown' ? '' : form.value.content_html,
     }
     if (isNew.value) {
       const created = await createContent(payload)
@@ -624,5 +663,79 @@ async function handleTransferOwnership() {
 :deep(.el-button--default:hover) {
   border-color: #cbd5e1;
   background: #f8fafc;
+}
+
+/* 编辑器模式切换 */
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editor-mode-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.mode-btn {
+  padding: 4px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mode-btn.active {
+  background: #ffffff;
+  color: #0095ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.mode-btn:hover:not(.active) {
+  color: #1e293b;
+}
+
+.editor-mode-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.html-editor {
+  display: block;
+  width: 100%;
+  height: 600px;
+  padding: 16px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  tab-size: 2;
+}
+
+.html-editor:focus {
+  border-color: #0095ff;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 149, 255, 0.08);
 }
 </style>

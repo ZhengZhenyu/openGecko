@@ -120,12 +120,8 @@ class WechatService:
         except httpx.HTTPError as e:
             raise Exception(f"微信API网络错误: {e}") from e
 
-    def convert_to_wechat_html(self, markdown_text: str) -> str:
-        """Convert Markdown to WeChat-compatible HTML with inline styles."""
-        html = markdown.markdown(
-            markdown_text,
-            extensions=_WECHAT_MD_EXTENSIONS,
-        )
+    def apply_wechat_styles(self, html: str) -> str:
+        """Apply WeChat-compatible inline styles to an existing HTML string."""
         soup = BeautifulSoup(html, "html.parser")
 
         for tag_name, style in WECHAT_STYLES.items():
@@ -138,19 +134,24 @@ class WechatService:
         for code_tag in soup.find_all("code"):
             parent = code_tag.parent
             if parent and parent.name == "pre":
-                # Code block
                 parent["style"] = WECHAT_STYLES["code_block"]
                 code_tag["style"] = "background:none;color:inherit;padding:0;font-size:inherit;"
             else:
-                # Inline code
                 code_tag["style"] = WECHAT_STYLES["code_inline"]
 
-        # Remove <pre> inner styling conflicts
         for pre_tag in soup.find_all("pre"):
             if not pre_tag.get("style"):
                 pre_tag["style"] = WECHAT_STYLES["code_block"]
 
         return str(soup)
+
+    def convert_to_wechat_html(self, markdown_text: str) -> str:
+        """Convert Markdown to WeChat-compatible HTML with inline styles."""
+        html = markdown.markdown(
+            markdown_text,
+            extensions=_WECHAT_MD_EXTENSIONS,
+        )
+        return self.apply_wechat_styles(html)
 
     async def _replace_local_images_with_wechat_urls(
         self, markdown_text: str, community_id: int
