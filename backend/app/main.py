@@ -1,20 +1,32 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api import (
+    analytics,
+    auth,
+    channels,
+    committees,
+    communities,
+    community_dashboard,
+    contents,
+    dashboard,
+    meetings,
+    publish,
+    upload,
+)
 from app.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.database import init_db
-from app.api import contents, upload, publish, analytics, auth, communities, committees, channels, meetings, dashboard, community_dashboard
 
 # 初始化日志系统
 setup_logging()
@@ -64,12 +76,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             return obj.decode("utf-8", errors="replace")
         if isinstance(obj, dict):
             return {k: make_serializable(v) for k, v in obj.items()}
-        if isinstance(obj, (list, tuple)):
+        if isinstance(obj, list | tuple):
             return [make_serializable(i) for i in obj]
         if isinstance(obj, Exception):
             return str(obj)
         # 直接类型判断替代 json.dumps try/except，避免每次序列化对象带来开销
-        if isinstance(obj, (str, int, float, bool)) or obj is None:
+        if isinstance(obj, str | int | float | bool) or obj is None:
             return obj
         return str(obj)
 

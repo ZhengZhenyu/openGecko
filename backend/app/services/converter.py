@@ -1,13 +1,9 @@
 import os
 import uuid
-from pathlib import Path
 
+import html2text
 import mammoth
 import markdown
-import html2text
-from pygments.formatters import HtmlFormatter
-from pygments.lexers import get_lexer_by_name, guess_lexer
-from pygments import highlight as pygments_highlight
 
 from app.config import settings
 
@@ -64,5 +60,5 @@ def convert_markdown_to_html(md_text: str) -> str:
 
 def read_markdown_file(file_path: str) -> str:
     """Read a .md file and return its content."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return f.read().strip()

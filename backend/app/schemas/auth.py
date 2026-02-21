@@ -1,10 +1,10 @@
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, EmailStr, Field
 
 if TYPE_CHECKING:
-    from app.schemas.user import UserOut
     from app.schemas.community import CommunityWithRole
+    from app.schemas.user import UserOut
 
 
 class LoginRequest(BaseModel):
@@ -28,7 +28,7 @@ class TokenData(BaseModel):
 class UserInfoResponse(BaseModel):
     """Response containing user info and their communities with roles."""
     user: "UserOut"
-    communities: List["CommunityWithRole"]
+    communities: list["CommunityWithRole"]
 
 
 class InitialSetupRequest(BaseModel):
@@ -36,7 +36,7 @@ class InitialSetupRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
-    full_name: Optional[str] = ""
+    full_name: str | None = ""
 
 
 class PasswordResetRequest(BaseModel):
@@ -59,5 +59,5 @@ class SystemStatusResponse(BaseModel):
 # Avoid circular imports - don't call model_rebuild here
 # It will be called after all schemas are imported in __init__.py
 if not TYPE_CHECKING:
-    from app.schemas.user import UserOut  # noqa: F401
     from app.schemas.community import CommunityWithRole  # noqa: F401
+    from app.schemas.user import UserOut  # noqa: F401

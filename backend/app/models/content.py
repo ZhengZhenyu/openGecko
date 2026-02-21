@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Enum as SAEnum, ForeignKey, Table
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-
 
 # Association table for content collaborators
 content_collaborators = Table(

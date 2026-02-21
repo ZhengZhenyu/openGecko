@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_community, get_current_user, get_community_admin
+from app.core.dependencies import get_community_admin, get_current_community, get_current_user
 from app.core.logging import get_logger
 from app.database import get_db
 from app.models import User
@@ -53,7 +53,7 @@ def get_overview(
         .group_by(PublishRecord.channel)
         .all()
     )
-    channels = {ch: cnt for ch, cnt in channel_counts}
+    channels = dict(channel_counts)
 
     return AnalyticsOverview(
         total_contents=total_contents,

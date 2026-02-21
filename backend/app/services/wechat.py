@@ -47,9 +47,9 @@ class WechatService:
 
     def _load_credentials(self, community_id: int) -> tuple[str, str]:
         """Load WeChat credentials from the database for a given community."""
+        from app.core.security import decrypt_value
         from app.database import SessionLocal
         from app.models.channel import ChannelConfig
-        from app.core.security import decrypt_value
 
         db = SessionLocal()
         try:
@@ -116,9 +116,9 @@ class WechatService:
                 }
                 return self._token_cache[community_id]["token"]
         except httpx.TimeoutException:
-            raise Exception("微信API请求超时，请稍后重试")
+            raise Exception("微信API请求超时，请稍后重试") from None
         except httpx.HTTPError as e:
-            raise Exception(f"微信API网络错误: {e}")
+            raise Exception(f"微信API网络错误: {e}") from e
 
     def convert_to_wechat_html(self, markdown_text: str) -> str:
         """Convert Markdown to WeChat-compatible HTML with inline styles."""
@@ -176,9 +176,9 @@ class WechatService:
 
             # 解析本地路径
             if img_path.startswith('/uploads/'):
-                full_path = Path(settings.UPLOAD_DIR) / img_path.lstrip('/uploads/')
+                full_path = Path(settings.UPLOAD_DIR) / img_path.removeprefix('/uploads/')
             elif img_path.startswith('uploads/'):
-                full_path = Path(settings.UPLOAD_DIR) / img_path.lstrip('uploads/')
+                full_path = Path(settings.UPLOAD_DIR) / img_path.removeprefix('uploads/')
             else:
                 # 尝试相对路径
                 full_path = Path(img_path)
@@ -227,9 +227,9 @@ class WechatService:
 
                 return data["url"]
         except httpx.TimeoutException:
-            raise Exception("微信API请求超时，请稍后重试")
+            raise Exception("微信API请求超时，请稍后重试") from None
         except httpx.HTTPError as e:
-            raise Exception(f"微信API网络错误: {e}")
+            raise Exception(f"微信API网络错误: {e}") from e
 
     async def upload_thumb_media(self, image_path: str, community_id: int) -> str:
         """Upload a permanent thumb image and return media_id for use as cover."""
@@ -254,9 +254,9 @@ class WechatService:
 
                 return data["media_id"]
         except httpx.TimeoutException:
-            raise Exception("微信API请求超时，请稍后重试")
+            raise Exception("微信API请求超时，请稍后重试") from None
         except httpx.HTTPError as e:
-            raise Exception(f"微信API网络错误: {e}")
+            raise Exception(f"微信API网络错误: {e}") from e
 
     async def create_draft(self, title: str, content_html: str, author: str = "", thumb_media_id: str = "", community_id: int = 0) -> dict:
         """Create a draft article in WeChat Official Account."""
@@ -289,9 +289,9 @@ class WechatService:
 
                 return {"media_id": data["media_id"], "status": "draft"}
         except httpx.TimeoutException:
-            raise Exception("微信API请求超时，请稍后重试")
+            raise Exception("微信API请求超时，请稍后重试") from None
         except httpx.HTTPError as e:
-            raise Exception(f"微信API网络错误: {e}")
+            raise Exception(f"微信API网络错误: {e}") from e
 
     async def get_article_stats(self, publish_id: str, community_id: int = 0) -> dict:
         """Get article statistics (limited for subscription accounts)."""

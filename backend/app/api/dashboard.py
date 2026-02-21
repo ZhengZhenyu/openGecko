@@ -1,29 +1,23 @@
 """
 个人工作台 API - 用户视角的统一视图
 """
-from datetime import datetime, timedelta
-from typing import List, Optional
-
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session, subqueryload
 
-from sqlalchemy import func
-
-from app.core.dependencies import get_db, get_current_user, get_current_community, get_current_active_superuser
-from app.models.user import User, community_users
+from app.core.dependencies import get_current_active_superuser, get_current_user, get_db
 from app.models.content import Content, content_assignees
 from app.models.meeting import Meeting, meeting_assignees
+from app.models.user import User
 from app.schemas.dashboard import (
-    DashboardResponse,
     AssignedItem,
-    WorkStatusStats,
-    UpdateWorkStatusRequest,
     ContentByTypeStats,
+    DashboardResponse,
+    UpdateWorkStatusRequest,
     UserWorkloadItem,
     WorkloadOverviewResponse,
+    WorkStatusStats,
 )
 
 router = APIRouter()
@@ -41,7 +35,7 @@ async def get_user_dashboard(
     - 我负责的会议（assigned_meetings）
     - 工作状态统计
     """
-    
+
     # 获取我负责的内容（所有社区）—— subqueryload 预加载 assignees ，避免后续 len() 触发悰性加载
     assigned_contents = (
         db.query(Content)
@@ -63,11 +57,11 @@ async def get_user_dashboard(
         .limit(50)
         .all()
     )
-    
+
     # 统计工作状态
     content_stats = _calculate_work_status_stats(assigned_contents)
     meeting_stats = _calculate_work_status_stats(assigned_meetings)
-    
+
     # 格式化响应数据
     content_items = [
         AssignedItem(
@@ -84,7 +78,7 @@ async def get_user_dashboard(
         )
         for content in assigned_contents
     ]
-    
+
     meeting_items = [
         AssignedItem(
             id=meeting.id,
@@ -100,7 +94,7 @@ async def get_user_dashboard(
         )
         for meeting in assigned_meetings
     ]
-    
+
     return DashboardResponse(
         contents=content_items,
         meetings=meeting_items,
@@ -110,9 +104,9 @@ async def get_user_dashboard(
     )
 
 
-@router.get("/assigned/contents", response_model=List[AssignedItem])
+@router.get("/assigned/contents", response_model=list[AssignedItem])
 async def get_assigned_contents(
-    work_status: Optional[str] = Query(None, description="Filter by work_status"),
+    work_status: str | None = Query(None, description="Filter by work_status"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -122,10 +116,10 @@ async def get_assigned_contents(
         .join(Content.assignees)
         .filter(User.id == current_user.id)
     )
-    
+
     if work_status:
         query = query.filter(Content.work_status == work_status)
-    
+
     contents = (
         query.options(subqueryload(Content.assignees))
         .order_by(Content.updated_at.desc())
@@ -149,9 +143,9 @@ async def get_assigned_contents(
     ]
 
 
-@router.get("/assigned/meetings", response_model=List[AssignedItem])
+@router.get("/assigned/meetings", response_model=list[AssignedItem])
 async def get_assigned_meetings(
-    work_status: Optional[str] = Query(None, description="Filter by work_status"),
+    work_status: str | None = Query(None, description="Filter by work_status"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -161,7 +155,7 @@ async def get_assigned_meetings(
         .join(Meeting.assignees)
         .filter(User.id == current_user.id)
     )
-    
+
     # Map work_status filter to meeting status
     if work_status:
         status_mapping = {
@@ -172,7 +166,7 @@ async def get_assigned_meetings(
         meeting_status = status_mapping.get(work_status)
         if meeting_status:
             query = query.filter(Meeting.status == meeting_status)
-    
+
     meetings = (
         query.options(subqueryload(Meeting.assignees))
         .order_by(Meeting.scheduled_at.desc())
@@ -205,22 +199,22 @@ async def update_content_work_status(
 ):
     """更新内容的工作状态"""
     content = db.query(Content).filter(Content.id == content_id).first()
-    
+
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
-    
+
     # 验证用户权限（责任人或创建者）
     is_assignee = any(assignee.id == current_user.id for assignee in content.assignees)
     is_creator = content.created_by_user_id == current_user.id
-    
+
     if not (is_assignee or is_creator or current_user.is_superuser):
         raise HTTPException(status_code=403, detail="Not authorized to update this content")
-    
+
     old_status = content.work_status
     content.work_status = request.work_status
     db.commit()
     db.refresh(content)
-    
+
     return {
         "id": content.id,
         "work_status": content.work_status,
@@ -238,30 +232,30 @@ async def update_meeting_work_status(
 ):
     """更新会议的工作状态（映射到 meeting.status）"""
     meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
-    
+
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
+
     # 验证用户权限
     is_assignee = any(assignee.id == current_user.id for assignee in meeting.assignees)
     is_creator = meeting.created_by_user_id == current_user.id
-    
+
     if not (is_assignee or is_creator or current_user.is_superuser):
         raise HTTPException(status_code=403, detail="Not authorized to update this meeting")
-    
+
     # Map work_status to meeting status
     status_mapping = {
         'planning': 'scheduled',
         'in_progress': 'in_progress',
         'completed': 'completed'
     }
-    
+
     old_status = meeting.status
     new_status = status_mapping.get(request.work_status, 'scheduled')
     meeting.status = new_status
     db.commit()
     db.refresh(meeting)
-    
+
     return {
         "id": meeting.id,
         "work_status": request.work_status,
@@ -345,17 +339,17 @@ async def get_workload_overview(
 def _calculate_work_status_stats(items) -> WorkStatusStats:
     """计算工作状态统计"""
     stats = {"planning": 0, "in_progress": 0, "completed": 0}
-    
+
     for item in items:
         # For Meeting objects, map status to work_status
         if isinstance(item, Meeting):
             work_status = _map_meeting_status_to_work_status(item.status)
         else:
             work_status = getattr(item, "work_status", "planning")
-        
+
         if work_status in stats:
             stats[work_status] += 1
-    
+
     return WorkStatusStats(**stats)
 
 

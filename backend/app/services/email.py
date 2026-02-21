@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import smtplib
 from dataclasses import dataclass
+from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email import encoders
-import smtplib
-from typing import Iterable
 
 from app.config import settings
 from app.models.community import Community
@@ -70,7 +69,7 @@ class SmtpEmailProvider:
         use_ssl = self._config.port == 465
         # Use username if provided, otherwise use from_email as username
         username = self._config.username.strip() if self._config.username else message.from_email
-        
+
         if use_ssl:
             # Use SMTP_SSL for port 465
             with smtplib.SMTP_SSL(self._config.host, self._config.port, timeout=30) as server:

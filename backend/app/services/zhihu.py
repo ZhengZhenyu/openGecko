@@ -1,7 +1,6 @@
 import markdown
 from bs4 import BeautifulSoup
 
-
 ZHIHU_STYLES = {
     "h1": "font-size:24px;font-weight:bold;margin:20px 0 12px;",
     "h2": "font-size:20px;font-weight:bold;margin:18px 0 10px;",

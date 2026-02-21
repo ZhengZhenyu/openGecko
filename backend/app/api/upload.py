@@ -1,17 +1,16 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.dependencies import get_current_community, get_current_user
 from app.database import get_db
 from app.models.content import Content
+from app.models.user import User
 from app.schemas.content import ContentOut
 from app.services.converter import convert_docx_to_markdown, convert_markdown_to_html, read_markdown_file
-
-from app.core.dependencies import get_current_community, get_current_user
-from app.models.user import User
 
 router = APIRouter()
 

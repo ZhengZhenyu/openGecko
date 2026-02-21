@@ -1,9 +1,8 @@
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_community, get_community_admin, get_current_active_superuser
+from app.core.dependencies import get_current_active_superuser, get_current_community
 from app.core.security import encrypt_value
 from app.database import get_db
 from app.models import User
@@ -40,7 +39,7 @@ def _config_to_out(cfg: ChannelConfig) -> ChannelConfigOut:
     )
 
 
-@router.get("", response_model=List[ChannelConfigOut])
+@router.get("", response_model=list[ChannelConfigOut])
 def list_channels(
     community_id: int = Depends(get_current_community),
     db: Session = Depends(get_db),

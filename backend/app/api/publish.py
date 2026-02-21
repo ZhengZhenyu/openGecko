@@ -1,25 +1,24 @@
+import os
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.dependencies import get_current_community
 from app.database import get_db
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
-from app.core.dependencies import get_current_community
 from app.schemas.publish import (
-    PublishRequest,
-    PublishRecordOut,
-    PublishRecordListOut,
     ChannelPreview,
     CopyContent,
+    PublishRecordListOut,
+    PublishRecordOut,
+    PublishRequest,
 )
-import os
-
-from app.services.wechat import wechat_service
-from app.services.hugo import hugo_service
 from app.services.csdn import csdn_service
+from app.services.hugo import hugo_service
+from app.services.wechat import wechat_service
 from app.services.zhihu import zhihu_service
 
 router = APIRouter()
@@ -52,12 +51,12 @@ async def publish_to_wechat(
     # Resolve thumb_media_id: explicit param > auto-upload cover_image
     thumb_media_id = data.thumb_media_id if data and data.thumb_media_id else ""
     if not thumb_media_id and content.cover_image:
-        cover_path = os.path.join(settings.UPLOAD_DIR, content.cover_image.lstrip("/uploads/"))
+        cover_path = os.path.join(settings.UPLOAD_DIR, content.cover_image.removeprefix("/uploads/"))
         if os.path.isfile(cover_path):
             try:
                 thumb_media_id = await wechat_service.upload_thumb_media(cover_path, community_id)
             except Exception as e:
-                raise HTTPException(502, f"封面图上传失败: {e}")
+                raise HTTPException(502, f"封面图上传失败: {e}") from e
     if not thumb_media_id:
         raise HTTPException(
             400,
@@ -74,7 +73,7 @@ async def publish_to_wechat(
         )
     except ValueError as e:
         # Configuration errors (missing credentials)
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     except Exception as e:
         record = PublishRecord(
             content_id=content_id,
@@ -86,7 +85,7 @@ async def publish_to_wechat(
         db.add(record)
         db.commit()
         db.refresh(record)
-        raise HTTPException(502, f"WeChat API error: {e}")
+        raise HTTPException(502, f"WeChat API error: {e}") from e
 
     record = PublishRecord(
         content_id=content_id,
@@ -119,7 +118,7 @@ def publish_to_hugo(content_id: int, db: Session = Depends(get_db)):
         )
     except ValueError as e:
         # Configuration errors (missing repo path)
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     except Exception as e:
         record = PublishRecord(
             content_id=content_id,
@@ -131,7 +130,7 @@ def publish_to_hugo(content_id: int, db: Session = Depends(get_db)):
         db.add(record)
         db.commit()
         db.refresh(record)
-        raise HTTPException(500, f"Hugo publish error: {e}")
+        raise HTTPException(500, f"Hugo publish error: {e}") from e
 
     record = PublishRecord(
         content_id=content_id,

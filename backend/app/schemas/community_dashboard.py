@@ -5,10 +5,8 @@
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-
 
 # ── 指标卡片 ──────────────────────────────────────────────────────────
 
@@ -51,7 +49,7 @@ class RecentContentItem(BaseModel):
     status: str          # draft / reviewing / approved / published
     work_status: str     # planning / in_progress / completed
     created_at: datetime
-    owner_name: Optional[str] = None
+    owner_name: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -91,23 +89,23 @@ class CommunityDashboardResponse(BaseModel):
     """
     community_id: int
     community_name: str
-    community_logo: Optional[str] = None
+    community_logo: str | None = None
 
     # 指标卡片
     metrics: CommunityMetrics
 
     # 趋势图：近 6 个月按月聚合
-    publish_trend: List[MonthlyTrend] = []
+    publish_trend: list[MonthlyTrend] = []
 
     # 渠道统计
     channel_stats: ChannelStats = ChannelStats()
 
     # 工作队列
-    recent_contents: List[RecentContentItem] = []
-    upcoming_meetings: List[UpcomingMeetingItem] = []
+    recent_contents: list[RecentContentItem] = []
+    upcoming_meetings: list[UpcomingMeetingItem] = []
 
     # 日历事件（近 30 天 + 未来 60 天）
-    calendar_events: List[CalendarEvent] = []
+    calendar_events: list[CalendarEvent] = []
 
 
 # ── 超管社区总览 ────────────────────────────────────────────────────
@@ -117,7 +115,7 @@ class CommunityOverviewItem(BaseModel):
     id: int
     name: str
     slug: str
-    logo_url: Optional[str] = None
+    logo_url: str | None = None
     is_active: bool
     members_count: int = 0
     contents_count: int = 0
@@ -126,7 +124,7 @@ class CommunityOverviewItem(BaseModel):
     committees_count: int = 0
     upcoming_meetings_count: int = 0
     active_channels_count: int = 0
-    last_activity_at: Optional[datetime] = None
+    last_activity_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -136,4 +134,4 @@ class SuperuserOverviewResponse(BaseModel):
     total_communities: int
     total_members: int
     total_contents: int
-    communities: List[CommunityOverviewItem] = []
+    communities: list[CommunityOverviewItem] = []

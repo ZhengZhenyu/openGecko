@@ -1,8 +1,16 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, Date, JSON,
-    ForeignKey, Index, UniqueConstraint,
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 

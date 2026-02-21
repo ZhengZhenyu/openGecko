@@ -2,7 +2,8 @@
 Dashboard (个人工作台) Schemas
 """
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -15,9 +16,9 @@ class AssignedItem(BaseModel):
     status: str  # 原有的状态字段（draft/published 或 scheduled/completed）
     created_at: datetime
     updated_at: datetime
-    scheduled_at: Optional[datetime] = None
+    scheduled_at: datetime | None = None
     assignee_count: int
-    creator_name: Optional[str] = None
+    creator_name: str | None = None
 
 
 class WorkStatusStats(BaseModel):
@@ -29,8 +30,8 @@ class WorkStatusStats(BaseModel):
 
 class DashboardResponse(BaseModel):
     """个人工作台响应"""
-    contents: List[AssignedItem]
-    meetings: List[AssignedItem]
+    contents: list[AssignedItem]
+    meetings: list[AssignedItem]
     content_stats: WorkStatusStats
     meeting_stats: WorkStatusStats
     total_assigned_items: int
@@ -43,7 +44,7 @@ class UpdateWorkStatusRequest(BaseModel):
 
 class AssigneeCreate(BaseModel):
     """添加责任人请求"""
-    user_ids: List[int]
+    user_ids: list[int]
 
 
 class AssigneeResponse(BaseModel):
@@ -66,7 +67,7 @@ class UserWorkloadItem(BaseModel):
     """单个用户的工作量数据"""
     user_id: int
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     content_stats: WorkStatusStats
     meeting_stats: WorkStatusStats
     content_by_type: ContentByTypeStats
@@ -75,4 +76,4 @@ class UserWorkloadItem(BaseModel):
 
 class WorkloadOverviewResponse(BaseModel):
     """工作量总览响应"""
-    users: List[UserWorkloadItem]
+    users: list[UserWorkloadItem]

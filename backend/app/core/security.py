@@ -1,6 +1,4 @@
-import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -35,6 +33,7 @@ def encrypt_value(plain_text: str) -> str:
         return ""
     import base64
     import hashlib
+
     from cryptography.fernet import Fernet
 
     # Derive a Fernet-compatible key from the JWT secret
@@ -49,6 +48,7 @@ def decrypt_value(encrypted_text: str) -> str:
         return ""
     import base64
     import hashlib
+
     from cryptography.fernet import Fernet
 
     key = base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest())
@@ -56,7 +56,7 @@ def decrypt_value(encrypted_text: str) -> str:
     return f.decrypt(encrypted_text.encode()).decode()
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
@@ -68,7 +68,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> dict | None:
     """Decode and verify a JWT access token."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

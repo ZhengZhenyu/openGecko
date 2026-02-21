@@ -1,13 +1,21 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, JSON,
-    ForeignKey, Index, Table, UniqueConstraint,
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-
 
 # Association table for meeting assignees (责任人)
 meeting_assignees = Table(

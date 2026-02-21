@@ -13,10 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.dependencies import get_current_user, get_current_community, get_user_community_role
+from app.core.dependencies import get_current_user, get_user_community_role
 from app.core.logging import get_logger
 from app.database import get_db
-from app.models import User, Community
+from app.models import Community, User
 from app.models.channel import ChannelConfig
 from app.models.committee import Committee
 from app.models.content import Content
@@ -185,7 +185,7 @@ def get_community_dashboard(
         .group_by(PublishRecord.channel)
         .all()
     )
-    ch_dict = {ch: cnt for ch, cnt in channel_rows}
+    ch_dict = dict(channel_rows)
     channel_stats = ChannelStats(
         wechat=ch_dict.get("wechat", 0),
         hugo=ch_dict.get("hugo", 0),

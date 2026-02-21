@@ -1,17 +1,16 @@
-from typing import Optional
 
-from fastapi import Depends, HTTPException, Header, status
-from sqlalchemy.orm import Session
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.database import get_db
-from app.models import User, Community
+from app.models import Community, User
 from app.models.user import community_users
 
 
 async def get_current_user(
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ) -> User:
     """
@@ -60,7 +59,7 @@ async def get_current_user(
 
 
 async def get_current_community(
-    x_community_id: Optional[int] = Header(None),
+    x_community_id: int | None = Header(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> int:
@@ -139,7 +138,7 @@ def get_user_community_role(
     user: User,
     community_id: int,
     db: Session,
-) -> Optional[str]:
+) -> str | None:
     """
     Get user's role in a specific community.
 
@@ -153,7 +152,7 @@ def get_user_community_role(
     """
     if user.is_superuser:
         return "superuser"
-    
+
     # Query the community_users table for the role
     stmt = select(community_users.c.role).where(
         community_users.c.user_id == user.id,
@@ -164,7 +163,7 @@ def get_user_community_role(
 
 
 async def get_community_admin(
-    x_community_id: Optional[int] = Header(None),
+    x_community_id: int | None = Header(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
@@ -189,13 +188,13 @@ async def get_community_admin(
         )
 
     role = get_user_community_role(user, x_community_id, db)
-    
+
     if role not in ["superuser", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Community admin permissions required",
         )
-    
+
     return user
 
 
@@ -224,18 +223,18 @@ def check_content_edit_permission(
     # Superuser can edit anything
     if user.is_superuser:
         return True
-    
+
     # Owner can edit
     if content.owner_id == user.id:
         return True
-    
+
     # Collaborators can edit
     if user in content.collaborators:
         return True
-    
+
     # Community admin can edit
     role = get_user_community_role(user, content.community_id, db)
     if role == "admin":
         return True
-    
+
     return False
