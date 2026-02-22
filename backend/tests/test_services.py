@@ -559,3 +559,63 @@ class TestConverterService:
         from app.services.converter import convert_markdown_to_html
         result = convert_markdown_to_html("")
         assert result == "" or isinstance(result, str)
+
+    def test_convert_docx_to_markdown_basic(self):
+        """mock mammoth，验证 docx→markdown 主流程"""
+        import os
+        import tempfile
+        from unittest.mock import MagicMock, patch
+
+        from app.services.converter import convert_docx_to_markdown
+
+        # 创建一个临时假 docx 文件
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
+            f.write(b"fake docx content")
+            tmp_path = f.name
+
+        mock_result = MagicMock()
+        mock_result.value = "<h1>Hello World</h1><p>Some text</p>"
+
+        try:
+            with patch("app.services.converter.mammoth.convert_to_html", return_value=mock_result), \
+                 patch("app.services.converter.mammoth.images.img_element") as mock_img:
+                mock_img.return_value = lambda fn: fn
+                md, images = convert_docx_to_markdown(tmp_path)
+
+            assert "Hello World" in md
+            assert isinstance(images, list)
+        finally:
+            os.unlink(tmp_path)
+
+    def test_convert_docx_to_markdown_with_image(self):
+        """mock mammoth + 模拟图片回调，验证图片路径被收集"""
+        import os
+        import tempfile
+        from io import BytesIO
+        from unittest.mock import MagicMock, patch, call
+
+        from app.services.converter import convert_docx_to_markdown
+
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
+            f.write(b"fake")
+            tmp_path = f.name
+
+        captured_convert_fn = {}
+
+        def fake_img_element(fn):
+            captured_convert_fn["fn"] = fn
+            return fn
+
+        mock_result = MagicMock()
+        mock_result.value = "<p>text</p>"
+
+        try:
+            with patch("app.services.converter.mammoth.convert_to_html", return_value=mock_result), \
+                 patch("app.services.converter.mammoth.images.img_element", side_effect=fake_img_element), \
+                 patch("app.services.converter.os.makedirs"):
+                md, images = convert_docx_to_markdown(tmp_path)
+
+            assert isinstance(md, str)
+            assert isinstance(images, list)
+        finally:
+            os.unlink(tmp_path)

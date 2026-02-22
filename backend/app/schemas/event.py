@@ -2,7 +2,6 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-
 # ─── Event Template ───────────────────────────────────────────────────────────
 
 class ChecklistTemplateItemCreate(BaseModel):

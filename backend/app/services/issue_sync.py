@@ -4,9 +4,7 @@
 对所有 IssueLink 记录发起 API 请求更新 issue_status 字段。
 """
 
-import asyncio
 import logging
-from typing import Optional
 
 import httpx
 from sqlalchemy.orm import Session
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 GITHUB_API = "https://api.github.com"
 
 
-def _fetch_github_issue_status_sync(repo: str, issue_number: int, token: Optional[str] = None) -> Optional[str]:
+def _fetch_github_issue_status_sync(repo: str, issue_number: int, token: str | None = None) -> str | None:
     """同步方式获取 GitHub Issue 状态（open / closed）。"""
     headers = {"Accept": "application/vnd.github+json"}
     if token:
@@ -37,7 +35,7 @@ def _fetch_github_issue_status_sync(repo: str, issue_number: int, token: Optiona
     return None
 
 
-def run_issue_sync(github_token: Optional[str] = None) -> dict:
+def run_issue_sync(github_token: str | None = None) -> dict:
     """同步入口：遍历所有 IssueLink，刷新 issue_status。
 
     只处理 platform='github' 的记录；其他平台预留扩展。

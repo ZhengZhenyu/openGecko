@@ -6,7 +6,6 @@ from app.database import get_db
 from app.models import User
 from app.models.event import (
     ChecklistItem,
-    ChecklistTemplateItem,
     Event,
     EventAttendee,
     EventPersonnel,
@@ -15,12 +14,10 @@ from app.models.event import (
     FeedbackItem,
     IssueLink,
 )
-from app.models.people import PersonProfile
 from app.schemas.event import (
     ChecklistItemOut,
     ChecklistItemUpdate,
     EventCreate,
-    EventListOut,
     EventOut,
     EventPersonnelCreate,
     EventPersonnelOut,
