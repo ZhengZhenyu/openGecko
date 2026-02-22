@@ -28,6 +28,11 @@ class Community(Base):
         back_populates="communities",
     )
     contents = relationship("Content", back_populates="community", cascade="all, delete-orphan")
+    linked_contents = relationship(
+        "Content",
+        secondary="content_communities",
+        back_populates="communities",
+    )
     channel_configs = relationship("ChannelConfig", back_populates="community", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="community", cascade="all, delete-orphan")
     committees = relationship("Committee", back_populates="community", cascade="all, delete-orphan")

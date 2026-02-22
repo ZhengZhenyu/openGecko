@@ -15,6 +15,8 @@ class ContentCreate(BaseModel):
     scheduled_publish_at: datetime | None = None
     work_status: str = "planning"
     assignee_ids: list[int] = []
+    # 多社区关联：不填则默认使用 X-Community-Id header 对应的社区
+    community_ids: list[int] = []
 
 
 class ContentUpdate(BaseModel):
@@ -29,6 +31,8 @@ class ContentUpdate(BaseModel):
     scheduled_publish_at: datetime | None = None
     work_status: str | None = None
     assignee_ids: list[int] | None = None
+    # 多社区关联：提供则替换全部关联；不提供则不变
+    community_ids: list[int] | None = None
 
 
 class ContentStatusUpdate(BaseModel):
@@ -55,6 +59,8 @@ class ContentOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     assignee_ids: list[int] = []
+    # 多社区关联列表（由 API 层手动填充）
+    community_ids: list[int] = []
 
     model_config = {"from_attributes": True}
 

@@ -1,10 +1,22 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+# Association table for content → community (multi-community support)
+content_communities = Table(
+    "content_communities",
+    Base.metadata,
+    Column("id", Integer, primary_key=True),
+    Column("content_id", Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("community_id", Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("is_primary", Boolean, server_default="1"),
+    Column("linked_at", DateTime, default=datetime.utcnow),
+    Column("linked_by_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+)
 
 # Association table for content collaborators
 content_collaborators = Table(
@@ -64,6 +76,11 @@ class Content(Base):
 
     publish_records = relationship("PublishRecord", back_populates="content", cascade="all, delete-orphan")
     community = relationship("Community", back_populates="contents")
+    communities = relationship(
+        "Community",
+        secondary="content_communities",
+        back_populates="linked_contents",
+    )
     creator = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_contents")
     owner = relationship("User", foreign_keys=[owner_id], back_populates="owned_contents")
     collaborators = relationship(

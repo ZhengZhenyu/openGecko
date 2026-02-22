@@ -162,6 +162,44 @@ def get_user_community_role(
     return result
 
 
+async def get_current_admin_or_superuser(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Dependency to verify user is a platform admin or superuser.
+
+    Checks if the user is a superuser OR has 'admin' role in any community.
+    Used for platform-level management operations (community settings, analytics config, etc.)
+
+    Args:
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        User: The admin/superuser user
+
+    Raises:
+        HTTPException: If user does not have admin or superuser permissions
+    """
+    if current_user.is_superuser:
+        return current_user
+
+    stmt = select(community_users.c.role).where(
+        community_users.c.user_id == current_user.id,
+        community_users.c.role == "admin",
+    ).limit(1)
+    result = db.execute(stmt).scalar()
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="管理员权限不足",
+        )
+
+    return current_user
+
+
 async def get_community_admin(
     x_community_id: int | None = Header(None),
     user: User = Depends(get_current_user),
@@ -169,6 +207,10 @@ async def get_community_admin(
 ) -> User:
     """
     Dependency to verify user is a community admin or superuser.
+
+    Deprecated: Use get_current_admin_or_superuser for platform-level checks,
+    or get_current_user for business operations (committees, meetings, etc.)
+    kept for backward compatibility during the transition period.
 
     Args:
         x_community_id: Community ID from header

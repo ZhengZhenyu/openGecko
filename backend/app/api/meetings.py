@@ -4,7 +4,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.dependencies import get_community_admin, get_current_community
+from app.core.dependencies import get_current_community, get_current_user
 from app.database import get_db
 from app.models import User
 from app.models.committee import Committee, CommitteeMember
@@ -72,7 +72,7 @@ def list_meetings(
 def create_meeting(
     data: MeetingCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -184,7 +184,7 @@ def update_meeting(
     meeting_id: int,
     data: MeetingUpdate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -246,7 +246,7 @@ def update_meeting(
 def delete_meeting(
     meeting_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -276,7 +276,7 @@ def create_reminder(
     meeting_id: int,
     reminder_data: MeetingReminderCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -411,7 +411,7 @@ def add_participant(
     meeting_id: int,
     data: MeetingParticipantCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """手动添加会议与会人。"""
@@ -456,7 +456,7 @@ def delete_participant(
     meeting_id: int,
     participant_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """删除会议与会人。"""
@@ -487,7 +487,7 @@ def delete_participant(
 def import_participants(
     meeting_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """从委员会成员导入会议与会人。"""
@@ -583,7 +583,7 @@ def update_meeting_minutes(
     meeting_id: int,
     minutes_data: dict,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """

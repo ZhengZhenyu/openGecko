@@ -7,8 +7,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
-    get_community_admin,
     get_current_community,
+    get_current_user,
 )
 from app.database import get_db
 from app.models import Committee, CommitteeMember, User
@@ -76,7 +76,7 @@ def list_committees(
 def create_committee(
     data: CommitteeCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """创建委员会（需要社区管理员权限）。"""
@@ -123,7 +123,7 @@ def update_committee(
     committee_id: int,
     data: CommitteeUpdate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """更新委员会信息（需要社区管理员权限）。"""
@@ -142,7 +142,7 @@ def update_committee(
 def delete_committee(
     committee_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """删除委员会（需要社区管理员权限，级联删除成员和会议）。"""
@@ -187,7 +187,7 @@ def add_member(
     committee_id: int,
     data: CommitteeMemberCreate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """添加委员会成员（需要社区管理员权限）。"""
@@ -209,7 +209,7 @@ def add_member(
 def export_members_csv(
     committee_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """导出委员会成员为CSV文件（需要社区管理员权限）。"""
@@ -262,7 +262,7 @@ def import_members_csv(
     committee_id: int,
     file: UploadFile = File(...),
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """从CSV文件批量导入委员会成员（需要社区管理员权限）。
@@ -438,7 +438,7 @@ def update_member(
     member_id: int,
     data: CommitteeMemberUpdate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """更新成员信息（需要社区管理员权限）。"""
@@ -475,7 +475,7 @@ def remove_member(
     committee_id: int,
     member_id: int,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """移除委员会成员（需要社区管理员权限）。"""

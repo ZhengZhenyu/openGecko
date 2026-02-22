@@ -20,44 +20,20 @@
         text-color="#64748b"
         active-text-color="#0095ff"
       >
-        <!-- 社区工作台 - 核心入口 -->
+        <!-- 社区工作台 -->
         <el-menu-item index="/community">
           <el-icon><House /></el-icon>
           <span>社区工作台</span>
         </el-menu-item>
+
+        <!-- 个人工作看板 -->
         <el-menu-item index="/my-work">
           <el-icon><Checked /></el-icon>
-          <span>我的工作</span>
+          <span>个人工作看板</span>
         </el-menu-item>
-        <!-- 内容管理 -->
-        <el-sub-menu index="content">
-          <template #title>
-            <el-icon><Document /></el-icon>
-            <span>内容管理</span>
-          </template>
-          <el-menu-item index="/contents">
-            <el-icon><List /></el-icon>
-            <span>内容列表</span>
-          </el-menu-item>
-          <el-menu-item index="/content-calendar">
-            <el-icon><Calendar /></el-icon>
-            <span>内容日历</span>
-          </el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="publish">
-          <template #title>
-            <el-icon><Promotion /></el-icon>
-            <span>发布管理</span>
-          </template>
-          <el-menu-item index="/publish">
-            <el-icon><Promotion /></el-icon>
-            <span>发布渠道</span>
-          </el-menu-item>
-          <el-menu-item index="/wechat-stats">
-            <el-icon><TrendCharts /></el-icon>
-            <span>微信阅读统计</span>
-          </el-menu-item>
-        </el-sub-menu>
+
+        <el-divider style="margin: 8px 0" />
+
         <!-- 社区治理 -->
         <el-sub-menu index="governance">
           <template #title>
@@ -77,35 +53,83 @@
             <span>会议管理</span>
           </el-menu-item>
         </el-sub-menu>
-        <!-- 社区设置（管理员及超管可见）-->
-        <el-menu-item v-if="isSuperuser || isAdminInCurrentCommunity" index="/community-settings">
-          <el-icon><Setting /></el-icon>
-          <span>社区设置</span>
+
+        <!-- 内容管理 -->
+        <el-sub-menu index="content">
+          <template #title>
+            <el-icon><Document /></el-icon>
+            <span>内容管理</span>
+          </template>
+          <el-menu-item index="/contents">
+            <el-icon><List /></el-icon>
+            <span>内容列表</span>
+          </el-menu-item>
+          <el-menu-item index="/content-calendar">
+            <el-icon><Calendar /></el-icon>
+            <span>内容日历</span>
+          </el-menu-item>
+          <el-menu-item index="/publish">
+            <el-icon><Promotion /></el-icon>
+            <span>发布渠道</span>
+          </el-menu-item>
+          <el-menu-item index="/wechat-stats">
+            <el-icon><TrendCharts /></el-icon>
+            <span>微信阅读统计</span>
+          </el-menu-item>
+        </el-sub-menu>
+
+        <!-- 活动管理（Phase 4a 占位） -->
+        <el-menu-item index="/events">
+          <el-icon><Flag /></el-icon>
+          <span>活动管理</span>
         </el-menu-item>
-        <!-- 超管专属区 -->
-        <template v-if="isSuperuser">
+
+        <!-- 洞察与人脉（Phase 4a/4c 占位） -->
+        <el-sub-menu index="insights">
+          <template #title>
+            <el-icon><Connection /></el-icon>
+            <span>洞察与人脉</span>
+          </template>
+          <el-menu-item index="/people">
+            <el-icon><UserFilled /></el-icon>
+            <span>人脉管理</span>
+          </el-menu-item>
+          <el-menu-item index="/campaigns">
+            <el-icon><MagicStick /></el-icon>
+            <span>运营活动</span>
+          </el-menu-item>
+        </el-sub-menu>
+
+        <!-- 平台管理（管理员及超管可见） -->
+        <template v-if="isSuperuser || isAdminInCurrentCommunity">
           <el-divider style="margin: 8px 0" />
-          <el-menu-item index="/community-overview">
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>社区总览</span>
-          </el-menu-item>
-          <el-menu-item index="/communities">
-            <el-icon><Setting /></el-icon>
-            <span>社区管理</span>
-          </el-menu-item>
-          <el-sub-menu index="people">
+          <el-sub-menu index="platform">
             <template #title>
-              <el-icon><UserFilled /></el-icon>
-              <span>人员管理</span>
+              <el-icon><Tools /></el-icon>
+              <span>平台管理</span>
             </template>
-            <el-menu-item index="/users">
-              <el-icon><User /></el-icon>
-              <span>用户管理</span>
+            <el-menu-item index="/community-settings">
+              <el-icon><Setting /></el-icon>
+              <span>社区设置</span>
             </el-menu-item>
-            <el-menu-item index="/workload">
-              <el-icon><TrendCharts /></el-icon>
-              <span>工作量总览</span>
-            </el-menu-item>
+            <template v-if="isSuperuser">
+              <el-menu-item index="/community-overview">
+                <el-icon><OfficeBuilding /></el-icon>
+                <span>社区总览</span>
+              </el-menu-item>
+              <el-menu-item index="/communities">
+                <el-icon><Setting /></el-icon>
+                <span>社区管理</span>
+              </el-menu-item>
+              <el-menu-item index="/users">
+                <el-icon><User /></el-icon>
+                <span>用户管理</span>
+              </el-menu-item>
+              <el-menu-item index="/workload">
+                <el-icon><TrendCharts /></el-icon>
+                <span>工作量总览</span>
+              </el-menu-item>
+            </template>
           </el-sub-menu>
         </template>
       </el-menu>
@@ -150,9 +174,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  DataAnalysis, Document, Promotion, Setting,
+  Document, Promotion, Setting, Tools,
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar,
-  Calendar, Upload, List, Checked, TrendCharts, House
+  Calendar, List, Checked, TrendCharts, House,
+  Flag, Connection, MagicStick,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useCommunityStore } from './stores/community'
@@ -186,7 +211,7 @@ const showLayout = computed(() => {
 })
 
 // 判断是否显示社区选择下拉框
-// 社区总览、社区管理、用户管理、我的工作页面不显示
+// 社区总览、社区管理、用户管理、我的工作、人脉管理等平台级页面不显示
 const showCommunitySwitcher = computed(() => {
   const hideSwitcherRoutes = [
     'CommunityOverview',
@@ -194,6 +219,7 @@ const showCommunitySwitcher = computed(() => {
     'UserManage',
     'WorkloadOverview',
     'MyWork',
+    'People',
   ]
   return !hideSwitcherRoutes.includes(route.name as string)
 })

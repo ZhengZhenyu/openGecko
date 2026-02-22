@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_community_admin, get_current_community, get_current_user
+from app.core.dependencies import get_current_admin_or_superuser, get_current_community, get_current_user
 from app.core.logging import get_logger
 from app.database import get_db
 from app.models import User
@@ -119,7 +119,7 @@ def update_channel_settings(
     channel: str,
     data: ChannelConfigUpdate,
     community_id: int = Depends(get_current_community),
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_admin_or_superuser),
     db: Session = Depends(get_db),
 ):
     """

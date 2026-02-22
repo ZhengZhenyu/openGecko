@@ -4,8 +4,8 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session, attributes
 
 from app.core.dependencies import (
-    get_community_admin,
     get_current_active_superuser,
+    get_current_admin_or_superuser,
     get_current_user,
     get_user_community_role,
 )
@@ -203,7 +203,7 @@ class CommunityBasicUpdate(BaseModel):
 def update_community_basic(
     community_id: int,
     data: CommunityBasicUpdate,
-    current_user: User = Depends(get_community_admin),
+    current_user: User = Depends(get_current_admin_or_superuser),
     db: Session = Depends(get_db),
 ):
     """
