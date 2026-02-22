@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,17 +32,40 @@ from app.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.database import init_db
+from app.services.issue_sync import run_issue_sync
 
 # 初始化日志系统
 setup_logging()
 logger = get_logger(__name__)
 
 
+_scheduler = BackgroundScheduler()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("openGecko 服务启动", extra={"app": settings.APP_NAME, "debug": settings.DEBUG})
     init_db()
+
+    # 每日 02:00 同步 GitHub Issue 状态（测试环境下跳过）
+    try:
+        _scheduler.add_job(
+            run_issue_sync,
+            trigger="cron",
+            hour=2,
+            minute=0,
+            id="issue_sync",
+            replace_existing=True,
+        )
+        _scheduler.start()
+        logger.info("APScheduler 已启动")
+    except Exception as exc:
+        logger.warning("APScheduler 未启动: %s", exc)
+
     yield
+
+    if _scheduler.running:
+        _scheduler.shutdown(wait=False)
     logger.info("openGecko 服务关闭")
 
 

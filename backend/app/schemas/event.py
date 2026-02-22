@@ -247,3 +247,61 @@ class FeedbackOut(BaseModel):
     issue_links: list[IssueLinkOut] = []
 
     model_config = {"from_attributes": True}
+
+
+# ─── Event Task (甘特图) ──────────────────────────────────────────────────────
+
+class EventTaskCreate(BaseModel):
+    title: str
+    task_type: str = "task"        # task / milestone
+    phase: str = "pre"             # pre / during / post
+    start_date: date | None = None
+    end_date: date | None = None
+    progress: int = 0
+    status: str = "not_started"
+    depends_on: list[int] = []
+    parent_task_id: int | None = None
+    order: int = 0
+
+
+class EventTaskUpdate(BaseModel):
+    title: str | None = None
+    task_type: str | None = None
+    phase: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    progress: int | None = None
+    status: str | None = None
+    depends_on: list[int] | None = None
+    parent_task_id: int | None = None
+    order: int | None = None
+
+
+class EventTaskOut(BaseModel):
+    id: int
+    event_id: int
+    title: str
+    task_type: str
+    phase: str
+    start_date: date | None
+    end_date: date | None
+    progress: int
+    status: str
+    depends_on: list[int]
+    parent_task_id: int | None
+    order: int
+    children: list["EventTaskOut"] = []
+
+    model_config = {"from_attributes": True}
+
+
+EventTaskOut.model_rebuild()
+
+
+class TaskReorder(BaseModel):
+    task_id: int
+    order: int
+
+
+class TaskReorderRequest(BaseModel):
+    tasks: list[TaskReorder]

@@ -10,6 +10,7 @@ from app.models.event import (
     Event,
     EventAttendee,
     EventPersonnel,
+    EventTask,
     EventTemplate,
     FeedbackItem,
     IssueLink,
@@ -24,6 +25,9 @@ from app.schemas.event import (
     EventPersonnelCreate,
     EventPersonnelOut,
     EventStatusUpdate,
+    EventTaskCreate,
+    EventTaskOut,
+    EventTaskUpdate,
     EventUpdate,
     FeedbackCreate,
     FeedbackOut,
@@ -32,6 +36,7 @@ from app.schemas.event import (
     IssueLinkOut,
     PaginatedEvents,
     PersonnelConfirmUpdate,
+    TaskReorderRequest,
 )
 
 router = APIRouter()
@@ -373,3 +378,118 @@ def link_issue(
     db.commit()
     db.refresh(link)
     return link
+
+
+# ─── Event Tasks (甘特图) ──────────────────────────────────────────────────────
+
+def _build_task_tree(tasks: list[EventTask]) -> list[EventTask]:
+    """将平铺任务列表组装为父子树形结构（parent_task_id 分层）。"""
+    task_map = {t.id: t for t in tasks}
+    roots: list[EventTask] = []
+    for task in tasks:
+        task.children = []
+    for task in tasks:
+        if task.parent_task_id and task.parent_task_id in task_map:
+            task_map[task.parent_task_id].children.append(task)
+        else:
+            roots.append(task)
+    return roots
+
+
+@router.get("/{event_id}/tasks", response_model=list[EventTaskOut])
+def list_tasks(
+    event_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    tasks = db.query(EventTask).filter(EventTask.event_id == event_id).order_by(EventTask.order).all()
+    return _build_task_tree(tasks)
+
+
+@router.post("/{event_id}/tasks", response_model=EventTaskOut, status_code=201)
+def create_task(
+    event_id: int,
+    data: EventTaskCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    task = EventTask(event_id=event_id, **data.model_dump())
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    task.children = []
+    return task
+
+
+@router.patch("/{event_id}/tasks/{tid}", response_model=EventTaskOut)
+def update_task(
+    event_id: int,
+    tid: int,
+    data: EventTaskUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task = db.query(EventTask).filter(
+        EventTask.id == tid, EventTask.event_id == event_id
+    ).first()
+    if not task:
+        raise HTTPException(404, "任务不存在")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(task, key, value)
+    db.commit()
+    db.refresh(task)
+    task.children = []
+    return task
+
+
+@router.delete("/{event_id}/tasks/{tid}", status_code=204)
+def delete_task(
+    event_id: int,
+    tid: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task = db.query(EventTask).filter(
+        EventTask.id == tid, EventTask.event_id == event_id
+    ).first()
+    if not task:
+        raise HTTPException(404, "任务不存在")
+    db.delete(task)
+    db.commit()
+
+
+@router.patch("/{event_id}/tasks/reorder", status_code=200)
+def reorder_tasks(
+    event_id: int,
+    data: TaskReorderRequest,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    for item in data.tasks:
+        task = db.query(EventTask).filter(
+            EventTask.id == item.task_id, EventTask.event_id == event_id
+        ).first()
+        if task:
+            task.order = item.order
+    db.commit()
+    return {"ok": True}
