@@ -84,7 +84,7 @@
           <span>活动管理</span>
         </el-menu-item>
 
-        <!-- 洞察与人脉（Phase 4a/4c 占位） -->
+        <!-- 洞察与人脉 -->
         <el-sub-menu index="insights">
           <template #title>
             <el-icon><Connection /></el-icon>
@@ -97,6 +97,10 @@
           <el-menu-item index="/campaigns">
             <el-icon><MagicStick /></el-icon>
             <span>运营活动</span>
+          </el-menu-item>
+          <el-menu-item index="/ecosystem">
+            <el-icon><Share /></el-icon>
+            <span>生态洞察</span>
           </el-menu-item>
         </el-sub-menu>
 
@@ -177,7 +181,7 @@ import {
   Document, Promotion, Setting, Tools,
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar,
   Calendar, List, Checked, TrendCharts, House,
-  Flag, Connection, MagicStick,
+  Flag, Connection, MagicStick, Share,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useCommunityStore } from './stores/community'

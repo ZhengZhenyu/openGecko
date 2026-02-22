@@ -178,17 +178,37 @@ const router = createRouter({
       component: () => import('../views/EventDetail.vue'),
       meta: { requiresAuth: true },
     },
-    // Phase 4a/4c 占位路由
+    // Phase 4a 占位路由 (People)
     {
       path: '/people',
       name: 'People',
       component: () => import('../views/People.vue'),
       meta: { requiresAuth: true },
     },
+    // Phase 4c 运营活动路由
     {
       path: '/campaigns',
       name: 'Campaigns',
       component: () => import('../views/Campaigns.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/campaigns/:id',
+      name: 'CampaignDetail',
+      component: () => import('../views/CampaignDetail.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Phase 4d 生态洞察路由
+    {
+      path: '/ecosystem',
+      name: 'EcosystemList',
+      component: () => import('../views/EcosystemList.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/ecosystem/:id',
+      name: 'EcosystemDetail',
+      component: () => import('../views/EcosystemDetail.vue'),
       meta: { requiresAuth: true },
     },
   ],

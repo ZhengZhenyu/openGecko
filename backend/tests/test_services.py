@@ -619,3 +619,160 @@ class TestConverterService:
             assert isinstance(images, list)
         finally:
             os.unlink(tmp_path)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GitHub Crawler Service Tests
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestGithubCrawlerService:
+    """测试 github_crawler sync_project / sync_all_projects"""
+
+    def _make_project(self, platform="github", org="testorg", repo="testrepo", pid=1):
+        p = MagicMock()
+        p.id = pid
+        p.name = "Test Project"
+        p.platform = platform
+        p.org_name = org
+        p.repo_name = repo
+        p.contributors = []
+        p.last_synced_at = None
+        return p
+
+    def test_skip_non_github_project(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        db = MagicMock()
+        project = self._make_project(platform="gitee")
+        result = sync_project(db, project, token=None)
+        assert result == {"created": 0, "updated": 0, "errors": 0}
+
+    def test_sync_project_api_error(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        db = MagicMock()
+        project = self._make_project()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.get.return_value = mock_response
+
+        with patch("app.services.ecosystem.github_crawler.httpx.Client", return_value=mock_client):
+            result = sync_project(db, project, token=None)
+
+        assert result["errors"] == 1
+
+    def test_sync_project_creates_new_contributor(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        from app.models.ecosystem import EcosystemContributor
+        db = MagicMock()
+        project = self._make_project()
+        project.contributors = []
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"login": "octocat", "avatar_url": "https://github.com/octocat.png", "contributions": 10},
+        ]
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.get.return_value = mock_response
+
+        with patch("app.services.ecosystem.github_crawler.httpx.Client", return_value=mock_client):
+            result = sync_project(db, project, token="test-token")
+
+        assert result["created"] == 1
+        assert result["updated"] == 0
+        assert result["errors"] == 0
+        db.add.assert_called_once()
+        db.commit.assert_called_once()
+
+    def test_sync_project_updates_existing_contributor(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        db = MagicMock()
+        project = self._make_project()
+
+        existing = MagicMock()
+        existing.github_handle = "octocat"
+        existing.commit_count_90d = 5
+        project.contributors = [existing]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"login": "octocat", "avatar_url": "new-avatar", "contributions": 15},
+        ]
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.get.return_value = mock_response
+
+        with patch("app.services.ecosystem.github_crawler.httpx.Client", return_value=mock_client):
+            result = sync_project(db, project)
+
+        assert result["updated"] == 1
+        assert result["created"] == 0
+        assert existing.commit_count_90d == 15
+
+    def test_sync_project_skips_item_without_login(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        db = MagicMock()
+        project = self._make_project()
+        project.contributors = []
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [{"contributions": 5}]  # no login
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.get.return_value = mock_response
+
+        with patch("app.services.ecosystem.github_crawler.httpx.Client", return_value=mock_client):
+            result = sync_project(db, project)
+
+        assert result["created"] == 0
+        assert result["errors"] == 0
+
+    def test_sync_project_exception_handling(self):
+        from app.services.ecosystem.github_crawler import sync_project
+        db = MagicMock()
+        project = self._make_project()
+
+        with patch("app.services.ecosystem.github_crawler.httpx.Client", side_effect=Exception("network error")):
+            result = sync_project(db, project, token=None)
+
+        assert result["errors"] == 1
+
+    def test_sync_all_projects_empty(self):
+        from app.services.ecosystem.github_crawler import sync_all_projects
+        db = MagicMock()
+        db.query.return_value.filter.return_value.all.return_value = []
+        result = sync_all_projects(db)
+        assert result == {"created": 0, "updated": 0, "errors": 0}
+
+    def test_sync_all_projects_aggregates(self):
+        from app.services.ecosystem.github_crawler import sync_all_projects
+        db = MagicMock()
+        p1 = self._make_project(pid=1)
+        p2 = self._make_project(pid=2)
+        db.query.return_value.filter.return_value.all.return_value = [p1, p2]
+
+        with patch("app.services.ecosystem.github_crawler.sync_project") as mock_sync:
+            mock_sync.side_effect = [
+                {"created": 3, "updated": 1, "errors": 0},
+                {"created": 2, "updated": 0, "errors": 1},
+            ]
+            result = sync_all_projects(db, token="tok")
+
+        assert result["created"] == 5
+        assert result["updated"] == 1
+        assert result["errors"] == 1
+

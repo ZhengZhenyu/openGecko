@@ -59,7 +59,7 @@ class Event(Base):
     )
     title = Column(String(300), nullable=False)
     event_type = Column(
-        SAEnum("online", "offline", "hybrid", name="event_type_enum2"),
+        SAEnum("online", "offline", "hybrid", name="event_type_enum"),
         nullable=False,
         default="offline",
     )

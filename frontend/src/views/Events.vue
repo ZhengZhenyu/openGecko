@@ -6,7 +6,7 @@
         <h1 class="page-title">活动管理</h1>
         <p class="page-subtitle">策划、执行和复盘社区活动全流程</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">
+      <el-button type="primary" :disabled="!hasCommunity" @click="openCreateDialog">
         <el-icon><Plus /></el-icon>
         创建活动
       </el-button>
@@ -32,7 +32,8 @@
     <div v-loading="loading" class="events-grid">
       <div v-if="!loading && events.length === 0" class="empty-state">
         <el-icon class="empty-icon"><Flag /></el-icon>
-        <p>暂无活动，点击右上角创建第一个活动</p>
+        <p v-if="!hasCommunity">请先在顶部选择社区</p>
+        <p v-else>暂无活动，点击右上角创建第一个活动</p>
       </div>
       <div
         v-for="event in events"
@@ -105,14 +106,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Flag, Plus, Calendar, Location } from '@element-plus/icons-vue'
 import { listEvents, createEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
+import { useCommunityStore } from '../stores/community'
 
 const router = useRouter()
+const communityStore = useCommunityStore()
+const hasCommunity = computed(() => !!communityStore.currentCommunityId)
 
 const loading = ref(false)
 const creating = ref(false)
@@ -166,6 +170,11 @@ function formatDate(dt: string | null): string {
 }
 
 async function loadEvents() {
+  if (!hasCommunity.value) {
+    events.value = []
+    total.value = 0
+    return
+  }
   loading.value = true
   try {
     const data = await listEvents({
@@ -177,7 +186,7 @@ async function loadEvents() {
     events.value = data.items
     total.value = data.total
   } catch {
-    ElMessage.error('加载活动列表失败')
+    // 错误已由 API 拦截器统一展示，此处仅做状态兜底
   } finally {
     loading.value = false
   }

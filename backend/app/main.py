@@ -14,12 +14,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api import (
     analytics,
     auth,
+    campaigns,
     channels,
     committees,
     communities,
     community_dashboard,
     contents,
     dashboard,
+    ecosystem,
     event_templates,
     events,
     meetings,
@@ -175,6 +177,8 @@ app.include_router(wechat_stats.router, prefix="/api/wechat-stats", tags=["WeCha
 app.include_router(people.router, prefix="/api/people", tags=["People"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
+app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
+app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
 
 
 @app.get("/api/health")
