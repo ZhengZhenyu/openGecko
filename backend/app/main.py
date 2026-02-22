@@ -19,7 +19,10 @@ from app.api import (
     community_dashboard,
     contents,
     dashboard,
+    event_templates,
+    events,
     meetings,
+    people,
     publish,
     upload,
     wechat_stats,
@@ -145,6 +148,9 @@ app.include_router(committees.router, prefix="/api/committees", tags=["Governanc
 app.include_router(meetings.router, prefix="/api/meetings", tags=["Governance"])
 app.include_router(community_dashboard.router, prefix="/api/communities", tags=["Community Dashboard"])
 app.include_router(wechat_stats.router, prefix="/api/wechat-stats", tags=["WeChat Statistics"])
+app.include_router(people.router, prefix="/api/people", tags=["People"])
+app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
 
 
 @app.get("/api/health")

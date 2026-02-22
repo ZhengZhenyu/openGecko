@@ -95,5 +95,11 @@ class CommitteeMember(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # 关联人脉档案（可为空，表示尚未与 PersonProfile 匹配）
+    person_id = Column(
+        Integer, ForeignKey("person_profiles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     # Relationships
     committee = relationship("Committee", back_populates="members")
+    person = relationship("PersonProfile", foreign_keys=[person_id])

@@ -3,8 +3,20 @@ from app.models.channel import ChannelConfig
 from app.models.committee import Committee, CommitteeMember
 from app.models.community import Community
 from app.models.content import Content
+from app.models.event import (
+    ChecklistItem,
+    ChecklistTemplateItem,
+    Event,
+    EventAttendee,
+    EventPersonnel,
+    EventTask,
+    EventTemplate,
+    FeedbackItem,
+    IssueLink,
+)
 from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
 from app.models.password_reset import PasswordResetToken
+from app.models.people import CommunityRole, PersonProfile
 from app.models.publish_record import PublishRecord
 from app.models.user import User, community_users
 from app.models.wechat_stats import WechatArticleStat, WechatStatsAggregate
@@ -25,4 +37,15 @@ __all__ = [
     "MeetingParticipant",
     "WechatArticleStat",
     "WechatStatsAggregate",
+    "PersonProfile",
+    "CommunityRole",
+    "Event",
+    "EventTemplate",
+    "ChecklistTemplateItem",
+    "ChecklistItem",
+    "EventPersonnel",
+    "EventAttendee",
+    "EventTask",
+    "FeedbackItem",
+    "IssueLink",
 ]

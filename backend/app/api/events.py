@@ -1,0 +1,375 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_community, get_current_user
+from app.database import get_db
+from app.models import User
+from app.models.event import (
+    ChecklistItem,
+    ChecklistTemplateItem,
+    Event,
+    EventAttendee,
+    EventPersonnel,
+    EventTemplate,
+    FeedbackItem,
+    IssueLink,
+)
+from app.models.people import PersonProfile
+from app.schemas.event import (
+    ChecklistItemOut,
+    ChecklistItemUpdate,
+    EventCreate,
+    EventListOut,
+    EventOut,
+    EventPersonnelCreate,
+    EventPersonnelOut,
+    EventStatusUpdate,
+    EventUpdate,
+    FeedbackCreate,
+    FeedbackOut,
+    FeedbackStatusUpdate,
+    IssueLinkCreate,
+    IssueLinkOut,
+    PaginatedEvents,
+    PersonnelConfirmUpdate,
+)
+
+router = APIRouter()
+
+VALID_EVENT_STATUSES = {"draft", "planning", "ongoing", "completed", "cancelled"}
+VALID_EVENT_TYPES = {"online", "offline", "hybrid"}
+
+
+# ─── Event CRUD ───────────────────────────────────────────────────────────────
+
+@router.get("", response_model=PaginatedEvents)
+def list_events(
+    status: str | None = None,
+    event_type: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Event).filter(Event.community_id == community_id)
+    if status:
+        query = query.filter(Event.status == status)
+    if event_type:
+        query = query.filter(Event.event_type == event_type)
+    total = query.count()
+    items = query.order_by(Event.planned_at.desc().nullslast()).offset((page - 1) * page_size).limit(page_size).all()
+    return PaginatedEvents(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.post("", response_model=EventOut, status_code=201)
+def create_event(
+    data: EventCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if data.event_type not in VALID_EVENT_TYPES:
+        raise HTTPException(400, f"event_type 必须为 {VALID_EVENT_TYPES}")
+
+    event = Event(
+        community_id=community_id,
+        owner_id=current_user.id,
+        **data.model_dump(),
+    )
+    db.add(event)
+    db.flush()
+
+    # 如果指定了模板，从模板复制 checklist
+    if data.template_id:
+        template = db.query(EventTemplate).filter(EventTemplate.id == data.template_id).first()
+        if template:
+            for titem in template.checklist_items:
+                db.add(ChecklistItem(
+                    event_id=event.id,
+                    phase=titem.phase,
+                    title=titem.title,
+                    order=titem.order,
+                ))
+
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.get("/{event_id}", response_model=EventOut)
+def get_event(
+    event_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    return event
+
+
+@router.patch("/{event_id}", response_model=EventOut)
+def update_event(
+    event_id: int,
+    data: EventUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(event, key, value)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.patch("/{event_id}/status", response_model=EventOut)
+def update_event_status(
+    event_id: int,
+    data: EventStatusUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if data.status not in VALID_EVENT_STATUSES:
+        raise HTTPException(400, f"status 必须为 {VALID_EVENT_STATUSES}")
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    event.status = data.status
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+# ─── Checklist ────────────────────────────────────────────────────────────────
+
+@router.get("/{event_id}/checklist", response_model=list[ChecklistItemOut])
+def get_checklist(
+    event_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    return sorted(event.checklist_items, key=lambda x: (x.phase, x.order))
+
+
+@router.patch("/{event_id}/checklist/{item_id}", response_model=ChecklistItemOut)
+def update_checklist_item(
+    event_id: int,
+    item_id: int,
+    data: ChecklistItemUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(ChecklistItem).filter(
+        ChecklistItem.id == item_id, ChecklistItem.event_id == event_id
+    ).first()
+    if not item:
+        raise HTTPException(404, "检查项不存在")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+# ─── Personnel ────────────────────────────────────────────────────────────────
+
+@router.get("/{event_id}/personnel", response_model=list[EventPersonnelOut])
+def list_personnel(
+    event_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    return sorted(event.personnel, key=lambda x: x.order)
+
+
+@router.post("/{event_id}/personnel", response_model=EventPersonnelOut, status_code=201)
+def add_personnel(
+    event_id: int,
+    data: EventPersonnelCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    person = EventPersonnel(event_id=event_id, **data.model_dump())
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+    return person
+
+
+@router.patch("/{event_id}/personnel/{pid}/confirm", response_model=EventPersonnelOut)
+def confirm_personnel(
+    event_id: int,
+    pid: int,
+    data: PersonnelConfirmUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    person = db.query(EventPersonnel).filter(
+        EventPersonnel.id == pid, EventPersonnel.event_id == event_id
+    ).first()
+    if not person:
+        raise HTTPException(404, "人员记录不存在")
+    person.confirmed = data.confirmed
+    db.commit()
+    db.refresh(person)
+    return person
+
+
+# ─── Attendees Import ─────────────────────────────────────────────────────────
+
+@router.post("/{event_id}/attendees/import", status_code=200)
+def import_attendees(
+    event_id: int,
+    rows: list[dict],
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """批量导入签到名单。每行需包含 person_id 字段（已确认匹配的 PersonProfile ID）。"""
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+
+    created = 0
+    skipped = 0
+    for row in rows:
+        person_id = row.get("person_id")
+        if not person_id:
+            skipped += 1
+            continue
+        existing = db.query(EventAttendee).filter(
+            EventAttendee.event_id == event_id,
+            EventAttendee.person_id == person_id,
+        ).first()
+        if existing:
+            skipped += 1
+            continue
+        db.add(EventAttendee(
+            event_id=event_id,
+            person_id=person_id,
+            checked_in=row.get("checked_in", False),
+            role_at_event=row.get("role_at_event"),
+            source="excel_import",
+        ))
+        created += 1
+
+    db.commit()
+    return {"created": created, "skipped": skipped}
+
+
+# ─── Feedback ─────────────────────────────────────────────────────────────────
+
+@router.get("/{event_id}/feedback", response_model=list[FeedbackOut])
+def list_feedback(
+    event_id: int,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    return event.feedback_items
+
+
+@router.post("/{event_id}/feedback", response_model=FeedbackOut, status_code=201)
+def create_feedback(
+    event_id: int,
+    data: FeedbackCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(
+        Event.id == event_id, Event.community_id == community_id
+    ).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    feedback = FeedbackItem(event_id=event_id, **data.model_dump())
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+    return feedback
+
+
+@router.patch("/{event_id}/feedback/{fid}", response_model=FeedbackOut)
+def update_feedback(
+    event_id: int,
+    fid: int,
+    data: FeedbackStatusUpdate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = db.query(FeedbackItem).filter(
+        FeedbackItem.id == fid, FeedbackItem.event_id == event_id
+    ).first()
+    if not feedback:
+        raise HTTPException(404, "反馈记录不存在")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(feedback, key, value)
+    db.commit()
+    db.refresh(feedback)
+    return feedback
+
+
+@router.post("/{event_id}/feedback/{fid}/links", response_model=IssueLinkOut, status_code=201)
+def link_issue(
+    event_id: int,
+    fid: int,
+    data: IssueLinkCreate,
+    community_id: int = Depends(get_current_community),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = db.query(FeedbackItem).filter(
+        FeedbackItem.id == fid, FeedbackItem.event_id == event_id
+    ).first()
+    if not feedback:
+        raise HTTPException(404, "反馈记录不存在")
+    link = IssueLink(
+        feedback_id=fid,
+        linked_by_id=current_user.id,
+        **data.model_dump(),
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
