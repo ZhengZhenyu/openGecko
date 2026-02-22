@@ -1,11 +1,14 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import insert, or_
+from sqlalchemy import select as sa_select
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import check_content_edit_permission, get_current_community, get_current_user
 from app.database import get_db
 from app.models import Content, User
+from app.models.content import content_communities
 from app.schemas.content import (
     ContentCalendarOut,
     ContentCreate,
@@ -23,6 +26,46 @@ VALID_STATUSES = {"draft", "reviewing", "approved", "published"}
 VALID_SOURCE_TYPES = {"contribution", "release_note", "event_summary"}
 
 
+def _build_community_filter(community_id: int):
+    """返回社区内容过滤条件（OR 逻辑，兼容遷移期间）。
+
+    同时匹配：
+    1. 已写入 content_communities 的多社区关联记录
+    2. 仍使用旧 community_id 列的内容（过渡兼容）
+    """
+    linked_subq = sa_select(content_communities.c.content_id).where(
+        content_communities.c.community_id == community_id
+    )
+    return or_(
+        Content.id.in_(linked_subq),
+        Content.community_id == community_id,
+    )
+
+
+def _get_content_community_ids(db: Session, content_id: int) -> list[int]:
+    """获取内容关联的所有社区 ID 列表。"""
+    rows = db.query(content_communities.c.community_id).filter(
+        content_communities.c.content_id == content_id
+    ).all()
+    return [r[0] for r in rows]
+
+
+def _write_content_communities(db: Session, content_id: int, community_ids: list[int], linked_by_id: int | None) -> None:
+    """向 content_communities 写入关联行（幂等，已存在则跳过）。"""
+    existing = {r[0] for r in db.query(content_communities.c.community_id).filter(
+        content_communities.c.content_id == content_id
+    ).all()}
+    is_first = len(existing) == 0
+    for i, cid in enumerate(community_ids):
+        if cid not in existing:
+            db.execute(insert(content_communities).values(
+                content_id=content_id,
+                community_id=cid,
+                is_primary=(is_first and i == 0),
+                linked_by_id=linked_by_id,
+            ))
+
+
 @router.get("", response_model=PaginatedContents)
 def list_contents(
     page: int = Query(1, ge=1),
@@ -34,8 +77,8 @@ def list_contents(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Filter by community
-    query = db.query(Content).filter(Content.community_id == community_id)
+    # 通过 content_communities 关联表过滤（兼容遷移期间的 community_id 列）
+    query = db.query(Content).filter(_build_community_filter(community_id))
 
     if status:
         query = query.filter(Content.status == status)
@@ -77,6 +120,10 @@ def create_content(
     db.add(content)
     db.flush()  # Get content ID
 
+    # 写入多社区关联（未指定则关联当前社区）
+    target_community_ids = data.community_ids if data.community_ids else [community_id]
+    _write_content_communities(db, content.id, target_community_ids, current_user.id)
+
     # Assign assignees (default to creator if empty) — batch query to avoid N+1
     assignee_ids = data.assignee_ids if data.assignee_ids else [current_user.id]
     assignee_users = db.query(User).filter(User.id.in_(assignee_ids)).all()
@@ -85,7 +132,12 @@ def create_content(
 
     db.commit()
     db.refresh(content)
-    return content
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content.id),
+    }
+    return content_dict
 
 
 @router.get("/{content_id}", response_model=ContentOut)
@@ -97,15 +149,15 @@ def get_content(
 ):
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
 
-    # Build response dict with assignee_ids
     content_dict = {
         **{c.name: getattr(content, c.name) for c in content.__table__.columns},
-        "assignee_ids": [a.id for a in content.assignees]
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content_id),
     }
     return content_dict
 
@@ -120,7 +172,7 @@ def update_content(
 ):
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -131,11 +183,30 @@ def update_content(
 
     update_data = data.model_dump(exclude_unset=True)
 
+    # Handle community_ids update (replace all associations for this content)
+    if "community_ids" in update_data:
+        new_community_ids = update_data.pop("community_ids")
+        if new_community_ids is not None:
+            db.execute(
+                content_communities.delete().where(
+                    content_communities.c.content_id == content_id
+                )
+            )
+            for i, cid in enumerate(new_community_ids):
+                db.execute(insert(content_communities).values(
+                    content_id=content_id,
+                    community_id=cid,
+                    is_primary=(i == 0),
+                    linked_by_id=current_user.id,
+                ))
+            # 同步更新 community_id 为主社区（过渡兼容）
+            if new_community_ids:
+                content.community_id = new_community_ids[0]
+
     # Handle assignees update
     if "assignee_ids" in update_data:
         assignee_ids = update_data.pop("assignee_ids")
         content.assignees.clear()
-        # Batch query to avoid N+1 when updating assignees
         if assignee_ids:
             assignee_users = db.query(User).filter(User.id.in_(assignee_ids)).all()
             for user in assignee_users:
@@ -147,7 +218,12 @@ def update_content(
         setattr(content, key, value)
     db.commit()
     db.refresh(content)
-    return content
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content_id),
+    }
+    return content_dict
 
 
 @router.delete("/{content_id}", status_code=204)
@@ -159,7 +235,7 @@ def delete_content(
 ):
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -184,7 +260,7 @@ def update_content_status(
         raise HTTPException(400, f"Invalid status, must be one of {VALID_STATUSES}")
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -196,7 +272,12 @@ def update_content_status(
     content.status = data.status
     db.commit()
     db.refresh(content)
-    return content
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content_id),
+    }
+    return content_dict
 
 
 # Collaborators Management Endpoints
@@ -213,7 +294,7 @@ def list_collaborators(
     """
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -242,7 +323,7 @@ def add_collaborator(
     """
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -283,7 +364,7 @@ def remove_collaborator(
     """
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -317,7 +398,7 @@ def transfer_ownership(
     """
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -338,7 +419,12 @@ def transfer_ownership(
     db.commit()
     db.refresh(content)
 
-    return content
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content_id),
+    }
+    return content_dict
 
 
 # ==================== Calendar API Endpoints ====================
@@ -364,7 +450,7 @@ def list_calendar_events(
     except ValueError:
         raise HTTPException(400, "Invalid date format. Use ISO format (e.g. 2026-02-01)") from None
 
-    query = db.query(Content).filter(Content.community_id == community_id)
+    query = db.query(Content).filter(_build_community_filter(community_id))
 
     if status:
         query = query.filter(Content.status == status)
@@ -405,7 +491,7 @@ def update_content_schedule(
     """
     content = db.query(Content).filter(
         Content.id == content_id,
-        Content.community_id == community_id,
+        _build_community_filter(community_id),
     ).first()
     if not content:
         raise HTTPException(404, "Content not found")
@@ -417,4 +503,9 @@ def update_content_schedule(
     content.scheduled_publish_at = data.scheduled_publish_at
     db.commit()
     db.refresh(content)
-    return content
+    content_dict = {
+        **{c.name: getattr(content, c.name) for c in content.__table__.columns},
+        "assignee_ids": [a.id for a in content.assignees],
+        "community_ids": _get_content_community_ids(db, content_id),
+    }
+    return content_dict
