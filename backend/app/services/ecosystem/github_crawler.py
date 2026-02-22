@@ -6,7 +6,6 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 import httpx
 from sqlalchemy.orm import Session
@@ -18,14 +17,14 @@ logger = logging.getLogger(__name__)
 GITHUB_API = "https://api.github.com"
 
 
-def _build_headers(token: Optional[str]) -> dict:
+def _build_headers(token: str | None) -> dict:
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
 
-def sync_project(db: Session, project: EcosystemProject, token: Optional[str] = None) -> dict:
+def sync_project(db: Session, project: EcosystemProject, token: str | None = None) -> dict:
     """同步单个项目的贡献者数据。
 
     返回 {"created": int, "updated": int, "errors": int}。
@@ -79,7 +78,7 @@ def sync_project(db: Session, project: EcosystemProject, token: Optional[str] = 
     return {"created": created, "updated": updated, "errors": errors}
 
 
-def sync_all_projects(db: Session, token: Optional[str] = None) -> dict:
+def sync_all_projects(db: Session, token: str | None = None) -> dict:
     """同步所有活跃项目（APScheduler 定时调用）。"""
     projects = db.query(EcosystemProject).filter(EcosystemProject.is_active == True).all()  # noqa: E712
     total_created = total_updated = total_errors = 0

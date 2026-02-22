@@ -20,14 +20,21 @@ def upgrade() -> None:
             sa.Column(
                 "community_id",
                 sa.Integer,
-                sa.ForeignKey("communities.id", ondelete="CASCADE"),
                 nullable=True,   # 已有数据兼容；新记录由 API 层强制填写
             )
         )
         batch_op.create_index("ix_ecosystem_projects_community_id", ["community_id"])
+        batch_op.create_foreign_key(
+            "fk_ecosystem_projects_community_id",
+            "communities",
+            ["community_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
 
 
 def downgrade() -> None:
     with op.batch_alter_table("ecosystem_projects") as batch_op:
+        batch_op.drop_constraint("fk_ecosystem_projects_community_id", type_="foreignkey")
         batch_op.drop_index("ix_ecosystem_projects_community_id")
         batch_op.drop_column("community_id")
