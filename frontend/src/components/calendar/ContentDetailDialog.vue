@@ -4,8 +4,8 @@
     :title="event?.title || '内容详情'"
     width="480px"
     class="event-detail-dialog"
-    @close="$emit('close')"
-    @update:model-value="$emit('update:visible', $event)"
+    @close="emit('close')"
+    @update:model-value="handleUpdateVisible"
   >
     <div v-if="event" class="event-detail">
       <div class="detail-row">
@@ -54,20 +54,23 @@
 </template>
 
 <script setup lang="ts">
-import type { EventInput } from '@fullcalendar/core'
-
 interface Props {
   visible: boolean
   event: EventInputEvent | null
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
   close: []
   'remove-schedule': []
   'edit-content': []
 }>()
+
+function handleUpdateVisible(value: boolean) {
+  emit('update:visible', value)
+}
 
 interface EventInputEvent {
   id: string
