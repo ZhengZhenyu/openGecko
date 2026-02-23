@@ -42,49 +42,12 @@
     <!-- 日历主体 -->
     <div v-else class="calendar-wrapper">
       <!-- 左侧未排期内容面板 -->
-      <div
+      <UnscheduledPanel
         ref="unscheduledPanelRef"
-        class="section-card unscheduled-panel"
-        :class="{ collapsed: panelCollapsed, 'drop-target-active': isDraggingOverPanel }"
-        @dragover.prevent="isDraggingOverPanel = true"
-        @dragleave="isDraggingOverPanel = false"
-        @drop="isDraggingOverPanel = false"
-      >
-        <div class="panel-header" @click="panelCollapsed = !panelCollapsed">
-          <span v-if="!panelCollapsed">
-            <el-icon><Collection /></el-icon>
-            未排期内容
-          </span>
-          <el-icon :class="{ rotate: panelCollapsed }">
-            <ArrowLeft />
-          </el-icon>
-        </div>
-        <div v-if="!panelCollapsed" ref="unscheduledContainerRef" class="panel-body">
-          <div
-            v-for="item in unscheduledEvents"
-            :key="item.id"
-            class="unscheduled-item"
-            :class="'status-' + item.status"
-            :data-event="JSON.stringify({ id: item.id, title: item.title, status: item.status, source_type: item.source_type, author: item.author, category: item.category })"
-          >
-            <div class="item-dot" :style="{ backgroundColor: getStatusColor(item.status) }" />
-            <div class="item-info">
-              <div class="item-title">{{ item.title }}</div>
-              <div class="item-meta">
-                <el-tag :type="getStatusTagType(item.status)" size="small" effect="plain">
-                  {{ getStatusLabel(item.status) }}
-                </el-tag>
-                <span class="item-author">{{ item.author }}</span>
-              </div>
-            </div>
-          </div>
-          <el-empty
-            v-if="unscheduledEvents.length === 0"
-            description="暂无未排期内容"
-            :image-size="60"
-          />
-        </div>
-      </div>
+        :events="unscheduledEvents"
+        :collapsed="panelCollapsed"
+        @toggle="panelCollapsed = !panelCollapsed"
+      />
 
       <!-- FullCalendar -->
       <div class="section-card calendar-main">
@@ -93,103 +56,23 @@
     </div>
 
     <!-- 内容详情弹窗 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      :title="selectedEvent?.title || '内容详情'"
-      width="480px"
-      class="event-detail-dialog"
-    >
-      <div v-if="selectedEvent" class="event-detail">
-        <div class="detail-row">
-          <span class="detail-label">标题</span>
-          <span class="detail-value">{{ selectedEvent.title }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">状态</span>
-          <el-tag :type="getStatusTagType(selectedEvent.extendedProps.status)" size="small">
-            {{ getStatusLabel(selectedEvent.extendedProps.status) }}
-          </el-tag>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">来源类型</span>
-          <span class="detail-value">{{ getSourceTypeLabel(selectedEvent.extendedProps.source_type) }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">作者</span>
-          <span class="detail-value">{{ selectedEvent.extendedProps.author || '未设置' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">分类</span>
-          <span class="detail-value">{{ selectedEvent.extendedProps.category || '未设置' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">排期时间</span>
-          <span class="detail-value">
-            {{ selectedEvent.start ? formatDate(selectedEvent.start) : '未排期' }}
-          </span>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
-        <el-button
-          type="danger"
-          plain
-          @click="handleRemoveSchedule"
-        >
-          取消排期
-        </el-button>
-        <el-button type="primary" @click="handleEditContent">
-          编辑内容
-        </el-button>
-      </template>
-    </el-dialog>
+    <ContentDetailDialog
+      v-model:visible="detailDialogVisible"
+      :event="selectedEvent"
+      @close="detailDialogVisible = false"
+      @remove-schedule="handleRemoveSchedule"
+      @edit-content="handleEditContent"
+    />
 
-    <!-- 快速创建弹窗 -->
-    <el-dialog
-      v-model="createDialogVisible"
-      title="快速创建内容"
-      width="500px"
-    >
-      <el-form :model="createForm" label-width="80px">
-        <el-form-item label="标题" required>
-          <el-input v-model="createForm.title" placeholder="输入内容标题" />
-        </el-form-item>
-        <el-form-item label="来源类型">
-          <el-select v-model="createForm.source_type" style="width: 100%">
-            <el-option label="投稿" value="contribution" />
-            <el-option label="发行说明" value="release_note" />
-            <el-option label="活动总结" value="event_summary" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="作者">
-          <el-input v-model="createForm.author" placeholder="输入作者" />
-        </el-form-item>
-        <el-form-item label="排期时间">
-          <el-date-picker
-            v-model="createForm.scheduled_publish_at"
-            type="datetime"
-            placeholder="选择发布时间"
-            style="width: 100%"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DDTHH:mm:ss"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleConfirmCreate">
-          创建
-        </el-button>
-      </template>
-    </el-dialog>
+ 顶
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Collection, ArrowLeft } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -200,34 +83,25 @@ import { useCommunityStore } from '../stores/community'
 import {
   fetchCalendarEvents,
   updateContentSchedule,
-  createContent,
   type ContentCalendarItem,
 } from '../api/content'
+import UnscheduledPanel from '../components/calendar/UnscheduledPanel.vue'
+import ContentDetailDialog from '../components/calendar/ContentDetailDialog.vue'
 
 const router = useRouter()
 const communityStore = useCommunityStore()
 
 const calendarRef = ref()
-const unscheduledContainerRef = ref<HTMLElement>()
-const unscheduledPanelRef = ref<HTMLElement>()
+const unscheduledPanelRef = ref<any>()
 const isDraggingOverPanel = ref(false)
 let draggableInstance: InstanceType<typeof Draggable> | null = null
 const statusFilter = ref('')
 const panelCollapsed = ref(false)
 const loading = ref(false)
-const creating = ref(false)
 const detailDialogVisible = ref(false)
-const createDialogVisible = ref(false)
 const selectedEvent = ref<any>(null)
 const calendarEvents = ref<ContentCalendarItem[]>([])
 const unscheduledEvents = ref<ContentCalendarItem[]>([])
-
-const createForm = reactive({
-  title: '',
-  source_type: 'contribution',
-  author: '',
-  scheduled_publish_at: null as string | null,
-})
 
 const eventCount = computed(() => calendarEvents.value.length + unscheduledEvents.value.length)
 
@@ -252,50 +126,8 @@ function getStatusPastel(status: string): string {
   return STATUS_PASTELS[status] || '#f1f5f9'
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: '草稿',
-  reviewing: '审核中',
-  approved: '已通过',
-  published: '已发布',
-}
-
-const SOURCE_TYPE_LABELS: Record<string, string> = {
-  contribution: '投稿',
-  release_note: '发行说明',
-  event_summary: '活动总结',
-}
-
 function getStatusColor(status: string): string {
   return STATUS_COLORS[status] || '#909399'
-}
-
-function getStatusLabel(status: string): string {
-  return STATUS_LABELS[status] || status
-}
-
-function getStatusTagType(status: string): 'info' | 'warning' | '' | 'success' | 'danger' {
-  const map: Record<string, 'info' | 'warning' | '' | 'success' | 'danger'> = {
-    draft: 'info',
-    reviewing: 'warning',
-    approved: '',
-    published: 'success',
-  }
-  return map[status] || 'info'
-}
-
-function getSourceTypeLabel(type: string): string {
-  return SOURCE_TYPE_LABELS[type] || type
-}
-
-function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 /**
@@ -433,7 +265,7 @@ async function handleEventDrop(info: EventDropArg) {
 
 async function handleEventDragStop(info: any) {
   // 检测事件是否被拖到了未排期面板区域
-  const panelEl = unscheduledPanelRef.value
+  const panelEl = unscheduledPanelRef.value?.panelRef?.value
   if (!panelEl) return
 
   const rect = panelEl.getBoundingClientRect()
@@ -466,11 +298,7 @@ function handleEventClick(info: EventClickArg) {
 }
 
 function handleDateSelect(info: DateSelectArg) {
-  createForm.title = ''
-  createForm.source_type = 'contribution'
-  createForm.author = ''
-  createForm.scheduled_publish_at = info.startStr
-  createDialogVisible.value = true
+  router.push('/contents/new')
 }
 
 function initDraggable() {
@@ -478,8 +306,9 @@ function initDraggable() {
     draggableInstance.destroy()
     draggableInstance = null
   }
-  if (!unscheduledContainerRef.value) return
-  draggableInstance = new Draggable(unscheduledContainerRef.value, {
+  const container = unscheduledPanelRef.value?.containerRef?.value
+  if (!container) return
+  draggableInstance = new Draggable(container, {
     itemSelector: '.unscheduled-item',
     eventData: (el) => {
       const data = JSON.parse(el.getAttribute('data-event') || '{}')
@@ -532,35 +361,8 @@ function renderEventContent(arg: any) {
 
 // ==================== 操作 ====================
 
-async function handleConfirmCreate() {
-  if (!createForm.title.trim()) {
-    ElMessage.warning('请输入内容标题')
-    return
-  }
-  creating.value = true
-  try {
-    const content = await createContent({
-      title: createForm.title,
-      source_type: createForm.source_type,
-      author: createForm.author,
-      scheduled_publish_at: createForm.scheduled_publish_at,
-    } as any)
-    ElMessage.success('内容已创建')
-    createDialogVisible.value = false
-    router.push({ name: 'ContentEdit', params: { id: content.id } })
-  } catch (err: any) {
-    ElMessage.error('创建失败: ' + (err?.response?.data?.detail || err.message))
-  } finally {
-    creating.value = false
-  }
-}
-
-function handleCreateContent(dateStr?: string) {
-  createForm.title = ''
-  createForm.source_type = 'contribution'
-  createForm.author = ''
-  createForm.scheduled_publish_at = dateStr || null
-  createDialogVisible.value = true
+function handleCreateContent() {
+  router.push('/contents/new')
 }
 
 function handleEditContent() {
@@ -702,122 +504,8 @@ onBeforeUnmount(() => {
 // ==================== 左侧未排期面板 ====================
 
 .unscheduled-panel {
-  width: 260px;
-  min-width: 260px;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  padding: 0;
-
-  &.drop-target-active {
-    background: #eff6ff;
-    border: 2px dashed var(--blue);
-    box-shadow: 0 0 12px rgba(0, 149, 255, 0.15);
-  }
-
-  &.collapsed {
-    width: 40px;
-    min-width: 40px;
-
-    .panel-header {
-      justify-content: center;
-      padding: 12px 8px;
-    }
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--text-primary);
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    user-select: none;
-    gap: 8px;
-
-    &:hover {
-      background: #f8fafc;
-    }
-
-    .el-icon {
-      transition: transform 0.3s;
-      &.rotate {
-        transform: rotate(180deg);
-      }
-    }
-  }
-
-  .panel-body {
-    max-height: calc(100vh - 240px);
-    overflow-y: auto;
-    padding: 8px;
-  }
-}
-
-.unscheduled-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border-left: 3px solid var(--border);
-  cursor: grab;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: #eff6ff;
-    box-shadow: var(--shadow);
-  }
-
-  &:active,
-  &.fc-dragging {
-    cursor: grabbing;
-    opacity: 0.4;
-    box-shadow: var(--shadow-hover);
-  }
-
-  &.status-draft { border-left-color: var(--text-muted); }
-  &.status-reviewing { border-left-color: var(--orange); }
-  &.status-approved { border-left-color: var(--blue); }
-  &.status-published { border-left-color: var(--green); }
-
-  .item-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-top: 5px;
-    flex-shrink: 0;
-  }
-
-  .item-info {
-    flex: 1;
-    min-width: 0;
-
-    .item-title {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .item-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      .item-author {
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-    }
-  }
+  width: 320px;
+  min-width: 320px;
 }
 
 // ==================== 日历主体 ====================

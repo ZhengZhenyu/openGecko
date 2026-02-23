@@ -19,6 +19,7 @@ export interface Content {
   community_id: number
   created_by_user_id: number | null
   assignee_ids: number[]
+  community_ids: number[]
   scheduled_publish_at: string | null
   created_at: string
   updated_at: string
@@ -32,6 +33,8 @@ export interface ContentListItem {
   tags: string[]
   category: string
   status: string
+  work_status: string
+  community_id: number | null
   owner_id: number | null
   scheduled_publish_at: string | null
   created_at: string
@@ -62,6 +65,7 @@ export async function fetchContents(params: {
   status?: string
   source_type?: string
   keyword?: string
+  community_id?: number
 }): Promise<PaginatedContents> {
   const { data } = await api.get('/contents', { params })
   return data

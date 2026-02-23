@@ -155,93 +155,93 @@ export interface EventTaskUpdate extends Partial<EventTaskCreate> {
 // ─── Event CRUD ───────────────────────────────────────────────────────────────
 
 export async function listEvents(params?: { status?: string; event_type?: string; page?: number; page_size?: number }) {
-  const res = await apiClient.get<PaginatedEvents>('/api/events', { params })
+  const res = await apiClient.get<PaginatedEvents>('/events', { params })
   return res.data
 }
 
 export async function createEvent(data: EventCreate) {
-  const res = await apiClient.post<EventDetail>('/api/events', data)
+  const res = await apiClient.post<EventDetail>('/events', data)
   return res.data
 }
 
 export async function getEvent(id: number) {
-  const res = await apiClient.get<EventDetail>(`/api/events/${id}`)
+  const res = await apiClient.get<EventDetail>(`/events/${id}`)
   return res.data
 }
 
 export async function updateEvent(id: number, data: EventUpdate) {
-  const res = await apiClient.patch<EventDetail>(`/api/events/${id}`, data)
+  const res = await apiClient.patch<EventDetail>(`/events/${id}`, data)
   return res.data
 }
 
 export async function updateEventStatus(id: number, status: string) {
-  const res = await apiClient.patch<EventDetail>(`/api/events/${id}/status`, { status })
+  const res = await apiClient.patch<EventDetail>(`/events/${id}/status`, { status })
   return res.data
 }
 
 // ─── Checklist ────────────────────────────────────────────────────────────────
 
 export async function getChecklist(eventId: number) {
-  const res = await apiClient.get<ChecklistItem[]>(`/api/events/${eventId}/checklist`)
+  const res = await apiClient.get<ChecklistItem[]>(`/events/${eventId}/checklist`)
   return res.data
 }
 
 export async function updateChecklistItem(eventId: number, itemId: number, data: { status?: string; notes?: string; due_date?: string | null }) {
-  const res = await apiClient.patch<ChecklistItem>(`/api/events/${eventId}/checklist/${itemId}`, data)
+  const res = await apiClient.patch<ChecklistItem>(`/events/${eventId}/checklist/${itemId}`, data)
   return res.data
 }
 
 // ─── Personnel ────────────────────────────────────────────────────────────────
 
 export async function listPersonnel(eventId: number) {
-  const res = await apiClient.get<Personnel[]>(`/api/events/${eventId}/personnel`)
+  const res = await apiClient.get<Personnel[]>(`/events/${eventId}/personnel`)
   return res.data
 }
 
 export async function addPersonnel(eventId: number, data: PersonnelCreate) {
-  const res = await apiClient.post<Personnel>(`/api/events/${eventId}/personnel`, data)
+  const res = await apiClient.post<Personnel>(`/events/${eventId}/personnel`, data)
   return res.data
 }
 
 export async function confirmPersonnel(eventId: number, pid: number, confirmed: string) {
-  const res = await apiClient.patch<Personnel>(`/api/events/${eventId}/personnel/${pid}/confirm`, { confirmed })
+  const res = await apiClient.patch<Personnel>(`/events/${eventId}/personnel/${pid}/confirm`, { confirmed })
   return res.data
 }
 
 // ─── Feedback ─────────────────────────────────────────────────────────────────
 
 export async function listFeedback(eventId: number) {
-  const res = await apiClient.get<FeedbackItem[]>(`/api/events/${eventId}/feedback`)
+  const res = await apiClient.get<FeedbackItem[]>(`/events/${eventId}/feedback`)
   return res.data
 }
 
 export async function createFeedback(eventId: number, data: { content: string; category?: string; raised_by?: string }) {
-  const res = await apiClient.post<FeedbackItem>(`/api/events/${eventId}/feedback`, data)
+  const res = await apiClient.post<FeedbackItem>(`/events/${eventId}/feedback`, data)
   return res.data
 }
 
 export async function updateFeedback(eventId: number, fid: number, data: { status?: string; assignee_id?: number | null }) {
-  const res = await apiClient.patch<FeedbackItem>(`/api/events/${eventId}/feedback/${fid}`, data)
+  const res = await apiClient.patch<FeedbackItem>(`/events/${eventId}/feedback/${fid}`, data)
   return res.data
 }
 
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function listTasks(eventId: number) {
-  const res = await apiClient.get<EventTask[]>(`/api/events/${eventId}/tasks`)
+  const res = await apiClient.get<EventTask[]>(`/events/${eventId}/tasks`)
   return res.data
 }
 
 export async function createTask(eventId: number, data: EventTaskCreate) {
-  const res = await apiClient.post<EventTask>(`/api/events/${eventId}/tasks`, data)
+  const res = await apiClient.post<EventTask>(`/events/${eventId}/tasks`, data)
   return res.data
 }
 
 export async function updateTask(eventId: number, tid: number, data: EventTaskUpdate) {
-  const res = await apiClient.patch<EventTask>(`/api/events/${eventId}/tasks/${tid}`, data)
+  const res = await apiClient.patch<EventTask>(`/events/${eventId}/tasks/${tid}`, data)
   return res.data
 }
 
 export async function deleteTask(eventId: number, tid: number) {
-  await apiClient.delete(`/api/events/${eventId}/tasks/${tid}`)
+  await apiClient.delete(`/events/${eventId}/tasks/${tid}`)
 }

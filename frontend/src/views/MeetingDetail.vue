@@ -52,13 +52,32 @@
             </div>
           </el-col>
           <el-col :span="8">
-            <div class="meta-card">
+            <div class="meta-card" :class="{ 'meta-card--hybrid': meeting.location_type === 'hybrid' }">
               <el-icon class="meta-icon"><Location /></el-icon>
               <div class="meta-content">
-                <div class="meta-label">会议地点</div>
-                <div class="meta-value">
-                  {{ meeting.location_type === 'online' ? '线上会议' : meeting.location || '未设置' }}
+                <div class="meta-label">
+                  {{ meeting.location_type === 'hybrid' ? '线上线下混合' : '会议地点' }}
                 </div>
+                <template v-if="meeting.location_type === 'hybrid'">
+                  <div v-if="(meeting as any).online_url" class="meta-value">
+                    <span class="location-tag location-tag--online">线上</span>
+                    <a :href="(meeting as any).online_url" target="_blank" class="location-link">{{ (meeting as any).online_url }}</a>
+                  </div>
+                  <div v-if="meeting.location" class="meta-value">
+                    <span class="location-tag location-tag--offline">线下</span>
+                    {{ meeting.location }}
+                  </div>
+                  <div v-if="!(meeting as any).online_url && !meeting.location" class="meta-value">未设置</div>
+                </template>
+                <template v-else-if="meeting.location_type === 'online'">
+                  <div class="meta-value">
+                    <a v-if="(meeting as any).online_url" :href="(meeting as any).online_url" target="_blank" class="location-link">{{ (meeting as any).online_url }}</a>
+                    <span v-else>线上会议</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="meta-value">{{ meeting.location || '未设置' }}</div>
+                </template>
               </div>
             </div>
           </el-col>
@@ -646,6 +665,48 @@ function getReminderTypeText(type: string) {
   font-size: 15px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+
+  &:last-child { margin-bottom: 0; }
+}
+
+.meta-card--hybrid {
+  align-items: flex-start;
+}
+
+.location-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  &--online {
+    background: rgba(0, 149, 255, 0.1);
+    color: #0095ff;
+  }
+
+  &--offline {
+    background: rgba(103, 194, 58, 0.1);
+    color: #52a940;
+  }
+}
+
+.location-link {
+  color: #0095ff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+
+  &:hover { text-decoration: underline; }
 }
 
 .committee-info {

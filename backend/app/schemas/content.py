@@ -15,7 +15,7 @@ class ContentCreate(BaseModel):
     scheduled_publish_at: datetime | None = None
     work_status: str = "planning"
     assignee_ids: list[int] = []
-    # 多社区关联：不填则默认使用 X-Community-Id header 对应的社区
+    # 多社区关联：不填则内容不关联任何社区
     community_ids: list[int] = []
 
 
@@ -73,6 +73,8 @@ class ContentListOut(BaseModel):
     tags: list[str]
     category: str
     status: str
+    work_status: str = "planning"
+    community_id: int | None = None
     owner_id: int | None = None
     scheduled_publish_at: datetime | None = None
     created_at: datetime

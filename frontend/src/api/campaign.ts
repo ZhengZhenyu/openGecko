@@ -85,65 +85,65 @@ export interface CampaignFunnel {
 // ─── Campaign CRUD ────────────────────────────────────────────────────────────
 
 export async function listCampaigns(params?: { type?: string; status?: string }) {
-  const res = await apiClient.get<CampaignListItem[]>('/api/campaigns', { params })
+  const res = await apiClient.get<CampaignListItem[]>('/campaigns', { params })
   return res.data
 }
 
 export async function createCampaign(data: CampaignCreate) {
-  const res = await apiClient.post<CampaignDetail>('/api/campaigns', data)
+  const res = await apiClient.post<CampaignDetail>('/campaigns', data)
   return res.data
 }
 
 export async function getCampaign(id: number) {
-  const res = await apiClient.get<CampaignDetail>(`/api/campaigns/${id}`)
+  const res = await apiClient.get<CampaignDetail>(`/campaigns/${id}`)
   return res.data
 }
 
 export async function updateCampaign(id: number, data: CampaignUpdate) {
-  const res = await apiClient.patch<CampaignDetail>(`/api/campaigns/${id}`, data)
+  const res = await apiClient.patch<CampaignDetail>(`/campaigns/${id}`, data)
   return res.data
 }
 
 export async function getCampaignFunnel(id: number) {
-  const res = await apiClient.get<CampaignFunnel>(`/api/campaigns/${id}/funnel`)
+  const res = await apiClient.get<CampaignFunnel>(`/campaigns/${id}/funnel`)
   return res.data
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 
 export async function listContacts(campaignId: number, params?: { status?: string; page?: number; page_size?: number }) {
-  const res = await apiClient.get<PaginatedContacts>(`/api/campaigns/${campaignId}/contacts`, { params })
+  const res = await apiClient.get<PaginatedContacts>(`/campaigns/${campaignId}/contacts`, { params })
   return res.data
 }
 
 export async function addContact(campaignId: number, data: { person_id: number; channel?: string; notes?: string }) {
-  const res = await apiClient.post<ContactOut>(`/api/campaigns/${campaignId}/contacts`, data)
+  const res = await apiClient.post<ContactOut>(`/campaigns/${campaignId}/contacts`, data)
   return res.data
 }
 
 export async function updateContactStatus(campaignId: number, contactId: number, data: { status: string; channel?: string; notes?: string }) {
-  const res = await apiClient.patch<ContactOut>(`/api/campaigns/${campaignId}/contacts/${contactId}/status`, data)
+  const res = await apiClient.patch<ContactOut>(`/campaigns/${campaignId}/contacts/${contactId}/status`, data)
   return res.data
 }
 
 export async function importFromEvent(campaignId: number, data: { event_id: number; channel?: string }) {
-  const res = await apiClient.post<{ created: number; skipped: number }>(`/api/campaigns/${campaignId}/contacts/import-event`, data)
+  const res = await apiClient.post<{ created: number; skipped: number }>(`/campaigns/${campaignId}/contacts/import-event`, data)
   return res.data
 }
 
 export async function importFromPeople(campaignId: number, data: { person_ids: number[]; channel?: string }) {
-  const res = await apiClient.post<{ created: number; skipped: number }>(`/api/campaigns/${campaignId}/contacts/import-people`, data)
+  const res = await apiClient.post<{ created: number; skipped: number }>(`/campaigns/${campaignId}/contacts/import-people`, data)
   return res.data
 }
 
 // ─── Activities ───────────────────────────────────────────────────────────────
 
 export async function listActivities(campaignId: number, contactId: number) {
-  const res = await apiClient.get<ActivityOut[]>(`/api/campaigns/${campaignId}/contacts/${contactId}/activities`)
+  const res = await apiClient.get<ActivityOut[]>(`/campaigns/${campaignId}/contacts/${contactId}/activities`)
   return res.data
 }
 
 export async function addActivity(campaignId: number, contactId: number, data: { action: string; content?: string; outcome?: string }) {
-  const res = await apiClient.post<ActivityOut>(`/api/campaigns/${campaignId}/contacts/${contactId}/activities`, data)
+  const res = await apiClient.post<ActivityOut>(`/campaigns/${campaignId}/contacts/${contactId}/activities`, data)
   return res.data
 }

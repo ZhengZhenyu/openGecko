@@ -54,7 +54,8 @@ class Meeting(Base):
     duration = Column(Integer, default=120)  # 持续时长（分钟）
 
     location_type = Column(String(50), nullable=True)  # online / offline / hybrid
-    location = Column(String(500), nullable=True)
+    location = Column(String(500), nullable=True)       # 线下会议地址
+    online_url = Column(String(500), nullable=True)     # 线上会议链接（online / hybrid 时使用）
 
     status = Column(String(50), default="scheduled", index=True)
     # 可选值: scheduled, in_progress, completed, cancelled

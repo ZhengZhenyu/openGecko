@@ -171,21 +171,21 @@ const handleLogin = async () => {
 
 .login-card {
   position: relative;
-  width: 460px;
+  width: 420px;
   max-width: 90%;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 
   :deep(.el-card__header) {
-    padding: 48px 40px 32px;
+    padding: 28px 32px 20px;
     border-bottom: 1px solid #f1f5f9;
     background: transparent;
   }
 
   :deep(.el-card__body) {
-    padding: 40px;
+    padding: 24px 32px 28px;
     background: transparent;
   }
 }
@@ -194,17 +194,17 @@ const handleLogin = async () => {
   text-align: center;
 
   .logo {
-    width: 200px;
+    width: 160px;
     height: auto;
-    margin: 0 auto 24px;
+    margin: 0 auto 14px;
     display: block;
-    border-radius: 16px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 8px;
   }
 
   h2 {
-    margin: 0 0 12px;
-    font-size: 32px;
+    margin: 0 0 8px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: #1e293b;
@@ -212,7 +212,7 @@ const handleLogin = async () => {
 
   .subtitle {
     margin: 0;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 400;
     line-height: 1.5;
     color: #64748b;
@@ -221,14 +221,14 @@ const handleLogin = async () => {
 }
 
 .login-form {
-  margin-top: 32px;
+  margin-top: 20px;
 
   .el-form-item {
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 
     &:last-child {
       margin-bottom: 0;
-      margin-top: 28px;
+      margin-top: 20px;
     }
   }
 
@@ -236,9 +236,9 @@ const handleLogin = async () => {
     .el-input__wrapper {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border-radius: 10px;
       box-shadow: none;
-      padding: 14px 16px;
+      padding: 10px 16px;
       transition: all 0.2s ease;
 
       &:hover {
@@ -255,7 +255,7 @@ const handleLogin = async () => {
 
     .el-input__inner {
       color: #1e293b;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 400;
       letter-spacing: -0.01em;
 
@@ -266,7 +266,7 @@ const handleLogin = async () => {
 
     .el-input__prefix {
       color: #94a3b8;
-      font-size: 18px;
+      font-size: 16px;
     }
 
     .el-input__suffix {
@@ -276,11 +276,11 @@ const handleLogin = async () => {
 
   .login-button {
     width: 100%;
-    height: 52px;
+    height: 44px;
     background: #0095ff;
     border: none;
-    border-radius: 12px;
-    font-size: 17px;
+    border-radius: 10px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.01em;
     box-shadow: 0 2px 8px rgba(0, 149, 255, 0.25);
@@ -298,7 +298,7 @@ const handleLogin = async () => {
 }
 
 .login-links {
-  margin-top: 24px;
+  margin-top: 16px;
   text-align: right;
 
   .forgot-link {
@@ -322,33 +322,33 @@ const handleLogin = async () => {
     margin: 20px;
 
     :deep(.el-card__header) {
-      padding: 40px 32px 28px;
+      padding: 24px 24px 16px;
     }
 
     :deep(.el-card__body) {
-      padding: 32px;
+      padding: 20px 24px 24px;
     }
   }
 
   .card-header {
     .logo {
-      width: 160px;
-      margin-bottom: 20px;
+      width: 130px;
+      margin-bottom: 12px;
     }
 
     h2 {
-      font-size: 26px;
+      font-size: 20px;
     }
 
     .subtitle {
-      font-size: 14px;
+      font-size: 12px;
     }
   }
 
   .login-form {
     .login-button {
-      height: 48px;
-      font-size: 16px;
+      height: 40px;
+      font-size: 14px;
     }
   }
 }

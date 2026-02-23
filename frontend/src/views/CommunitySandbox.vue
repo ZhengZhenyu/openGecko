@@ -192,13 +192,18 @@
                 class="content-list-item"
                 @click="$router.push(`/contents/${item.id}/edit`)"
               >
-                <div class="content-title">{{ item.title }}</div>
-                <div class="content-meta">
-                  <span class="status-badge" :class="statusClass(item.status)">
-                    {{ statusLabel(item.status) }}
-                  </span>
-                  <span class="meta-text">{{ item.owner_name }}</span>
-                  <span class="meta-text">{{ formatDate(item.created_at) }}</span>
+                <div class="content-icon-col">
+                  <el-icon class="content-type-icon"><Document /></el-icon>
+                </div>
+                <div class="content-body">
+                  <div class="content-title">{{ item.title }}</div>
+                  <div class="content-meta">
+                    <span class="status-badge" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
+                    <span v-if="item.work_status" class="work-badge" :class="`wbadge-${item.work_status}`">{{ workStatusLabel(item.work_status) }}</span>
+                    <span class="meta-sep">·</span>
+                    <span class="meta-text">{{ item.owner_name }}</span>
+                    <span class="meta-text">{{ formatDate(item.created_at) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -225,7 +230,10 @@
                 </div>
                 <div class="meeting-info">
                   <div class="meeting-title">{{ m.title }}</div>
-                  <div class="meeting-committee">{{ m.committee_name }}</div>
+                  <div class="meeting-committee">
+                    <el-icon style="font-size:11px;vertical-align:-1px;"><Connection /></el-icon>
+                    {{ m.committee_name }}
+                  </div>
                 </div>
                 <div class="meeting-time">{{ formatTime(m.scheduled_at) }}</div>
               </div>
@@ -436,6 +444,11 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 function statusLabel(s: string) {
   const m: Record<string, string> = { draft: '草稿', reviewing: '审核中', approved: '已通过', published: '已发布' }
   return m[s] || s
+}
+
+function workStatusLabel(s: string | null) {
+  const m: Record<string, string> = { planning: '计划中', in_progress: '进行中', completed: '已完成' }
+  return s ? (m[s] || s) : ''
 }
 
 function statusClass(s: string) {
@@ -735,31 +748,60 @@ function formatTime(dt: string) {
 
 /* ===== 最近内容列表 ===== */
 .content-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s;
 }
 .content-list-item:last-child { border-bottom: none; }
-.content-list-item:hover { color: var(--blue); }
+
+.content-icon-col {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0fdf4;
+  border-radius: 7px;
+  margin-top: 1px;
+}
+.content-type-icon {
+  font-size: 14px;
+  color: #16a34a;
+}
+
+.content-body { flex: 1; min-width: 0; }
+
 .content-title {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.15s;
 }
 .content-list-item:hover .content-title { color: var(--blue); }
+
 .content-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 .meta-text {
   font-size: 12px;
   color: var(--text-muted);
+}
+.meta-sep {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 1px;
 }
 
 /* Status badges */
@@ -775,6 +817,18 @@ function formatTime(dt: string) {
 .badge-blue   { background: #eff6ff; color: #1d4ed8; }
 .badge-green  { background: #f0fdf4; color: #15803d; }
 
+/* Work status chips */
+.work-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.wbadge-planning    { background: #f8fafc; color: #94a3b8; }
+.wbadge-in_progress { background: #fff8ed; color: #b45309; }
+.wbadge-completed   { background: #f0fdf4; color: #15803d; }
+
 /* ===== 会议列表 ===== */
 .meeting-item {
   display: flex;
@@ -787,25 +841,33 @@ function formatTime(dt: string) {
 }
 .meeting-item:last-child { border-bottom: none; }
 .meeting-item:hover .meeting-title { color: var(--blue); }
+
 .meeting-date-col {
   text-align: center;
-  width: 36px;
+  width: 42px;
+  height: 46px;
   flex-shrink: 0;
+  background: #eff6ff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .meeting-day {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--blue);
   line-height: 1;
 }
 .meeting-month {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 10px;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-top: 1px;
 }
-.meeting-info {
-  flex: 1;
-  min-width: 0;
-}
+
+.meeting-info { flex: 1; min-width: 0; }
 .meeting-title {
   font-size: 14px;
   font-weight: 500;
@@ -813,16 +875,25 @@ function formatTime(dt: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.15s;
 }
 .meeting-committee {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
 .meeting-time {
   font-size: 12px;
   color: var(--text-secondary);
   flex-shrink: 0;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-weight: 500;
 }
 
 /* ===== 空提示 ===== */
