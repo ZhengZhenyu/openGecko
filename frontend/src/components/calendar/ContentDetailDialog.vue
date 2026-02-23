@@ -1,10 +1,11 @@
 <template>
   <el-dialog
-    v-model="visible"
+    :model-value="visible"
     :title="event?.title || '内容详情'"
     width="480px"
     class="event-detail-dialog"
     @close="$emit('close')"
+    @update:model-value="$emit('update:visible', $event)"
   >
     <div v-if="event" class="event-detail">
       <div class="detail-row">

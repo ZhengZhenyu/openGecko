@@ -507,49 +507,6 @@ onBeforeUnmount(() => {
   width: 320px;
   min-width: 320px;
 }
-    opacity: 0.4;
-    box-shadow: var(--shadow-hover);
-  }
-
-  &.status-draft { border-left-color: var(--text-muted); }
-  &.status-reviewing { border-left-color: var(--orange); }
-  &.status-approved { border-left-color: var(--blue); }
-  &.status-published { border-left-color: var(--green); }
-
-  .item-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-top: 5px;
-    flex-shrink: 0;
-  }
-
-  .item-info {
-    flex: 1;
-    min-width: 0;
-
-    .item-title {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .item-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      .item-author {
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-    }
-  }
-}
 
 // ==================== 日历主体 ====================
 
