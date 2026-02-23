@@ -178,7 +178,7 @@ class TestListContents:
         assert data["total"] == 1
         assert "Python" in data["items"][0]["title"]
 
-    def test_list_contents_community_isolation(
+    def test_list_contents_cross_community(
         self,
         client: TestClient,
         db_session: Session,
@@ -186,7 +186,7 @@ class TestListContents:
         test_another_community: Community,
         auth_headers: dict,
     ):
-        """Test contents are isolated by community."""
+        """内容采用 community association 模式，所有社区内容均可见（跨社区列表）"""
         # Create content in test_community
         content1 = Content(
             title="My Content",
@@ -208,12 +208,14 @@ class TestListContents:
         db_session.add_all([content1, content2])
         db_session.commit()
 
-        # Should only see content from test_community
+        # 跨社区：两个社区的内容均可见
         response = client.get("/api/contents", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 1
-        assert data["items"][0]["title"] == "My Content"
+        assert data["total"] == 2
+        titles = {item["title"] for item in data["items"]}
+        assert "My Content" in titles
+        assert "Other Content" in titles
 
     def test_list_contents_no_auth(self, client: TestClient):
         """Test listing contents fails without authentication."""
@@ -341,7 +343,7 @@ class TestGetContent:
         test_another_community: Community,
         auth_headers: dict,
     ):
-        """Test cannot access content from another community."""
+        """内容采用 community association 模式，可跨社区访问其他社区的内容"""
         content = Content(
             title="Other Content",
             content_markdown="Test",
@@ -354,7 +356,7 @@ class TestGetContent:
         db_session.commit()
 
         response = client.get(f"/api/contents/{content.id}", headers=auth_headers)
-        assert response.status_code == 404  # Should not find it
+        assert response.status_code == 200  # 跨社区内容可访问
 
 
 class TestUpdateContent:

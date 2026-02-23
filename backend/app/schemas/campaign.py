@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class CampaignCreate(BaseModel):
     name: str
     type: str  # promotion / care / invitation / survey
+    community_id: int | None = None
     description: str | None = None
     target_count: int | None = None
     start_date: date | None = None
@@ -25,7 +26,7 @@ class CampaignUpdate(BaseModel):
 
 class CampaignListOut(BaseModel):
     id: int
-    community_id: int
+    community_id: int | None
     name: str
     type: str
     status: str

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_community, get_current_user
+from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.models.event import (
@@ -48,13 +48,15 @@ VALID_EVENT_TYPES = {"online", "offline", "hybrid"}
 def list_events(
     status: str | None = None,
     event_type: str | None = None,
+    community_id: int | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Event).filter(Event.community_id == community_id)
+    query = db.query(Event)
+    if community_id is not None:
+        query = query.filter(Event.community_id == community_id)
     if status:
         query = query.filter(Event.status == status)
     if event_type:
@@ -67,7 +69,6 @@ def list_events(
 @router.post("", response_model=EventOut, status_code=201)
 def create_event(
     data: EventCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -75,7 +76,6 @@ def create_event(
         raise HTTPException(400, f"event_type 必须为 {VALID_EVENT_TYPES}")
 
     event = Event(
-        community_id=community_id,
         owner_id=current_user.id,
         **data.model_dump(),
     )
@@ -102,13 +102,10 @@ def create_event(
 @router.get("/{event_id}", response_model=EventOut)
 def get_event(
     event_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     return event
@@ -118,13 +115,10 @@ def get_event(
 def update_event(
     event_id: int,
     data: EventUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -138,15 +132,12 @@ def update_event(
 def update_event_status(
     event_id: int,
     data: EventStatusUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if data.status not in VALID_EVENT_STATUSES:
         raise HTTPException(400, f"status 必须为 {VALID_EVENT_STATUSES}")
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     event.status = data.status
@@ -160,13 +151,10 @@ def update_event_status(
 @router.get("/{event_id}/checklist", response_model=list[ChecklistItemOut])
 def get_checklist(
     event_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     return sorted(event.checklist_items, key=lambda x: (x.phase, x.order))
@@ -177,7 +165,6 @@ def update_checklist_item(
     event_id: int,
     item_id: int,
     data: ChecklistItemUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -198,13 +185,10 @@ def update_checklist_item(
 @router.get("/{event_id}/personnel", response_model=list[EventPersonnelOut])
 def list_personnel(
     event_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     return sorted(event.personnel, key=lambda x: x.order)
@@ -214,13 +198,10 @@ def list_personnel(
 def add_personnel(
     event_id: int,
     data: EventPersonnelCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     person = EventPersonnel(event_id=event_id, **data.model_dump())
@@ -235,7 +216,6 @@ def confirm_personnel(
     event_id: int,
     pid: int,
     data: PersonnelConfirmUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -256,14 +236,11 @@ def confirm_personnel(
 def import_attendees(
     event_id: int,
     rows: list[dict],
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """批量导入签到名单。每行需包含 person_id 字段（已确认匹配的 PersonProfile ID）。"""
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
 
@@ -299,13 +276,10 @@ def import_attendees(
 @router.get("/{event_id}/feedback", response_model=list[FeedbackOut])
 def list_feedback(
     event_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     return event.feedback_items
@@ -315,13 +289,10 @@ def list_feedback(
 def create_feedback(
     event_id: int,
     data: FeedbackCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     feedback = FeedbackItem(event_id=event_id, **data.model_dump())
@@ -336,7 +307,6 @@ def update_feedback(
     event_id: int,
     fid: int,
     data: FeedbackStatusUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -357,7 +327,6 @@ def link_issue(
     event_id: int,
     fid: int,
     data: IssueLinkCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -396,13 +365,10 @@ def _build_task_tree(tasks: list[EventTask]) -> list[EventTask]:
 @router.get("/{event_id}/tasks", response_model=list[EventTaskOut])
 def list_tasks(
     event_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     tasks = db.query(EventTask).filter(EventTask.event_id == event_id).order_by(EventTask.order).all()
@@ -413,13 +379,10 @@ def list_tasks(
 def create_task(
     event_id: int,
     data: EventTaskCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     task = EventTask(event_id=event_id, **data.model_dump())
@@ -435,7 +398,6 @@ def update_task(
     event_id: int,
     tid: int,
     data: EventTaskUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -456,7 +418,6 @@ def update_task(
 def delete_task(
     event_id: int,
     tid: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -473,13 +434,10 @@ def delete_task(
 def reorder_tasks(
     event_id: int,
     data: TaskReorderRequest,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    event = db.query(Event).filter(
-        Event.id == event_id, Event.community_id == community_id
-    ).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
     for item in data.tasks:

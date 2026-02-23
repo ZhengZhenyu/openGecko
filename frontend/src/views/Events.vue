@@ -6,7 +6,7 @@
         <h1 class="page-title">活动管理</h1>
         <p class="page-subtitle">策划、执行和复盘社区活动全流程</p>
       </div>
-      <el-button type="primary" :disabled="!hasCommunity" @click="openCreateDialog">
+      <el-button type="primary" @click="openCreateDialog">
         <el-icon><Plus /></el-icon>
         创建活动
       </el-button>
@@ -32,8 +32,7 @@
     <div v-loading="loading" class="events-grid">
       <div v-if="!loading && events.length === 0" class="empty-state">
         <el-icon class="empty-icon"><Flag /></el-icon>
-        <p v-if="!hasCommunity">请先在顶部选择社区</p>
-        <p v-else>暂无活动，点击右上角创建第一个活动</p>
+        <p>暂无活动，点击右上角创建第一个活动</p>
       </div>
       <div
         v-for="event in events"
@@ -93,6 +92,16 @@
         <el-form-item label="地点">
           <el-input v-model="createForm.location" placeholder="活动地点（线下填写）" />
         </el-form-item>
+        <el-form-item label="关联社区">
+          <el-select v-model="createForm.community_id" placeholder="可选，关联到某社区" clearable style="width: 100%">
+            <el-option
+              v-for="c in communities"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="简介">
           <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="活动简介" />
         </el-form-item>
@@ -112,11 +121,11 @@ import { ElMessage } from 'element-plus'
 import { Flag, Plus, Calendar, Location } from '@element-plus/icons-vue'
 import { listEvents, createEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
-import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
-const communityStore = useCommunityStore()
-const hasCommunity = computed(() => !!communityStore.currentCommunityId)
+const authStore = useAuthStore()
+const communities = computed(() => authStore.communities)
 
 const loading = ref(false)
 const creating = ref(false)
@@ -131,6 +140,7 @@ const showCreateDialog = ref(false)
 const createForm = ref({
   title: '',
   event_type: 'offline',
+  community_id: null as number | null,
   planned_at: null as string | null,
   location: '',
   description: '',
@@ -170,11 +180,6 @@ function formatDate(dt: string | null): string {
 }
 
 async function loadEvents() {
-  if (!hasCommunity.value) {
-    events.value = []
-    total.value = 0
-    return
-  }
   loading.value = true
   try {
     const data = await listEvents({
@@ -193,7 +198,7 @@ async function loadEvents() {
 }
 
 function openCreateDialog() {
-  createForm.value = { title: '', event_type: 'offline', planned_at: null, location: '', description: '' }
+  createForm.value = { title: '', event_type: 'offline', community_id: null, planned_at: null, location: '', description: '' }
   showCreateDialog.value = true
 }
 
@@ -207,6 +212,7 @@ async function handleCreate() {
     const event = await createEvent({
       title: createForm.value.title,
       event_type: createForm.value.event_type,
+      community_id: createForm.value.community_id || null,
       planned_at: createForm.value.planned_at || null,
       location: createForm.value.location || null,
       description: createForm.value.description || null,

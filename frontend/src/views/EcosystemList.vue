@@ -6,7 +6,7 @@
         <h1 class="page-title">生态洞察</h1>
         <p class="page-subtitle">监控开源生态项目，追踪贡献者动态</p>
       </div>
-      <el-button type="primary" :disabled="!hasCommunity" @click="openCreateDialog">
+      <el-button type="primary" @click="openCreateDialog">
         <el-icon><Plus /></el-icon>
         添加项目
       </el-button>
@@ -16,8 +16,7 @@
     <div v-loading="loading" class="project-grid">
       <div v-if="!loading && projects.length === 0" class="empty-state">
         <el-icon class="empty-icon"><Connection /></el-icon>
-        <p v-if="!hasCommunity">请先在顶部选择社区</p>
-        <p v-else>暂无生态项目，点击右上角添加</p>
+        <p>暂无生态项目，点击右上角添加</p>
       </div>
 
       <div
@@ -64,6 +63,11 @@
         <el-form-item label="仓库名">
           <el-input v-model="createForm.repo_name" placeholder="如: kruise（留空=整个组织）" />
         </el-form-item>
+        <el-form-item label="关联社区">
+          <el-select v-model="createForm.community_id" placeholder="可选，关联到某社区" clearable style="width: 100%">
+            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="2" />
         </el-form-item>
@@ -81,10 +85,10 @@ import { onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Connection, Refresh } from '@element-plus/icons-vue'
 import { listProjects, createProject, type EcosystemProject, type ProjectCreateData } from '../api/ecosystem'
-import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
 
-const communityStore = useCommunityStore()
-const hasCommunity = computed(() => !!communityStore.currentCommunityId)
+const authStore = useAuthStore()
+const communities = computed(() => authStore.communities)
 const loading = ref(false)
 const projects = ref<EcosystemProject[]>([])
 const showCreateDialog = ref(false)
@@ -96,6 +100,7 @@ const createForm = ref({
   org_name: '',
   repo_name: '',
   description: '',
+  community_id: null as number | null,
 })
 
 function formatDate(iso: string) {
@@ -103,10 +108,6 @@ function formatDate(iso: string) {
 }
 
 async function loadProjects() {
-  if (!hasCommunity.value) {
-    projects.value = []
-    return
-  }
   loading.value = true
   try {
     projects.value = await listProjects()
@@ -118,7 +119,7 @@ async function loadProjects() {
 }
 
 function openCreateDialog() {
-  createForm.value = { name: '', platform: 'github', org_name: '', repo_name: '', description: '' }
+  createForm.value = { name: '', platform: 'github', org_name: '', repo_name: '', description: '', community_id: null }
   showCreateDialog.value = true
 }
 
@@ -133,6 +134,7 @@ async function handleCreate() {
       name: createForm.value.name,
       platform: createForm.value.platform,
       org_name: createForm.value.org_name,
+      community_id: createForm.value.community_id || null,
     }
     if (createForm.value.repo_name) payload.repo_name = createForm.value.repo_name
     if (createForm.value.description) payload.description = createForm.value.description

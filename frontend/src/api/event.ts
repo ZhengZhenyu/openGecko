@@ -15,7 +15,7 @@ export interface EventListItem {
 
 export interface EventDetail {
   id: number
-  community_id: number
+  community_id: number | null
   title: string
   event_type: string
   template_id: number | null
@@ -40,6 +40,7 @@ export interface EventDetail {
 export interface EventCreate {
   title: string
   event_type?: string
+  community_id?: number | null
   template_id?: number | null
   planned_at?: string | null
   duration_minutes?: number | null

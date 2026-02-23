@@ -40,6 +40,10 @@
             <el-icon><Stamp /></el-icon>
             <span>社区治理</span>
           </template>
+          <el-menu-item index="/community-overview">
+            <el-icon><OfficeBuilding /></el-icon>
+            <span>社区总览</span>
+          </el-menu-item>
           <el-menu-item index="/governance">
             <el-icon><DataLine /></el-icon>
             <span>治理概览</span>
@@ -117,10 +121,6 @@
               <span>社区设置</span>
             </el-menu-item>
             <template v-if="isSuperuser">
-              <el-menu-item index="/community-overview">
-                <el-icon><OfficeBuilding /></el-icon>
-                <span>社区总览</span>
-              </el-menu-item>
               <el-menu-item index="/communities">
                 <el-icon><Setting /></el-icon>
                 <span>社区管理</span>
@@ -215,17 +215,19 @@ const showLayout = computed(() => {
 })
 
 // 判断是否显示社区选择下拉框
-// 社区总览、社区管理、用户管理、我的工作、人脉管理等平台级页面不显示
+// 仅在需要社区上下文的页面（社区工作台、社区治理）显示
 const showCommunitySwitcher = computed(() => {
-  const hideSwitcherRoutes = [
-    'CommunityOverview',
-    'CommunityManage',
-    'UserManage',
-    'WorkloadOverview',
-    'MyWork',
-    'People',
+  const showSwitcherRoutes = [
+    'CommunitySandbox',
+    'GovernanceOverview',
+    'CommitteeList',
+    'CommitteeDetail',
+    'CommitteeMemberManage',
+    'MeetingCalendar',
+    'MeetingDetail',
+    'CommunitySettings',
   ]
-  return !hideSwitcherRoutes.includes(route.name as string)
+  return showSwitcherRoutes.includes(route.name as string)
 })
 
 onMounted(async () => {

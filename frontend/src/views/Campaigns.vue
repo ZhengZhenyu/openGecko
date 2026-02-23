@@ -6,7 +6,7 @@
         <h1 class="page-title">运营活动</h1>
         <p class="page-subtitle">Campaign 策划、联系人漏斗与跟进管理</p>
       </div>
-      <el-button type="primary" :disabled="!hasCommunity" @click="openCreateDialog">
+      <el-button type="primary" @click="openCreateDialog">
         <el-icon><Plus /></el-icon>
         创建运营活动
       </el-button>
@@ -32,8 +32,7 @@
     <div v-loading="loading" class="campaign-grid">
       <div v-if="!loading && campaigns.length === 0" class="empty-state">
         <el-icon class="empty-icon"><MagicStick /></el-icon>
-        <p v-if="!hasCommunity">请先在顶部选择社区</p>
-        <p v-else>暂无运营活动，点击右上角创建</p>
+        <p>暂无运营活动，点击右上角创建</p>
       </div>
 
       <div
@@ -77,6 +76,11 @@
         <el-form-item label="结束日期">
           <el-date-picker v-model="createForm.end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="关联社区">
+          <el-select v-model="createForm.community_id" placeholder="可选，关联到某社区" clearable style="width: 100%">
+            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="2" />
         </el-form-item>
@@ -96,11 +100,11 @@ import { ElMessage } from 'element-plus'
 import { MagicStick, Plus, User, Calendar } from '@element-plus/icons-vue'
 import { listCampaigns, createCampaign } from '../api/campaign'
 import type { CampaignListItem } from '../api/campaign'
-import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
-const communityStore = useCommunityStore()
-const hasCommunity = computed(() => !!communityStore.currentCommunityId)
+const authStore = useAuthStore()
+const communities = computed(() => authStore.communities)
 const loading = ref(false)
 const creating = ref(false)
 const campaigns = ref<CampaignListItem[]>([])
@@ -111,6 +115,7 @@ const showCreateDialog = ref(false)
 const createForm = ref({
   name: '',
   type: 'promotion',
+  community_id: null as number | null,
   target_count: null as number | null,
   start_date: null as string | null,
   end_date: null as string | null,
@@ -123,10 +128,6 @@ const statusLabel: Record<string, string> = { draft: '草稿', active: '进行�
 const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { draft: 'info', active: 'primary', completed: 'success', archived: '' }
 
 async function loadCampaigns() {
-  if (!hasCommunity.value) {
-    campaigns.value = []
-    return
-  }
   loading.value = true
   try {
     campaigns.value = await listCampaigns({
@@ -141,7 +142,7 @@ async function loadCampaigns() {
 }
 
 function openCreateDialog() {
-  createForm.value = { name: '', type: 'promotion', target_count: null, start_date: null, end_date: null, description: '' }
+  createForm.value = { name: '', type: 'promotion', community_id: null, target_count: null, start_date: null, end_date: null, description: '' }
   showCreateDialog.value = true
 }
 
@@ -152,6 +153,7 @@ async function handleCreate() {
     const c = await createCampaign({
       name: createForm.value.name,
       type: createForm.value.type,
+      community_id: createForm.value.community_id || null,
       target_count: createForm.value.target_count || null,
       start_date: createForm.value.start_date || null,
       end_date: createForm.value.end_date || null,

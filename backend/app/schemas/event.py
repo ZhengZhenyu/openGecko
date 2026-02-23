@@ -38,7 +38,7 @@ class EventTemplateUpdate(BaseModel):
 
 class EventTemplateOut(BaseModel):
     id: int
-    community_id: int
+    community_id: int | None
     name: str
     event_type: str
     description: str | None
@@ -65,6 +65,7 @@ class EventTemplateListOut(BaseModel):
 class EventCreate(BaseModel):
     title: str
     event_type: str = "offline"
+    community_id: int | None = None
     template_id: int | None = None
     planned_at: datetime | None = None
     duration_minutes: int | None = None
@@ -98,7 +99,7 @@ class EventStatusUpdate(BaseModel):
 
 class EventOut(BaseModel):
     id: int
-    community_id: int
+    community_id: int | None
     title: str
     event_type: str
     template_id: int | None

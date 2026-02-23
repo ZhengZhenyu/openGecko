@@ -9,6 +9,7 @@ class ProjectCreate(BaseModel):
     platform: str           # github / gitee / gitcode
     org_name: str
     repo_name: str | None = None
+    community_id: int | None = None
     description: str | None = None
     tags: list[str] = []
 

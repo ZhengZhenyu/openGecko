@@ -52,7 +52,7 @@ class ContentOut(BaseModel):
     cover_image: str | None
     status: str
     work_status: str
-    community_id: int
+    community_id: int | None
     created_by_user_id: int | None
     owner_id: int | None
     scheduled_publish_at: datetime | None

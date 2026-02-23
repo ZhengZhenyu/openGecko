@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_community, get_current_user
+from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.models.event import ChecklistTemplateItem, EventTemplate
@@ -12,15 +12,12 @@ router = APIRouter()
 
 @router.get("", response_model=list[EventTemplateListOut])
 def list_templates(
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return (
         db.query(EventTemplate)
-        .filter(
-            (EventTemplate.community_id == community_id) | (EventTemplate.is_public == True)  # noqa: E712
-        )
+        .filter(EventTemplate.is_public == True)  # noqa: E712
         .order_by(EventTemplate.created_at.desc())
         .all()
     )
@@ -29,12 +26,11 @@ def list_templates(
 @router.post("", response_model=EventTemplateOut, status_code=201)
 def create_template(
     data: EventTemplateCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     template = EventTemplate(
-        community_id=community_id,
+        community_id=None,
         name=data.name,
         event_type=data.event_type,
         description=data.description,
@@ -56,14 +52,13 @@ def create_template(
 @router.get("/{template_id}", response_model=EventTemplateOut)
 def get_template(
     template_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     template = db.query(EventTemplate).filter(EventTemplate.id == template_id).first()
     if not template:
         raise HTTPException(404, "模板不存在")
-    if template.community_id != community_id and not template.is_public:
+    if not template.is_public:
         raise HTTPException(403, "无权访问此模板")
     return template
 
@@ -72,14 +67,10 @@ def get_template(
 def update_template(
     template_id: int,
     data: EventTemplateUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    template = db.query(EventTemplate).filter(
-        EventTemplate.id == template_id,
-        EventTemplate.community_id == community_id,
-    ).first()
+    template = db.query(EventTemplate).filter(EventTemplate.id == template_id).first()
     if not template:
         raise HTTPException(404, "模板不存在")
     for key, value in data.model_dump(exclude_unset=True).items():
