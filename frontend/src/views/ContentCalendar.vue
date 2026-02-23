@@ -144,49 +144,11 @@
       </template>
     </el-dialog>
 
-    <!-- 快速创建弹窗 -->
-    <el-dialog
-      v-model="createDialogVisible"
-      title="快速创建内容"
-      width="500px"
-    >
-      <el-form :model="createForm" label-width="80px">
-        <el-form-item label="标题" required>
-          <el-input v-model="createForm.title" placeholder="输入内容标题" />
-        </el-form-item>
-        <el-form-item label="来源类型">
-          <el-select v-model="createForm.source_type" style="width: 100%">
-            <el-option label="投稿" value="contribution" />
-            <el-option label="发行说明" value="release_note" />
-            <el-option label="活动总结" value="event_summary" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="作者">
-          <el-input v-model="createForm.author" placeholder="输入作者" />
-        </el-form-item>
-        <el-form-item label="排期时间">
-          <el-date-picker
-            v-model="createForm.scheduled_publish_at"
-            type="datetime"
-            placeholder="选择发布时间"
-            style="width: 100%"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DDTHH:mm:ss"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleConfirmCreate">
-          创建
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Collection, ArrowLeft } from '@element-plus/icons-vue'
@@ -200,7 +162,6 @@ import { useCommunityStore } from '../stores/community'
 import {
   fetchCalendarEvents,
   updateContentSchedule,
-  createContent,
   type ContentCalendarItem,
 } from '../api/content'
 
@@ -215,19 +176,10 @@ let draggableInstance: InstanceType<typeof Draggable> | null = null
 const statusFilter = ref('')
 const panelCollapsed = ref(false)
 const loading = ref(false)
-const creating = ref(false)
 const detailDialogVisible = ref(false)
-const createDialogVisible = ref(false)
 const selectedEvent = ref<any>(null)
 const calendarEvents = ref<ContentCalendarItem[]>([])
 const unscheduledEvents = ref<ContentCalendarItem[]>([])
-
-const createForm = reactive({
-  title: '',
-  source_type: 'contribution',
-  author: '',
-  scheduled_publish_at: null as string | null,
-})
 
 const eventCount = computed(() => calendarEvents.value.length + unscheduledEvents.value.length)
 
@@ -532,35 +484,8 @@ function renderEventContent(arg: any) {
 
 // ==================== 操作 ====================
 
-async function handleConfirmCreate() {
-  if (!createForm.title.trim()) {
-    ElMessage.warning('请输入内容标题')
-    return
-  }
-  creating.value = true
-  try {
-    const content = await createContent({
-      title: createForm.title,
-      source_type: createForm.source_type,
-      author: createForm.author,
-      scheduled_publish_at: createForm.scheduled_publish_at,
-    } as any)
-    ElMessage.success('内容已创建')
-    createDialogVisible.value = false
-    router.push({ name: 'ContentEdit', params: { id: content.id } })
-  } catch (err: any) {
-    ElMessage.error('创建失败: ' + (err?.response?.data?.detail || err.message))
-  } finally {
-    creating.value = false
-  }
-}
-
-function handleCreateContent(dateStr?: string) {
-  createForm.title = ''
-  createForm.source_type = 'contribution'
-  createForm.author = ''
-  createForm.scheduled_publish_at = dateStr || null
-  createDialogVisible.value = true
+function handleCreateContent() {
+  router.push('/contents/new')
 }
 
 function handleEditContent() {

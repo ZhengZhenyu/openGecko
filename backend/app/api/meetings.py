@@ -101,6 +101,7 @@ def create_meeting(
         duration=data.duration,
         location_type=data.location_type,
         location=data.location,
+        online_url=data.online_url,
         agenda=data.agenda,
         status="scheduled",
         work_status="planning",  # 固定默认值，不对外暴露
@@ -163,6 +164,7 @@ def get_meeting(
         "duration": meeting.duration,
         "location_type": meeting.location_type,
         "location": meeting.location,
+        "online_url": meeting.online_url,
         "status": meeting.status,
         "work_status": meeting.work_status,
         "agenda": meeting.agenda,

@@ -108,7 +108,9 @@
                 </span>
                 <span v-if="meeting.location_type">
                   <el-icon><Location /></el-icon>
-                  {{ meeting.location_type === 'online' ? '线上会议' : meeting.location }}
+                  <template v-if="meeting.location_type === 'online'">线上会议</template>
+                  <template v-else-if="meeting.location_type === 'hybrid'">线上线下混合</template>
+                  <template v-else>{{ meeting.location }}</template>
                 </span>
                 <span v-if="(meeting as any).assignee_ids && (meeting as any).assignee_ids.length > 0">
                   <el-icon><User /></el-icon>
@@ -197,15 +199,16 @@
             <el-radio-group v-model="form.location_type">
               <el-radio value="online">线上会议</el-radio>
               <el-radio value="offline">线下会议</el-radio>
+              <el-radio value="hybrid">线上线下混合</el-radio>
             </el-radio-group>
           </el-form-item>
 
-          <el-form-item v-if="form.location_type === 'offline'" label="具体地址" prop="location">
-            <el-input v-model="form.location" placeholder="输入会议地址" />
+          <el-form-item v-if="form.location_type === 'online' || form.location_type === 'hybrid'" label="线上会议链接" prop="online_url">
+            <el-input v-model="form.online_url" placeholder="输入会议链接或会议ID（如 Zoom / 腾讯会议链接）" />
           </el-form-item>
 
-          <el-form-item v-if="form.location_type === 'online'" label="会议链接" prop="location">
-            <el-input v-model="form.location" placeholder="输入会议链接或ID" />
+          <el-form-item v-if="form.location_type === 'offline' || form.location_type === 'hybrid'" label="线下会议地址" prop="location">
+            <el-input v-model="form.location" placeholder="输入线下会议地址" />
           </el-form-item>
 
           <el-form-item label="会议议程" prop="agenda">
@@ -324,6 +327,7 @@ interface MeetingForm {
   duration: number
   location_type: string
   location?: string
+  online_url?: string
   agenda?: string
   reminder_before_hours: number
   status?: string
@@ -338,6 +342,7 @@ const form = ref<MeetingForm>({
   duration: 120,
   location_type: 'online',
   location: '',
+  online_url: '',
   agenda: '',
   reminder_before_hours: 24,
   status: 'scheduled',
@@ -445,6 +450,7 @@ function editMeeting(meeting: Meeting) {
     duration: meeting.duration,
     location_type: meeting.location_type || 'online',
     location: meeting.location,
+    online_url: meeting.online_url,
     agenda: '',
     reminder_before_hours: 24,
     status: meeting.status,
@@ -490,6 +496,7 @@ async function submitForm() {
           duration: form.value.duration,
           location_type: form.value.location_type,
           location: form.value.location,
+          online_url: form.value.online_url,
           status: form.value.status,
           agenda: form.value.agenda,
           reminder_before_hours: form.value.reminder_before_hours,
@@ -506,6 +513,7 @@ async function submitForm() {
           duration: form.value.duration,
           location_type: form.value.location_type,
           location: form.value.location,
+          online_url: form.value.online_url,
           agenda: form.value.agenda,
           reminder_before_hours: form.value.reminder_before_hours,
           assignee_ids: form.value.assignee_ids

@@ -127,7 +127,8 @@ class MeetingCreate(BaseModel):
     scheduled_at: datetime
     duration: int = Field(120, ge=1)
     location_type: str | None = "online"
-    location: str | None = None
+    location: str | None = None        # 线下会议地址（offline / hybrid）
+    online_url: str | None = None      # 线上会议链接（online / hybrid）
     agenda: str | None = None
     reminder_before_hours: int = 24
     assignee_ids: list[int] = []
@@ -140,7 +141,8 @@ class MeetingUpdate(BaseModel):
     scheduled_at: datetime | None = None
     duration: int | None = Field(None, ge=1)
     location_type: str | None = None
-    location: str | None = None
+    location: str | None = None        # 线下会议地址（offline / hybrid）
+    online_url: str | None = None      # 线上会议链接（online / hybrid）
     status: str | None = None
     agenda: str | None = None
     reminder_before_hours: int | None = None
@@ -157,6 +159,7 @@ class MeetingOut(BaseModel):
     duration: int
     location_type: str | None = None
     location: str | None = None
+    online_url: str | None = None
     status: str
     reminder_sent: bool
     created_by_user_id: int | None = None

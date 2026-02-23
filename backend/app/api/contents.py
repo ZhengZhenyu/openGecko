@@ -101,7 +101,7 @@ def create_content(
     if data.source_type not in VALID_SOURCE_TYPES:
         raise HTTPException(400, f"Invalid source_type, must be one of {VALID_SOURCE_TYPES}")
     content_html = convert_markdown_to_html(data.content_markdown) if data.content_markdown else ""
-    # 主社区：优先取 community_ids[0]，兼容旧逻辑
+    # 主社区：取 community_ids[0]；若未提供则不关联社区
     primary_community_id = data.community_ids[0] if data.community_ids else None
     content = Content(
         title=data.title,

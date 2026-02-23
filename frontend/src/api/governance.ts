@@ -97,7 +97,8 @@ export interface Meeting {
   scheduled_at: string
   duration: number
   location_type?: string
-  location?: string
+  location?: string       // 线下会议地址（offline / hybrid）
+  online_url?: string     // 线上会议链接（online / hybrid）
   status: string
   reminder_sent: boolean
   created_by_user_id?: number
@@ -119,7 +120,8 @@ export interface MeetingCreate {
   scheduled_at: string
   duration?: number
   location_type?: string
-  location?: string
+  location?: string       // 线下会议地址（offline / hybrid）
+  online_url?: string     // 线上会议链接（online / hybrid）
   agenda?: string
   reminder_before_hours?: number
   assignee_ids?: number[]
@@ -131,7 +133,8 @@ export interface MeetingUpdate {
   scheduled_at?: string
   duration?: number
   location_type?: string
-  location?: string
+  location?: string       // 线下会议地址（offline / hybrid）
+  online_url?: string     // 线上会议链接（online / hybrid）
   status?: string
   agenda?: string
   reminder_before_hours?: number

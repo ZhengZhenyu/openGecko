@@ -39,6 +39,14 @@
             <el-option label="Release Note" value="release_note" />
             <el-option label="活动总结" value="event_summary" />
           </el-select>
+          <el-select v-model="filterCommunity" placeholder="社区筛选" clearable @change="loadData" style="width: 160px">
+            <el-option
+              v-for="c in authStore.communities"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
         </div>
       </div>
 
@@ -60,9 +68,17 @@
           </el-table-column>
           <el-table-column prop="work_status" label="工作状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="workStatusType((row as any).work_status)" size="small">
-                {{ workStatusLabel((row as any).work_status) }}
+              <el-tag :type="workStatusType(row.work_status)" size="small">
+                {{ workStatusLabel(row.work_status) }}
               </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="community_id" label="关联社区" width="130">
+            <template #default="{ row }">
+              <span v-if="row.community_id" class="community-tag">
+                {{ authStore.getCommunityById(row.community_id)?.name || `#${row.community_id}` }}
+              </span>
+              <span v-else class="no-community">—</span>
             </template>
           </el-table-column>
           <el-table-column prop="assignees" label="责任人" width="100">
@@ -110,9 +126,11 @@ import { ElMessage } from 'element-plus'
 import { fetchContents, deleteContent, uploadFile, type ContentListItem } from '../api/content'
 import { useRouter } from 'vue-router'
 import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 const contents = ref<ContentListItem[]>([])
 const loading = ref(false)
 const page = ref(1)
@@ -121,6 +139,7 @@ const total = ref(0)
 const keyword = ref('')
 const filterStatus = ref('')
 const filterSource = ref('')
+const filterCommunity = ref<number | null>(null)
 
 async function loadData() {
   loading.value = true
@@ -131,6 +150,7 @@ async function loadData() {
       status: filterStatus.value || undefined,
       source_type: filterSource.value || undefined,
       keyword: keyword.value || undefined,
+      community_id: filterCommunity.value || undefined,
     })
     contents.value = res.items
     total.value = res.total
@@ -366,6 +386,25 @@ watch(
 
 .section-card :deep(.el-table .el-table__row:hover > td) {
   background: #f8fafc !important;
+}
+
+.community-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 5px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-community {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .title-link {

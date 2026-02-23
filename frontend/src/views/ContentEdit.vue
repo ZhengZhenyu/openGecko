@@ -149,6 +149,26 @@
             </el-select>
           </div>
         </div>
+
+        <!-- 关联社区 -->
+        <div class="meta-section">
+          <div class="meta-section-title">关联社区</div>
+          <el-select
+            v-model="communityIds"
+            multiple
+            placeholder="选择关联社区（可多选）"
+            size="small"
+            style="width:100%"
+          >
+            <el-option
+              v-for="c in authStore.communities"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
+          <p class="community-hint">内容可关联多个社区，或不关联任何社区</p>
+        </div>
       </div>
     </div>
   </div>
@@ -216,6 +236,7 @@ const form = ref({
 })
 const tagsInput = ref('')
 const assigneeIds = ref<number[]>([])
+const communityIds = ref<number[]>([])
 // 编辑器模式：markdown（默认）或 html（135 等富文本粘贴）
 const editorMode = ref<'markdown' | 'html'>('markdown')
 
@@ -250,6 +271,7 @@ onMounted(async () => {
     coverImageUrl.value = data.cover_image || null
     contentOwnerId.value = data.owner_id
     assigneeIds.value = data.assignee_ids || []
+    communityIds.value = data.community_ids?.length ? data.community_ids : (data.community_id ? [data.community_id] : [])
 
     // Load collaborators
     try {
@@ -261,6 +283,10 @@ onMounted(async () => {
     // For new content, default assignee to current user
     if (authStore.user?.id) {
       assigneeIds.value = [authStore.user.id]
+    }
+    // For new content, pre-fill community with current community
+    if (communityStore.currentCommunityId) {
+      communityIds.value = [communityStore.currentCommunityId]
     }
   }
 })
@@ -312,6 +338,7 @@ async function handleSave() {
       ...form.value,
       tags: tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean),
       assignee_ids: assigneeIds.value,
+      community_ids: communityIds.value,
       // HTML 模式下清空 markdown，避免发布时走 markdown 转换路径
       content_markdown: editorMode.value === 'html' ? '' : form.value.content_markdown,
       content_html: editorMode.value === 'markdown' ? '' : form.value.content_html,
@@ -668,6 +695,15 @@ async function handleTransferOwnership() {
 .cover-action-btn:hover { border-color: #cbd5e1; background: #f8fafc; color: var(--text-primary); }
 .cover-action-btn.danger { color: #ef4444; }
 .cover-action-btn.danger:hover { border-color: #fca5a5; background: #fef2f2; }
+
+.community-tags { padding: 2px 0 6px; }
+
+.community-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
 
 /* ── Element Plus 覆写 ── */
 :deep(.el-button) { border-radius: 7px; font-weight: 500; }

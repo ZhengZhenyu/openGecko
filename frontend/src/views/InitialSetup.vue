@@ -213,21 +213,21 @@ const handleSetup = async () => {
 
 .setup-card {
   position: relative;
-  width: 500px;
+  width: 460px;
   max-width: 90%;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 
   :deep(.el-card__header) {
-    padding: 48px 40px 32px;
+    padding: 24px 32px 16px;
     border-bottom: 1px solid #f1f5f9;
     background: transparent;
   }
 
   :deep(.el-card__body) {
-    padding: 32px 40px 40px;
+    padding: 20px 32px 28px;
     background: transparent;
   }
 }
@@ -236,17 +236,17 @@ const handleSetup = async () => {
   text-align: center;
 
   .logo {
-    width: 200px;
+    width: 150px;
     height: auto;
-    margin: 0 auto 24px;
+    margin: 0 auto 12px;
     display: block;
-    border-radius: 16px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 8px;
   }
 
   h2 {
-    margin: 0 0 12px;
-    font-size: 28px;
+    margin: 0 0 6px;
+    font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: #1e293b;
@@ -254,7 +254,7 @@ const handleSetup = async () => {
 
   .subtitle {
     margin: 0;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 400;
     line-height: 1.5;
     color: #64748b;
@@ -265,13 +265,13 @@ const handleSetup = async () => {
 .info-banner {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 24px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 12px;
   color: #1d4ed8;
   line-height: 1.5;
 
@@ -285,7 +285,7 @@ const handleSetup = async () => {
 
 .setup-form {
   .el-form-item {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 
     &:last-child {
       margin-bottom: 0;
@@ -296,9 +296,9 @@ const handleSetup = async () => {
     .el-input__wrapper {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border-radius: 10px;
       box-shadow: none;
-      padding: 12px 16px;
+      padding: 9px 16px;
       transition: all 0.2s ease;
 
       &:hover {
@@ -315,7 +315,7 @@ const handleSetup = async () => {
 
     .el-input__inner {
       color: #1e293b;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 400;
       letter-spacing: -0.01em;
 
@@ -326,7 +326,7 @@ const handleSetup = async () => {
 
     .el-input__prefix {
       color: #94a3b8;
-      font-size: 17px;
+      font-size: 15px;
     }
 
     .el-input__suffix {
@@ -335,17 +335,17 @@ const handleSetup = async () => {
   }
 
   .submit-item {
-    margin-top: 8px;
+    margin-top: 6px;
     margin-bottom: 0;
   }
 
   .setup-button {
     width: 100%;
-    height: 52px;
+    height: 44px;
     background: #0095ff;
     border: none;
-    border-radius: 12px;
-    font-size: 16px;
+    border-radius: 10px;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: -0.01em;
     box-shadow: 0 2px 8px rgba(0, 149, 255, 0.25);
@@ -369,22 +369,22 @@ const handleSetup = async () => {
     margin: 20px;
 
     :deep(.el-card__header) {
-      padding: 40px 28px 28px;
+      padding: 20px 24px 14px;
     }
 
     :deep(.el-card__body) {
-      padding: 28px;
+      padding: 16px 24px 20px;
     }
   }
 
   .card-header {
     .logo {
-      width: 160px;
-      margin-bottom: 20px;
+      width: 120px;
+      margin-bottom: 10px;
     }
 
     h2 {
-      font-size: 24px;
+      font-size: 18px;
     }
   }
 }
