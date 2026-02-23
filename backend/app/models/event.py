@@ -13,7 +13,7 @@ class EventTemplate(Base):
 
     id = Column(Integer, primary_key=True)
     community_id = Column(
-        Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True
     )
     name = Column(String(200), nullable=False)
     event_type = Column(
@@ -55,7 +55,7 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True)
     community_id = Column(
-        Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True
     )
     title = Column(String(300), nullable=False)
     event_type = Column(

@@ -122,7 +122,7 @@ class TestRolePermissions:
         response = client.get("/api/contents", headers=headers)
         assert response.status_code == 200
     
-    def test_regular_user_cannot_access_other_communities(
+    def test_regular_user_can_access_all_contents_cross_community(
         self,
         client: TestClient,
         regular_user: User,
@@ -130,14 +130,13 @@ class TestRolePermissions:
         test_another_community: Community,
         regular_user_token: str
     ):
-        """Regular user should only access their own communities."""
-        # Try to access another community
+        """内容采用 community association 模式，普通用户也可跨社区查看内容列表"""
         headers = {
             "Authorization": f"Bearer {regular_user_token}",
             "X-Community-Id": str(test_another_community.id),
         }
         response = client.get("/api/contents", headers=headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
     
     def test_community_admin_can_edit_all_community_content(
         self,

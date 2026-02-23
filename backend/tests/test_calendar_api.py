@@ -173,7 +173,7 @@ class TestCalendarEvents:
         )
         assert response.status_code in [401, 403]
 
-    def test_get_calendar_events_community_isolation(
+    def test_get_calendar_events_cross_community(
         self,
         client: TestClient,
         db_session: Session,
@@ -181,7 +181,7 @@ class TestCalendarEvents:
         test_another_community: Community,
         auth_headers: dict,
     ):
-        """社区隔离：只能看到自己社区的数据"""
+        """跨社区：内容日历展示所有社区的内容（community association 模式）"""
         now = datetime.utcnow()
         db_session.add(
             Content(
@@ -203,8 +203,10 @@ class TestCalendarEvents:
             f"/api/contents/calendar/events?start={start}&end={end}",
             headers=auth_headers,
         )
+        assert response.status_code == 200
         data = response.json()
-        assert not any(item["title"] == "Other Community Event" for item in data)
+        # 跨社区内容对所有用户可见
+        assert any(item["title"] == "Other Community Event" for item in data)
 
     def test_get_calendar_events_response_fields(
         self,

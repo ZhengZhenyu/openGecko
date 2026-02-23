@@ -124,9 +124,10 @@ class TestGetCampaign:
         resp = client.get("/api/campaigns/99999", headers=auth_headers)
         assert resp.status_code == 404
 
-    def test_get_campaign_wrong_community(self, client: TestClient, another_user_auth_headers, test_campaign):
+    def test_get_campaign_cross_community_accessible(self, client: TestClient, another_user_auth_headers, test_campaign):
+        """运营活动采用 community association 模式，跨社区用户也可访问"""
         resp = client.get(f"/api/campaigns/{test_campaign.id}", headers=another_user_auth_headers)
-        assert resp.status_code == 404
+        assert resp.status_code == 200
 
 
 class TestUpdateCampaign:

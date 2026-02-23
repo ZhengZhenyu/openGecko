@@ -10,7 +10,7 @@ class Campaign(Base):
     __tablename__ = "campaigns"
 
     id = Column(Integer, primary_key=True, index=True)
-    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
+    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
     type = Column(String(50), nullable=False)          # promotion / care / invitation / survey

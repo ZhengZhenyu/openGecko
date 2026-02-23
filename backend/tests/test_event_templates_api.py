@@ -33,17 +33,21 @@ class TestListEventTemplates:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_returns_community_templates(
+    def test_list_returns_public_templates_only(
         self,
         client: TestClient,
         auth_headers: dict,
         db_session: Session,
         test_community: Community,
     ):
-        _create_template(db_session, test_community.id, name="私有模板")
+        """列表仅返回公开模板，私有模板不出现"""
+        _create_template(db_session, test_community.id, name="私有模板", is_public=False)
+        _create_template(db_session, test_community.id, name="公开模板", is_public=True)
         resp = client.get("/api/event-templates", headers=auth_headers)
         assert resp.status_code == 200
-        assert any(t["name"] == "私有模板" for t in resp.json())
+        names = [t["name"] for t in resp.json()]
+        assert "公开模板" in names
+        assert "私有模板" not in names
 
     def test_list_includes_public_templates(
         self,
@@ -110,7 +114,8 @@ class TestGetEventTemplate:
         db_session: Session,
         test_community: Community,
     ):
-        t = _create_template(db_session, test_community.id)
+        """GET 公开模板返回 200"""
+        t = _create_template(db_session, test_community.id, is_public=True)
         resp = client.get(f"/api/event-templates/{t.id}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["id"] == t.id

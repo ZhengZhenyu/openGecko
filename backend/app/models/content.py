@@ -64,7 +64,7 @@ class Content(Base):
     # Work status (工作状态): planning, in_progress, completed
     work_status = Column(String(50), default="planning", index=True)
     # Multi-tenancy fields
-    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
+    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     # Ownership field (defaults to creator)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -60,10 +60,11 @@ class TestListProjects:
         assert len(data) == 1
         assert data[0]["name"] == "openGecko"
 
-    def test_list_projects_community_isolation(self, client: TestClient, another_user_auth_headers, test_project):
+    def test_list_projects_cross_community(self, client: TestClient, another_user_auth_headers, test_project):
+        """生态项目采用 community association 模式，跨社区用户也可看到项目列表"""
         resp = client.get("/api/ecosystem", headers=another_user_auth_headers)
         assert resp.status_code == 200
-        assert resp.json() == []
+        assert len(resp.json()) >= 1
 
 
 class TestCreateProject:
@@ -108,9 +109,10 @@ class TestGetProject:
         resp = client.get("/api/ecosystem/99999", headers=auth_headers)
         assert resp.status_code == 404
 
-    def test_get_project_wrong_community(self, client: TestClient, another_user_auth_headers, test_project):
+    def test_get_project_cross_community_accessible(self, client: TestClient, another_user_auth_headers, test_project):
+        """生态项目采用 community association 模式，跨社区用户可访问项目详情"""
         resp = client.get(f"/api/ecosystem/{test_project.id}", headers=another_user_auth_headers)
-        assert resp.status_code == 404
+        assert resp.status_code == 200
 
 
 class TestUpdateProject:

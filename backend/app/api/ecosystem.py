@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.dependencies import get_current_community, get_current_user
+from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.models.ecosystem import EcosystemContributor, EcosystemProject
@@ -26,22 +26,19 @@ VALID_PLATFORMS = {"github", "gitee", "gitcode"}
 
 @router.get("", response_model=list[ProjectListOut])
 def list_projects(
-    community_id: int = Depends(get_current_community),
+    community_id: int | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return (
-        db.query(EcosystemProject)
-        .filter(EcosystemProject.community_id == community_id)
-        .order_by(EcosystemProject.created_at.desc())
-        .all()
-    )
+    query = db.query(EcosystemProject)
+    if community_id is not None:
+        query = query.filter(EcosystemProject.community_id == community_id)
+    return query.order_by(EcosystemProject.created_at.desc()).all()
 
 
 @router.post("", response_model=ProjectOut, status_code=201)
 def create_project(
     data: ProjectCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -49,7 +46,6 @@ def create_project(
         raise HTTPException(400, f"platform 必须为 {VALID_PLATFORMS}")
     project = EcosystemProject(
         added_by_id=current_user.id,
-        community_id=community_id,
         **data.model_dump(),
     )
     db.add(project)
@@ -61,14 +57,10 @@ def create_project(
 @router.get("/{pid}", response_model=ProjectOut)
 def get_project(
     pid: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    project = db.query(EcosystemProject).filter(
-        EcosystemProject.id == pid,
-        EcosystemProject.community_id == community_id,
-    ).first()
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
     return project
@@ -78,14 +70,10 @@ def get_project(
 def update_project(
     pid: int,
     data: ProjectUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    project = db.query(EcosystemProject).filter(
-        EcosystemProject.id == pid,
-        EcosystemProject.community_id == community_id,
-    ).first()
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -100,15 +88,11 @@ def update_project(
 @router.post("/{pid}/sync", response_model=SyncResult)
 def trigger_sync(
     pid: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """手动触发单个项目同步。"""
-    project = db.query(EcosystemProject).filter(
-        EcosystemProject.id == pid,
-        EcosystemProject.community_id == community_id,
-    ).first()
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
     token = getattr(settings, "GITHUB_PAT", None)
@@ -125,14 +109,10 @@ def list_contributors(
     unlinked: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    project = db.query(EcosystemProject).filter(
-        EcosystemProject.id == pid,
-        EcosystemProject.community_id == community_id,
-    ).first()
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
     query = db.query(EcosystemContributor).filter(EcosystemContributor.project_id == pid)
@@ -155,16 +135,11 @@ def list_contributors(
 def import_contributor_to_people(
     pid: int,
     handle: str,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """将贡献者导入人脉库，并关联 person_id。"""
-    # 校验项目属于当前社区
-    project = db.query(EcosystemProject).filter(
-        EcosystemProject.id == pid,
-        EcosystemProject.community_id == community_id,
-    ).first()
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
 

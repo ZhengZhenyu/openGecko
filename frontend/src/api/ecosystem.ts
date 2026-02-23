@@ -47,6 +47,7 @@ export interface ProjectCreateData {
   platform: string
   org_name: string
   repo_name?: string
+  community_id?: number | null
   description?: string
   tags?: string[]
 }

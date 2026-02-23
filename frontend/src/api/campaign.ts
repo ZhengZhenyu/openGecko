@@ -4,7 +4,7 @@ import apiClient from './index'
 
 export interface CampaignListItem {
   id: number
-  community_id: number
+  community_id: number | null
   name: string
   type: string
   status: string
@@ -23,6 +23,7 @@ export interface CampaignDetail extends CampaignListItem {
 export interface CampaignCreate {
   name: string
   type: string
+  community_id?: number | null
   description?: string | null
   target_count?: number | null
   start_date?: string | null

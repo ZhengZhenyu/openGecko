@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.dependencies import get_current_community, get_current_user
+from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.models.campaign import Campaign, CampaignActivity, CampaignContact
@@ -39,11 +39,10 @@ VALID_CONTACT_STATUSES = {"pending", "contacted", "responded", "converted", "dec
 def list_campaigns(
     type: str | None = None,
     status: str | None = None,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Campaign).filter(Campaign.community_id == community_id)
+    query = db.query(Campaign)
     if type:
         query = query.filter(Campaign.type == type)
     if status:
@@ -54,14 +53,12 @@ def list_campaigns(
 @router.post("", response_model=CampaignOut, status_code=201)
 def create_campaign(
     data: CampaignCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if data.type not in VALID_TYPES:
         raise HTTPException(400, f"type 必须为 {VALID_TYPES}")
     campaign = Campaign(
-        community_id=community_id,
         owner_id=current_user.id,
         **data.model_dump(),
     )
@@ -74,12 +71,11 @@ def create_campaign(
 @router.get("/{cid}", response_model=CampaignOut)
 def get_campaign(
     cid: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -90,12 +86,11 @@ def get_campaign(
 def update_campaign(
     cid: int,
     data: CampaignUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -114,12 +109,11 @@ def update_campaign(
 @router.get("/{cid}/funnel", response_model=CampaignFunnel)
 def campaign_funnel(
     cid: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -149,12 +143,11 @@ def list_contacts(
     status: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -170,12 +163,11 @@ def list_contacts(
 def add_contact(
     cid: int,
     data: ContactCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -202,7 +194,6 @@ def update_contact_status(
     cid: int,
     contact_id: int,
     data: ContactStatusUpdate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -229,20 +220,18 @@ def update_contact_status(
 def import_from_event(
     cid: int,
     data: BulkImportFromEvent,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """从活动签到名单批量导入联系人。"""
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
-    # 校验活动存在且属于当前社区
+    # 校验活动存在
     event = db.query(Event).filter(
         Event.id == data.event_id,
-        Event.community_id == community_id,
     ).first()
     if not event:
         raise HTTPException(404, "活动不存在")
@@ -272,13 +261,12 @@ def import_from_event(
 def import_from_people(
     cid: int,
     data: BulkImportFromPeople,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """从人脉库批量导入指定 person_id 列表。"""
     campaign = db.query(Campaign).filter(
-        Campaign.id == cid, Campaign.community_id == community_id
+        Campaign.id == cid
     ).first()
     if not campaign:
         raise HTTPException(404, "运营活动不存在")
@@ -319,7 +307,6 @@ def import_from_people(
 def list_activities(
     cid: int,
     contact_id: int,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -345,7 +332,6 @@ def add_activity(
     cid: int,
     contact_id: int,
     data: ActivityCreate,
-    community_id: int = Depends(get_current_community),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -10,7 +10,7 @@ class EcosystemProject(Base):
     __tablename__ = "ecosystem_projects"
 
     id = Column(Integer, primary_key=True, index=True)
-    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True)
+    community_id = Column(Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     platform = Column(String(30), nullable=False)   # github / gitee / gitcode
     org_name = Column(String(200), nullable=False)
