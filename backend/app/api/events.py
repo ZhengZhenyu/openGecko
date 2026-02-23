@@ -49,6 +49,7 @@ def list_events(
     status: str | None = None,
     event_type: str | None = None,
     community_id: int | None = Query(None),
+    keyword: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -61,6 +62,8 @@ def list_events(
         query = query.filter(Event.status == status)
     if event_type:
         query = query.filter(Event.event_type == event_type)
+    if keyword:
+        query = query.filter(Event.title.ilike(f"%{keyword}%"))
     total = query.count()
     items = query.order_by(Event.planned_at.desc().nullslast()).offset((page - 1) * page_size).limit(page_size).all()
     return PaginatedEvents(items=items, total=total, page=page, page_size=page_size)

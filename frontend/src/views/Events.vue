@@ -12,54 +12,102 @@
       </el-button>
     </div>
 
-    <!-- Filters -->
-    <div class="filter-bar">
-      <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 140px" @change="loadEvents">
-        <el-option label="草稿" value="draft" />
-        <el-option label="策划中" value="planning" />
-        <el-option label="进行中" value="ongoing" />
-        <el-option label="已完成" value="completed" />
-        <el-option label="已取消" value="cancelled" />
-      </el-select>
-      <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 140px" @change="loadEvents">
-        <el-option label="线上" value="online" />
-        <el-option label="线下" value="offline" />
-        <el-option label="混合" value="hybrid" />
-      </el-select>
-    </div>
+     <!-- Filters -->
+     <div class="filter-bar">
+       <el-input
+         v-model="filterKeyword"
+         placeholder="搜索活动名称"
+         clearable
+         style="width: 200px"
+         @input="debouncedLoadEvents"
+         @clear="debouncedLoadEvents"
+       >
+         <template #prefix>
+           <el-icon><Search /></el-icon>
+         </template>
+       </el-input>
+       <el-select v-model="filterCommunity" placeholder="社区筛选" clearable style="width: 160px" @change="loadEvents">
+         <el-option
+           v-for="c in communities"
+           :key="c.id"
+           :label="c.name"
+           :value="c.id"
+         />
+       </el-select>
+       <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 140px" @change="loadEvents">
+         <el-option label="草稿" value="draft" />
+         <el-option label="策划中" value="planning" />
+         <el-option label="进行中" value="ongoing" />
+         <el-option label="已完成" value="completed" />
+         <el-option label="已取消" value="cancelled" />
+       </el-select>
+       <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 140px" @change="loadEvents">
+         <el-option label="线上" value="online" />
+         <el-option label="线下" value="offline" />
+         <el-option label="混合" value="hybrid" />
+       </el-select>
+       <el-radio-group v-model="viewMode" class="view-toggle">
+         <el-radio-button value="list">
+           <el-icon><List /></el-icon>
+           列表
+         </el-radio-button>
+         <el-radio-button value="calendar">
+           <el-icon><Calendar /></el-icon>
+           日历
+         </el-radio-button>
+       </el-radio-group>
+     </div>
 
-    <!-- Event List -->
-    <div v-loading="loading" class="events-grid">
-      <div v-if="!loading && events.length === 0" class="empty-state">
-        <el-icon class="empty-icon"><Flag /></el-icon>
-        <p>暂无活动，点击右上角创建第一个活动</p>
-      </div>
-      <div
-        v-for="event in events"
-        :key="event.id"
-        class="event-card"
-        @click="$router.push(`/events/${event.id}`)"
-      >
-        <div class="event-card-header">
-          <el-tag :type="typeTagMap[event.event_type] ?? 'info'" size="small">
-            {{ typeLabel[event.event_type] ?? event.event_type }}
-          </el-tag>
-          <el-tag :type="statusTagMap[event.status] ?? 'info'" size="small">
-            {{ statusLabel[event.status] ?? event.status }}
-          </el-tag>
+      <!-- Event List -->
+      <div v-if="viewMode === 'list'" v-loading="loading" class="events-table-container">
+        <div v-if="!loading && events.length === 0" class="empty-state">
+          <el-icon class="empty-icon"><Flag /></el-icon>
+          <p>暂无活动，点击右上角创建第一个活动</p>
         </div>
-        <h3 class="event-title">{{ event.title }}</h3>
-        <div class="event-meta">
-          <span v-if="event.planned_at">
-            <el-icon><Calendar /></el-icon>
-            {{ formatDate(event.planned_at) }}
-          </span>
-          <span v-if="event.location">
-            <el-icon><Location /></el-icon>
-            {{ event.location }}
-          </span>
-        </div>
-      </div>
+        <el-table v-else :data="events" style="width: 100%" @row-click="(row) => $router.push('/events/' + row.id)">
+          <el-table-column prop="title" label="活动名称" min-width="200" />
+          <el-table-column prop="event_type" label="类型" width="100">
+            <template #default="{ row }">
+              <el-tag :type="typeTagMap[row.event_type] ?? 'info'" size="small">
+                {{ typeLabel[row.event_type] ?? row.event_type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="statusTagMap[row.status] ?? 'info'" size="small">
+                {{ statusLabel[row.status] ?? row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="planned_at" label="计划时间" width="180">
+            <template #default="{ row }">
+              <span v-if="row.planned_at">{{ formatDate(row.planned_at) }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="location" label="地点" min-width="150" />
+          <el-table-column prop="community_id" label="社区" width="140">
+            <template #default="{ row }">
+              <el-tooltip
+                v-if="row.community_id"
+                :content="getCommunityName(row.community_id) || `社区 #${row.community_id}`"
+                placement="top"
+                :show-after="300"
+              >
+                <el-tag type="primary" size="small" effect="plain" class="community-tag">
+                  {{ getCommunityName(row.community_id) || `#${row.community_id}` }}
+                </el-tag>
+              </el-tooltip>
+              <span v-else class="no-community">—</span>
+            </template>
+          </el-table-column>
+        </el-table>
+     </div>
+
+    <!-- Calendar View -->
+    <div v-if="viewMode === 'calendar'" class="calendar-container">
+      <FullCalendar ref="calendarRef" :options="calendarOptions" class="events-calendar" />
     </div>
 
     <!-- Pagination -->
@@ -115,10 +163,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Flag, Plus, Calendar, Location } from '@element-plus/icons-vue'
+import { Flag, Plus, Calendar, Location, Search, List } from '@element-plus/icons-vue'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { CalendarOptions } from '@fullcalendar/core'
 import { listEvents, createEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
@@ -135,7 +187,13 @@ const currentPage = ref(1)
 const pageSize = 20
 const filterStatus = ref<string>('')
 const filterType = ref<string>('')
+const filterCommunity = ref<number | null>(null)
+const filterKeyword = ref<string>('')
 const showCreateDialog = ref(false)
+const viewMode = ref<'list' | 'calendar'>('list')
+const calendarRef = ref()
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const createForm = ref({
   title: '',
@@ -179,15 +237,57 @@ function formatDate(dt: string | null): string {
   return new Date(dt).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+function getCommunityName(communityId: number | null): string {
+  if (!communityId) return ''
+  const community = communities.value.find(c => c.id === communityId)
+  return community?.name || ''
+}
+
+function debouncedLoadEvents() {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    loadEvents()
+  }, 500)
+}
+
+const calendarOptions = computed(() => ({
+  plugins: [dayGridPlugin, interactionPlugin],
+  initialView: 'dayGridMonth',
+  locale: 'zh-cn',
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: '',
+  },
+  buttonText: { today: '今天' },
+  height: 500,
+  events: events.value.map(e => ({
+    id: String(e.id),
+    title: e.title,
+    date: e.planned_at ? new Date(e.planned_at) : undefined,
+    color: statusTagMap[e.status] === 'primary' ? '#0095ff' : 
+            statusTagMap[e.status] === 'success' ? '#10b981' :
+            statusTagMap[e.status] === 'warning' ? '#f59e0b' :
+            statusTagMap[e.status] === 'danger' ? '#ef4444' : '#94a3b8',
+    extendedProps: { type: 'event', resource_id: e.id },
+  })),
+  eventClick: (info) => {
+    router.push(`/events/${info.event.id}`)
+  },
+  dayMaxEvents: 3,
+}))
+
 async function loadEvents() {
   loading.value = true
   try {
     const data = await listEvents({
       status: filterStatus.value || undefined,
       event_type: filterType.value || undefined,
+      community_id: filterCommunity.value || undefined,
+      keyword: filterKeyword.value || undefined,
       page: currentPage.value,
       page_size: pageSize,
-    })
+        })
     events.value = data.items
     total.value = data.total
   } catch {
@@ -263,15 +363,7 @@ onMounted(loadEvents)
   margin-bottom: 20px;
 }
 
-.events-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  min-height: 120px;
-}
-
 .empty-state {
-  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -286,55 +378,234 @@ onMounted(loadEvents)
   color: #cbd5e1;
 }
 
-.event-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 16px;
-  cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
-}
-
-.event-card:hover {
-  border-color: #0095ff;
-  box-shadow: 0 4px 16px rgba(0, 149, 255, 0.12);
-}
-
-.event-card-header {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.event-title {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.event-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.event-meta span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .pagination {
   margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+.view-toggle {
+  margin-left: auto;
+}
+
+.community-tag {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.no-community {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.events-table-container {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.events-table-container :deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 0;
+}
+
+.events-table-container :deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 0;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.events-table-container :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.events-table-container :deep(.el-table__row:hover > td.el-table__cell) {
+  background: #f8fafc !important;
+}
+
+.calendar-container {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* ===== FullCalendar 深度样式（与 CommunitySandbox 统一） ===== */
+:deep(.events-calendar .fc) {
+  font-family: inherit;
+}
+
+:deep(.events-calendar .fc-toolbar) {
+  margin-bottom: 16px !important;
+  align-items: center !important;
+}
+:deep(.events-calendar .fc-toolbar-title) {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+}
+
+/* 所有按钮基础 */
+:deep(.events-calendar .fc-button) {
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 4px 10px !important;
+  border-radius: 7px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+  transition: background 0.13s, border-color 0.13s, color 0.13s !important;
+}
+:deep(.events-calendar .fc-button:hover:not(:disabled)) {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+:deep(.events-calendar .fc-button.fc-button-active) {
+  background: #0095ff !important;
+  border-color: #0095ff !important;
+  color: #fff !important;
+  box-shadow: 0 2px 7px rgba(0,149,255,0.28) !important;
+}
+:deep(.events-calendar .fc-button:focus) { box-shadow: none !important; }
+
+/* 今天按钮 */
+:deep(.events-calendar .fc-today-button) {
+  background: rgba(0,149,255,0.08) !important;
+  border-color: rgba(0,149,255,0.22) !important;
+  color: #0095ff !important;
+  font-weight: 600 !important;
+  border-radius: 7px !important;
+}
+:deep(.events-calendar .fc-today-button:hover:not(:disabled)) {
+  background: rgba(0,149,255,0.15) !important;
+  border-color: #0095ff !important;
+}
+
+/* 前/后翻页 */
+:deep(.events-calendar .fc-prev-button),
+:deep(.events-calendar .fc-next-button) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #94a3b8 !important;
+  padding: 4px 7px !important;
+}
+:deep(.events-calendar .fc-prev-button:hover:not(:disabled)),
+:deep(.events-calendar .fc-next-button:hover:not(:disabled)) {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+/* 表头星期行 */
+:deep(.events-calendar .fc-col-header-cell) {
+  background: #fff !important;
+  border-color: transparent !important;
+  padding: 8px 0 6px !important;
+}
+:deep(.events-calendar .fc-col-header-cell-cushion) {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none !important;
+}
+:deep(.events-calendar .fc-col-header) {
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+/* 日期单元格 */
+:deep(.events-calendar .fc-daygrid-day) {
+  border-color: #f1f5f9 !important;
+  transition: background 0.12s;
+}
+:deep(.events-calendar .fc-daygrid-day:hover:not(.fc-day-today)) {
+  background: #fafbfc;
+}
+:deep(.events-calendar .fc-daygrid-day.fc-day-other .fc-daygrid-day-number) {
+  color: #cbd5e1 !important;
+}
+:deep(.events-calendar .fc-daygrid-day-top) {
+  justify-content: flex-end;
+}
+
+/* 今天单元格 */
+:deep(.events-calendar .fc-day-today) {
+  background: linear-gradient(145deg, rgba(0,149,255,0.07) 0%, rgba(0,149,255,0.01) 100%) !important;
+}
+:deep(.events-calendar .fc-day-today .fc-daygrid-day-number) {
+  background: #0095ff !important;
+  color: #fff !important;
+  border-radius: 14px !important;
+  padding: 2px 8px !important;
+  margin: 4px 5px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  display: inline-block !important;
+  line-height: 1.6 !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 2px 7px rgba(0,149,255,0.32) !important;
+}
+
+/* 普通日期数字 */
+:deep(.events-calendar .fc-daygrid-day-number) {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  padding: 4px 6px !important;
+  text-decoration: none !important;
+}
+
+/* 事件胶囊 */
+:deep(.events-calendar .fc-event) {
+  font-size: 11px;
+  border-radius: 4px !important;
+  border: none !important;
+  border-left: 3px solid rgba(0,0,0,0.16) !important;
+  padding: 1px 5px !important;
+  margin: 0 3px 2px !important;
+  cursor: pointer !important;
+  transition: transform 0.11s, box-shadow 0.11s !important;
+}
+:deep(.events-calendar .fc-event:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12) !important;
+}
+
+/* "更多"链接 */
+:deep(.events-calendar .fc-daygrid-more-link) {
+  font-size: 10px;
+  font-weight: 600;
+  color: #0095ff !important;
+  background: rgba(0,149,255,0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-decoration: none !important;
+}
+
+/* 周末轻染色 */
+:deep(.events-calendar .fc-day-sat:not(.fc-day-today)),
+:deep(.events-calendar .fc-day-sun:not(.fc-day-today)) {
+  background: rgba(248,250,252,0.6);
+}
+
+:deep(.events-calendar .fc-daygrid-day-events) {
+  min-height: 1.2em;
 }
 </style>

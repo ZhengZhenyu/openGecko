@@ -4,6 +4,7 @@ import apiClient from './index'
 
 export interface EventListItem {
   id: number
+  community_id: number | null
   title: string
   event_type: string
   status: string
@@ -47,9 +48,10 @@ export interface EventCreate {
   location?: string | null
   online_url?: string | null
   description?: string | null
+  status?: string
 }
 
-export interface EventUpdate extends Partial<EventCreate> {
+export interface EventUpdate extends Partial<Omit<EventCreate, 'status'>> {
   attendee_count?: number | null
   result_summary?: string | null
 }
@@ -154,7 +156,7 @@ export interface EventTaskUpdate extends Partial<EventTaskCreate> {
 
 // ─── Event CRUD ───────────────────────────────────────────────────────────────
 
-export async function listEvents(params?: { status?: string; event_type?: string; page?: number; page_size?: number }) {
+export async function listEvents(params?: { status?: string; event_type?: string; community_id?: number; keyword?: string; page?: number; page_size?: number }) {
   const res = await apiClient.get<PaginatedEvents>('/events', { params })
   return res.data
 }

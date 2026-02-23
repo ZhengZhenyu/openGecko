@@ -73,11 +73,18 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="community_id" label="关联社区" width="130">
+          <el-table-column prop="community_id" label="关联社区" width="140">
             <template #default="{ row }">
-              <span v-if="row.community_id" class="community-tag">
-                {{ authStore.getCommunityById(row.community_id)?.name || `#${row.community_id}` }}
-              </span>
+              <el-tooltip
+                v-if="row.community_id"
+                :content="authStore.getCommunityById(row.community_id)?.name || `社区 #${row.community_id}`"
+                placement="top"
+                :show-after="300"
+              >
+                <span class="community-tag">
+                  {{ authStore.getCommunityById(row.community_id)?.name || `#${row.community_id}` }}
+                </span>
+              </el-tooltip>
               <span v-else class="no-community">—</span>
             </template>
           </el-table-column>
@@ -396,10 +403,11 @@ watch(
   background: #eff6ff;
   padding: 2px 8px;
   border-radius: 5px;
-  max-width: 110px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: default;
 }
 
 .no-community {

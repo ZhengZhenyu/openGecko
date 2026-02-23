@@ -277,15 +277,14 @@ onMounted(loadData)
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
   --radius: 12px;
 
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 32px 40px 60px;
   position: relative;
 }
 
 .page-title {
-  margin-bottom: 32px;
-  padding: 0 4px;
+  margin-bottom: 28px;
 }
 .page-title h2 {
   margin: 0 0 6px;
@@ -408,9 +407,9 @@ onMounted(loadData)
 .user-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #93c5fd, #a5b4fc);
-  color: #1e40af;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--blue), #0080e6);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;

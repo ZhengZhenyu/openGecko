@@ -1,11 +1,11 @@
 <template>
   <div v-loading="loading" class="event-detail">
-    <template v-if="event">
+    <template v-if="event || isNewEvent">
       <!-- Page Header -->
       <div class="detail-header">
         <el-button link @click="$router.push('/events')">
           <el-icon><ArrowLeft /></el-icon>
-          返回活动列表
+          {{ isNewEvent ? '返回活动列表' : '返回活动列表' }}
         </el-button>
       </div>
 
@@ -13,14 +13,20 @@
       <div class="info-card">
         <div class="info-top">
           <div class="info-title-row">
-            <h1 class="event-title">{{ event.title }}</h1>
-            <div class="info-badges">
+            <h1 class="event-title">{{ isNewEvent ? '创建活动' : (isEditing ? editForm.title : event.title) }}</h1>
+            <div v-if="!isNewEvent && event" class="info-badges">
               <el-tag :type="typeTagMap[event.event_type] ?? 'info'">{{ typeLabel[event.event_type] ?? event.event_type }}</el-tag>
               <el-tag :type="statusTagMap[event.status] ?? 'info'">{{ statusLabel[event.status] ?? event.status }}</el-tag>
             </div>
           </div>
           <div class="info-actions">
+            <el-button v-if="!isEditing && !isNewEvent" size="small" @click="startEdit">编辑</el-button>
+            <template v-else-if="isEditing || isNewEvent">
+              <el-button size="small" @click="cancelEdit">取消</el-button>
+              <el-button size="small" type="primary" :loading="saving" @click="saveEdit">保存</el-button>
+            </template>
             <el-select
+              v-if="!isNewEvent && event"
               v-model="event.status"
               size="small"
               style="width: 120px"
@@ -31,7 +37,7 @@
           </div>
         </div>
 
-        <div class="info-meta-grid">
+        <div v-if="!isEditing && event" class="info-meta-grid">
           <div v-if="event.planned_at" class="meta-item">
             <el-icon><Calendar /></el-icon>
             <span>{{ formatDateTime(event.planned_at) }}</span>
@@ -47,11 +53,43 @@
           </div>
         </div>
 
-        <p v-if="event.description" class="event-description">{{ event.description }}</p>
+        <div v-else class="edit-form">
+          <el-form :model="editForm" label-width="90px" size="small">
+            <el-form-item label="活动名称">
+              <el-input v-model="editForm.title" />
+            </el-form-item>
+            <el-form-item label="活动状态">
+              <el-select v-model="editForm.status" style="width: 100%">
+                <el-option label="草稿" value="draft" />
+                <el-option label="策划中" value="planning" />
+                <el-option label="进行中" value="ongoing" />
+                <el-option label="已完成" value="completed" />
+                <el-option label="已取消" value="cancelled" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="计划时间">
+              <el-date-picker v-model="editForm.planned_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width: 100%" />
+            </el-form-item>
+            <el-form-item label="时长（分钟）">
+              <el-input-number v-model="editForm.duration_minutes" :min="0" style="width: 100%" />
+            </el-form-item>
+            <el-form-item label="地点">
+              <el-input v-model="editForm.location" />
+            </el-form-item>
+            <el-form-item label="在线链接">
+              <el-input v-model="editForm.online_url" />
+            </el-form-item>
+            <el-form-item label="简介">
+              <el-input v-model="editForm.description" type="textarea" :rows="3" />
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <p v-if="!isEditing && event && event.description" class="event-description">{{ event.description }}</p>
       </div>
 
       <!-- Tabs -->
-      <el-tabs v-model="activeTab" class="detail-tabs">
+      <el-tabs v-if="!isNewEvent" v-model="activeTab" class="detail-tabs">
         <!-- 清单 Tab -->
         <el-tab-pane label="执行清单" name="checklist">
           <div v-loading="checklistLoading" class="tab-content">
@@ -99,6 +137,14 @@
                 </template>
               </el-table-column>
               <el-table-column label="备注" prop="notes" />
+              <el-table-column label="操作" width="140">
+                <template #default="{ row }">
+                  <template v-if="row.confirmed === 'pending'">
+                    <el-button link type="primary" size="small" @click="handleConfirmPersonnel(row.id, 'confirmed')">确认</el-button>
+                    <el-button link type="danger" size="small" @click="handleConfirmPersonnel(row.id, 'declined')">拒绝</el-button>
+                  </template>
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </el-tab-pane>
@@ -178,6 +224,11 @@
                   {{ feedbackStatusLabel[fb.status] ?? fb.status }}
                 </el-tag>
                 <span class="feedback-meta">{{ fb.raised_by || '匿名' }} · {{ formatDate(fb.created_at) }}</span>
+                <div class="feedback-actions">
+                  <el-button v-if="fb.status === 'open'" link type="primary" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'in_progress')">处理中</el-button>
+                  <el-button v-if="fb.status === 'in_progress'" link type="success" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'closed')">关闭</el-button>
+                  <el-button v-if="fb.status === 'closed'" link type="warning" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'open')">重新打开</el-button>
+                </div>
               </div>
               <p class="feedback-content">{{ fb.content }}</p>
               <div v-if="fb.issue_links.length > 0" class="issue-links">
@@ -279,26 +330,33 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Calendar, Location, Link, Plus } from '@element-plus/icons-vue'
 import {
   getEvent,
+  createEvent,
   getChecklist,
   updateChecklistItem,
   listPersonnel,
   addPersonnel,
+  confirmPersonnel,
   listFeedback,
   createFeedback,
+  updateFeedback,
   listTasks,
   createTask,
   deleteTask,
   updateEventStatus,
+  updateEvent,
 } from '../api/event'
 import type { EventDetail, ChecklistItem, Personnel, FeedbackItem, EventTask } from '../api/event'
 
 const route = useRoute()
-const eventId = computed(() => Number(route.params.id))
+const router = useRouter()
+// 两种进入方式：静态路由 /events/new (name=EventNew, 无 :id 参数) 或动态路由 /events/:id
+const isNewEvent = computed(() => route.name === 'EventNew' || route.params.id === 'new')
+const eventId = computed(() => isNewEvent.value ? undefined : Number(route.params.id))
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -324,6 +382,18 @@ const showAddFeedbackDialog = ref(false)
 const savingTask = ref(false)
 const savingPersonnel = ref(false)
 const savingFeedback = ref(false)
+
+const isEditing = ref(false)
+const saving = ref(false)
+const editForm = ref({
+  title: '',
+  planned_at: null as string | null,
+  duration_minutes: null as number | null,
+  location: '',
+  online_url: '',
+  description: '',
+  status: 'draft' as string,
+})
 
 const ganttEl = ref<HTMLElement | null>(null)
 
@@ -389,7 +459,21 @@ function formatDate(dt: string): string {
 async function loadEvent() {
   loading.value = true
   try {
-    event.value = await getEvent(eventId.value)
+    if (isNewEvent.value) {
+      event.value = null
+      isEditing.value = true
+      editForm.value = {
+        title: '',
+        planned_at: null,
+        duration_minutes: null,
+        location: '',
+        online_url: '',
+        description: '',
+        status: 'draft',
+      }
+    } else {
+      event.value = await getEvent(eventId.value!)
+    }
   } catch {
     ElMessage.error('加载活动详情失败')
   } finally {
@@ -398,29 +482,94 @@ async function loadEvent() {
 }
 
 async function loadChecklist() {
+  if (isNewEvent.value || !eventId.value) return
   checklistLoading.value = true
-  try { checklist.value = await getChecklist(eventId.value) } catch { /* empty */ } finally { checklistLoading.value = false }
+  try { checklist.value = await getChecklist(eventId.value!) } catch {} finally { checklistLoading.value = false }
 }
 
 async function loadPersonnel() {
+  if (isNewEvent.value || !eventId.value) return
   personnelLoading.value = true
-  try { personnel.value = await listPersonnel(eventId.value) } catch { /* empty */ } finally { personnelLoading.value = false }
+  try { personnel.value = await listPersonnel(eventId.value!) } catch {} finally { personnelLoading.value = false }
 }
 
 async function loadTasks() {
+  if (isNewEvent.value || !eventId.value) return
   tasksLoading.value = true
-  try { tasks.value = await listTasks(eventId.value) } catch { /* empty */ } finally { tasksLoading.value = false }
+  try { tasks.value = await listTasks(eventId.value!) } catch {} finally { tasksLoading.value = false }
 }
 
 async function loadFeedback() {
+  if (isNewEvent.value || !eventId.value) return
   feedbackLoading.value = true
-  try { feedback.value = await listFeedback(eventId.value) } catch { /* empty */ } finally { feedbackLoading.value = false }
+  try { feedback.value = await listFeedback(eventId.value!) } catch {} finally { feedbackLoading.value = false }
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
-async function handleStatusChange(newStatus: string) {
+function startEdit() {
+  if (!event.value) return
+  editForm.value = {
+    title: event.value.title,
+    planned_at: event.value.planned_at,
+    duration_minutes: event.value.duration_minutes,
+    location: event.value.location || '',
+    online_url: event.value.online_url || '',
+    description: event.value.description || '',
+    status: event.value.status,
+  }
+  isEditing.value = true
+}
+
+function cancelEdit() {
+  if (isNewEvent.value) {
+    router.push('/events')
+  } else {
+    isEditing.value = false
+  }
+}
+
+async function saveEdit() {
+  if (!editForm.value.title.trim()) {
+    ElMessage.warning('请输入活动名称')
+    return
+  }
+  saving.value = true
   try {
-    await updateEventStatus(eventId.value, newStatus)
+    if (isNewEvent.value) {
+      const newEvent = await createEvent({
+        title: editForm.value.title,
+        planned_at: editForm.value.planned_at || null,
+        duration_minutes: editForm.value.duration_minutes || null,
+        location: editForm.value.location || null,
+        online_url: editForm.value.online_url || null,
+        description: editForm.value.description || null,
+        status: editForm.value.status,
+      })
+      router.push(`/events/${newEvent.id}`)
+    } else {
+      await updateEvent(eventId.value!, {
+        title: editForm.value.title,
+        planned_at: editForm.value.planned_at,
+        duration_minutes: editForm.value.duration_minutes,
+        location: editForm.value.location || null,
+        online_url: editForm.value.online_url || null,
+        description: editForm.value.description || null,
+      })
+      await loadEvent()
+      isEditing.value = false
+    }
+    ElMessage.success('已保存')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleStatusChange(newStatus: string) {
+  if (!eventId.value) return
+  try {
+    await updateEventStatus(eventId.value!, newStatus)
     ElMessage.success('状态已更新')
   } catch {
     ElMessage.error('状态更新失败')
@@ -428,6 +577,7 @@ async function handleStatusChange(newStatus: string) {
 }
 
 async function toggleChecklist(item: ChecklistItem, checked: boolean) {
+  if (!eventId.value) return
   const newStatus = checked ? 'done' : 'pending'
   try {
     const updated = await updateChecklistItem(eventId.value, item.id, { status: newStatus })
@@ -439,10 +589,11 @@ async function toggleChecklist(item: ChecklistItem, checked: boolean) {
 }
 
 async function handleAddTask() {
+  if (!eventId.value) return
   if (!taskForm.value.title.trim()) { ElMessage.warning('请输入任务名称'); return }
   savingTask.value = true
   try {
-    await createTask(eventId.value, {
+    await createTask(eventId.value!, {
       title: taskForm.value.title,
       task_type: taskForm.value.task_type,
       phase: taskForm.value.phase,
@@ -458,14 +609,27 @@ async function handleAddTask() {
 }
 
 async function handleDeleteTask(tid: number) {
+  if (!eventId.value) return
   try {
     await ElMessageBox.confirm('确定删除此任务？', '确认', { type: 'warning' })
-    await deleteTask(eventId.value, tid)
+    await deleteTask(eventId.value!, tid)
     await loadTasks()
   } catch { /* cancelled */ }
 }
 
+async function handleConfirmPersonnel(pid: number, confirmed: string) {
+  if (!eventId.value) return
+  try {
+    await confirmPersonnel(eventId.value!, pid, confirmed)
+    await loadPersonnel()
+    ElMessage.success(confirmed === 'confirmed' ? '已确认' : '已拒绝')
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
 async function handleAddPersonnel() {
+  if (!eventId.value) return
   if (!personnelForm.value.role.trim()) { ElMessage.warning('请填写角色'); return }
   savingPersonnel.value = true
   try {
@@ -486,6 +650,7 @@ async function handleAddPersonnel() {
 }
 
 async function handleAddFeedback() {
+  if (!eventId.value) return
   if (!feedbackForm.value.content.trim()) { ElMessage.warning('请填写反馈内容'); return }
   savingFeedback.value = true
   try {
@@ -500,6 +665,18 @@ async function handleAddFeedback() {
     ElMessage.error('保存失败')
   } finally {
     savingFeedback.value = false
+  }
+}
+
+async function handleUpdateFeedbackStatus(fid: number, status: string) {
+  if (!eventId.value) return
+  try {
+    await updateFeedback(eventId.value, fid, { status })
+    const idx = feedback.value.findIndex(f => f.id === fid)
+    if (idx !== -1) feedback.value[idx].status = status
+    ElMessage.success('状态已更新')
+  } catch {
+    ElMessage.error('更新失败')
   }
 }
 
@@ -562,6 +739,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 12px;
+  gap: 16px;
 }
 
 .info-title-row {
@@ -569,6 +747,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex: 1;
 }
 
 .event-title {
@@ -581,6 +760,14 @@ onMounted(async () => {
 .info-badges {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.info-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .info-meta-grid {
@@ -600,6 +787,10 @@ onMounted(async () => {
 
 .meta-sub {
   color: #94a3b8;
+}
+
+.edit-form {
+  margin-bottom: 12px;
 }
 
 .event-description {
@@ -693,6 +884,11 @@ onMounted(async () => {
   font-size: 12px;
   color: #94a3b8;
   margin-left: auto;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .feedback-content {

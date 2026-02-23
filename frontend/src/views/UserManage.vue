@@ -90,9 +90,7 @@
           <el-checkbox v-model="registerForm.is_superuser">
             创建为超级管理员
           </el-checkbox>
-          <div style="color: #86909c; font-size: 12px; margin-top: 4px;">
-            超级管理员可以管理所有社区和用户
-          </div>
+          <div class="form-hint">超级管理员可以管理所有社区和用户</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -329,8 +327,7 @@ onMounted(loadUsers)
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 32px;
-  padding: 0 4px;
+  margin-bottom: 28px;
 }
 
 .page-title h2 {
@@ -391,8 +388,8 @@ onMounted(loadUsers)
 .user-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #93c5fd, #60a5fa);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--blue), #0080e6);
   color: #fff;
   display: flex;
   align-items: center;
@@ -400,7 +397,6 @@ onMounted(loadUsers)
   font-size: 15px;
   font-weight: 600;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .user-detail {
@@ -487,6 +483,8 @@ onMounted(loadUsers)
 
 :deep(.el-table td.el-table__cell) {
   border-bottom: 1px solid #f1f5f9;
+  padding: 14px 0;
+  font-size: 14px;
   color: var(--text-primary);
 }
 
@@ -536,5 +534,11 @@ onMounted(loadUsers)
 
 :deep(.el-empty__description) {
   color: var(--text-muted);
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 </style>

@@ -37,15 +37,11 @@
           </div>
         </div>
         <div class="header-actions">
-          <el-button size="small" @click="$router.push('/contents/new')">
+          <el-button type="primary" size="small" @click="$router.push('/contents/new')">
             <el-icon><Plus /></el-icon> 新建内容
           </el-button>
-          <el-button
-            v-if="isCurrentCommunityAdmin"
-            size="small"
-            @click="$router.push(`/community-settings/${communityStore.currentCommunityId}`)"
-          >
-            <el-icon><Setting /></el-icon> 社区设置
+          <el-button type="primary" size="small" @click="$router.push('/events/new')">
+            <el-icon><Calendar /></el-icon> 创建活动
           </el-button>
         </div>
       </div>
@@ -82,14 +78,29 @@
           <div class="card-header">
             <h3>社区事件日历</h3>
             <div class="calendar-legend">
-              <span class="legend-dot meeting-scheduled-dot"></span><span class="legend-text">待召开</span>
-              <span class="legend-dot meeting-completed-dot"></span><span class="legend-text">已完成</span>
-              <span class="legend-dot meeting-cancelled-dot"></span><span class="legend-text">已取消</span>
-              <span class="legend-dot publish-dot"></span><span class="legend-text">已发布</span>
-              <span class="legend-dot scheduled-dot"></span><span class="legend-text">排期中</span>
+              <span class="legend-group">
+                <span class="legend-icon">📅</span>
+                <span class="legend-text">会议</span>
+                <span class="legend-dot meeting-scheduled-dot"></span>
+                <span class="legend-dot meeting-completed-dot"></span>
+                <span class="legend-dot meeting-cancelled-dot"></span>
+              </span>
+              <span class="legend-group">
+                <span class="legend-icon">🎉</span>
+                <span class="legend-text">活动</span>
+                <span class="legend-dot event-planning-dot"></span>
+                <span class="legend-dot event-ongoing-dot"></span>
+                <span class="legend-dot event-completed-dot"></span>
+              </span>
+              <span class="legend-group">
+                <span class="legend-icon">📝</span>
+                <span class="legend-text">内容</span>
+                <span class="legend-dot publish-dot"></span>
+                <span class="legend-dot scheduled-dot"></span>
+              </span>
             </div>
           </div>
-          <FullCalendar ref="calendarRef" :options="calendarOptions" class="community-calendar" />
+          <FullCalendar ref="calendarRef" :options="calendarOptions" class="ver-calendar" />
         </div>
 
         <!-- 第二层：8 指标卡片 (2行x4列) -->
@@ -424,8 +435,8 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   },
   buttonText: { today: '今天' },
   height: 400,
-  events: (dashboardData.value?.calendar_events ?? []).map((e) => ({
-    id: e.id,
+  events: (dashboardData.value?.calendar_events ?? []).map((e, idx) => ({
+    id: `${e.resource_type}_${e.resource_id}_${e.type}_${idx}`,
     title: e.title,
     date: e.date,
     color: e.color,
@@ -433,8 +444,10 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   })),
   eventClick: (info) => {
     const { type, resource_id } = info.event.extendedProps
-    if (type === 'meeting') router.push(`/meetings/${resource_id}`)
+    if (type?.startsWith('meeting')) router.push(`/meetings/${resource_id}`)
+    else if (type?.startsWith('event')) router.push(`/events/${resource_id}`)
     else if (type === 'publish') router.push(`/contents/${resource_id}/edit`)
+    else if (type === 'scheduled') router.push(`/contents/${resource_id}/edit`)
   },
   dayMaxEvents: 3,
 }))
@@ -720,6 +733,39 @@ function formatTime(dt: string) {
 .calendar-legend {
   display: flex;
   align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.legend-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-icon {
+  font-size: 14px;
+}
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.meeting-scheduled-dot  { background: #0095ff; }
+.meeting-completed-dot  { background: #94a3b8; }
+.meeting-cancelled-dot  { background: #f87171; }
+.event-planning-dot    { background: #8b5cf6; }
+.event-ongoing-dot     { background: #0095ff; }
+.event-completed-dot   { background: #10b981; }
+.publish-dot            { background: #10b981; }
+.scheduled-dot          { background: #f59e0b; }
+.legend-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+.calendar-legend {
+  display: flex;
+  align-items: center;
   gap: 14px;
 }
 .legend-dot {
@@ -731,8 +777,17 @@ function formatTime(dt: string) {
 .meeting-scheduled-dot  { background: #0095ff; }
 .meeting-completed-dot  { background: #94a3b8; }
 .meeting-cancelled-dot  { background: #f87171; }
+.event-planning-dot    { background: #8b5cf6; }
+.event-ongoing-dot     { background: #0095ff; }
+.event-completed-dot   { background: #10b981; }
 .publish-dot            { background: #10b981; }
 .scheduled-dot          { background: #f59e0b; }
+.legend-divider {
+  width: 1px;
+  height: 12px;
+  background: #e2e8f0;
+  margin: 0 8px;
+}
 .legend-text {
   font-size: 12px;
   color: var(--text-secondary);
