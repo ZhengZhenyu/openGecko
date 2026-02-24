@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = str(Path(__file__).resolve().parent.parent / "uploads")
     MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50MB
 
+    # Timezone
+    APP_TIMEZONE: str = "Asia/Shanghai"
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000

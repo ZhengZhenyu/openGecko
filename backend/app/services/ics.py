@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+from app.core.timezone import utc_now
 from app.models.community import Community
 from app.models.meeting import Meeting
 
 
-def _format_dt(dt: datetime) -> str:
-    return dt.strftime("%Y%m%dT%H%M%S")
+def _format_dt_utc(dt: datetime) -> str:
+    """将 datetime 格式化为 iCalendar UTC 格式（以 Z 结尾）。"""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def build_meeting_ics(meeting: Meeting, community: Community, organizer_email: str) -> bytes:
@@ -25,7 +29,7 @@ def build_meeting_ics(meeting: Meeting, community: Community, organizer_email: s
     description = "\n\n".join(description_parts) if description_parts else "Meeting reminder"
     location = meeting.location or ""
     uid = f"meeting-{meeting.id}@{community.slug}"
-    dtstamp = _format_dt(datetime.utcnow())
+    dtstamp = _format_dt_utc(utc_now())
 
     lines = [
         "BEGIN:VCALENDAR",
@@ -36,8 +40,8 @@ def build_meeting_ics(meeting: Meeting, community: Community, organizer_email: s
         "BEGIN:VEVENT",
         f"UID:{uid}",
         f"DTSTAMP:{dtstamp}",
-        f"DTSTART:{_format_dt(dt_start)}",
-        f"DTEND:{_format_dt(dt_end)}",
+        f"DTSTART:{_format_dt_utc(dt_start)}",
+        f"DTEND:{_format_dt_utc(dt_end)}",
         f"SUMMARY:{meeting.title}",
         f"LOCATION:{location}",
         f"DESCRIPTION:{_escape_text(description)}",

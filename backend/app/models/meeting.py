@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -15,6 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 # Association table for meeting assignees (责任人)
@@ -24,7 +23,7 @@ meeting_assignees = Table(
     Column("id", Integer, primary_key=True),
     Column("meeting_id", Integer, ForeignKey("meetings.id", ondelete="CASCADE"), nullable=False, index=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-    Column("assigned_at", DateTime, default=datetime.utcnow),
+    Column("assigned_at", DateTime(timezone=True), default=utc_now),
     Column("assigned_by_user_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
 )
 
@@ -76,8 +75,8 @@ class Meeting(Base):
         nullable=True,
     )
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     # Relationships
     committee = relationship("Committee", back_populates="meetings")
@@ -120,7 +119,7 @@ class MeetingReminder(Base):
     status = Column(String(50), default="pending")  # pending, sent, failed
     error_message = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     # Relationships
     meeting = relationship("Meeting")
@@ -145,7 +144,7 @@ class MeetingParticipant(Base):
     name = Column(String(200), nullable=False)
     email = Column(String(200), nullable=False, index=True)
     source = Column(String(50), default="manual")  # manual / committee_import
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     meeting = relationship("Meeting", back_populates="participants")
 

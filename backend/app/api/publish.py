@@ -1,11 +1,11 @@
 import os
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.dependencies import get_current_community
+from app.core.timezone import utc_now
 from app.database import get_db
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
@@ -141,7 +141,7 @@ def publish_to_hugo(content_id: int, db: Session = Depends(get_db)):
         channel="hugo",
         status="published",
         platform_url=file_path,
-        published_at=datetime.utcnow(),
+        published_at=utc_now(),
         community_id=community_id,
     )
     db.add(record)

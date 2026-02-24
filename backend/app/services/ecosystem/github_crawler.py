@@ -5,11 +5,11 @@
 """
 
 import logging
-from datetime import datetime
 
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.timezone import utc_now
 from app.models.ecosystem import EcosystemContributor, EcosystemProject
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def sync_project(db: Session, project: EcosystemProject, token: str | None = Non
                     existing_map[handle].commit_count_90d = item.get("contributions")
                     existing_map[handle].display_name = item.get("login")
                     existing_map[handle].avatar_url = item.get("avatar_url")
-                    existing_map[handle].last_synced_at = datetime.utcnow()
+                    existing_map[handle].last_synced_at = utc_now()
                     updated += 1
                 else:
                     db.add(EcosystemContributor(
@@ -63,7 +63,7 @@ def sync_project(db: Session, project: EcosystemProject, token: str | None = Non
                         display_name=item.get("login"),
                         avatar_url=item.get("avatar_url"),
                         commit_count_90d=item.get("contributions"),
-                        last_synced_at=datetime.utcnow(),
+                        last_synced_at=utc_now(),
                     ))
                     created += 1
 
@@ -72,7 +72,7 @@ def sync_project(db: Session, project: EcosystemProject, token: str | None = Non
         errors += 1
         return {"created": created, "updated": updated, "errors": errors}
 
-    project.last_synced_at = datetime.utcnow()
+    project.last_synced_at = utc_now()
     db.commit()
     logger.info("项目 %s 同步完成 — created=%d updated=%d", project.name, created, updated)
     return {"created": created, "updated": updated, "errors": errors}

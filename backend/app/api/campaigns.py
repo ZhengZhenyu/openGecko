@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user
+from app.core.timezone import utc_now
 from app.database import get_db
 from app.models import User
 from app.models.campaign import Campaign, CampaignActivity, CampaignContact
@@ -349,7 +348,7 @@ def add_activity(
     )
     db.add(activity)
     # 更新联系人最近跟进时间
-    contact.last_contacted_at = datetime.utcnow()
+    contact.last_contacted_at = utc_now()
     db.commit()
     db.refresh(activity)
     return activity

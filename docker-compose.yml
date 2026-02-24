@@ -8,6 +8,8 @@ services:
       - ./data:/app/data
     env_file:
       - ./backend/.env
+    environment:
+      TZ: ${APP_TIMEZONE:-Asia/Shanghai}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]

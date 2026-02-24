@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 from app.models.user import community_users
 
@@ -18,8 +17,8 @@ class Community(Base):
     logo_url = Column(String(500), nullable=True)
     settings = Column(JSON, default=dict)  # Community-level settings
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     # Relationships
     members = relationship(

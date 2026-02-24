@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -18,9 +17,9 @@ class EcosystemProject(Base):
     description = Column(Text, nullable=True)
     tags = Column(JSON, default=list)
     is_active = Column(Boolean, default=True)
-    last_synced_at = Column(DateTime, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
     added_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     contributors = relationship(
         "EcosystemContributor",
@@ -44,7 +43,7 @@ class EcosystemContributor(Base):
     followers = Column(Integer, nullable=True)
     # 关联到人脉库
     person_id = Column(Integer, ForeignKey("person_profiles.id", ondelete="SET NULL"), nullable=True, index=True)
-    last_synced_at = Column(DateTime, default=datetime.utcnow)
+    last_synced_at = Column(DateTime(timezone=True), default=utc_now)
 
     project = relationship("EcosystemProject", back_populates="contributors")
     person = relationship("PersonProfile")

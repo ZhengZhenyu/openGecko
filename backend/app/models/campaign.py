@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -19,8 +18,8 @@ class Campaign(Base):
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     contacts = relationship("CampaignContact", back_populates="campaign", cascade="all, delete-orphan")
     activities = relationship("CampaignActivity", back_populates="campaign", cascade="all, delete-orphan")
@@ -35,7 +34,7 @@ class CampaignContact(Base):
     status = Column(String(50), nullable=False, default="pending")   # pending/contacted/responded/converted/declined
     channel = Column(String(50), nullable=True)                       # email/wechat/phone/in_person/other
     added_by = Column(String(50), nullable=False, default="manual")  # manual/event_import/ecosystem_import/csv_import
-    last_contacted_at = Column(DateTime, nullable=True)
+    last_contacted_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     assigned_to_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -53,7 +52,7 @@ class CampaignActivity(Base):
     content = Column(Text, nullable=True)
     outcome = Column(String(300), nullable=True)
     operator_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     campaign = relationship("Campaign", back_populates="activities")
     person = relationship("PersonProfile")

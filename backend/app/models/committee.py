@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -14,6 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -38,9 +37,9 @@ class Committee(Base):
     notification_email = Column(String(200), nullable=True)
     notification_wechat = Column(String(100), nullable=True)
 
-    established_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    established_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     # Relationships
     community = relationship("Community", back_populates="committees")
@@ -91,9 +90,9 @@ class CommitteeMember(Base):
     bio = Column(Text, nullable=True)
     avatar_url = Column(String(500), nullable=True)
 
-    joined_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    joined_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     # 关联人脉档案（可为空，表示尚未与 PersonProfile 匹配）
     person_id = Column(

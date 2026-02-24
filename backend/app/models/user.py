@@ -1,8 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 # Association table for many-to-many relationship between users and communities
@@ -13,7 +12,7 @@ community_users = Table(
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     Column("community_id", Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False),
     Column("role", String(50), default="user"),  # 'admin', 'user' (superuser is global)
-    Column("joined_at", DateTime, default=datetime.utcnow),
+    Column("joined_at", DateTime(timezone=True), default=utc_now),
 )
 
 
@@ -28,7 +27,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)  # Superuser can access all communities
     is_default_admin = Column(Boolean, default=False)  # Marks the seeded default admin account
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     # Relationships
     communities = relationship(
