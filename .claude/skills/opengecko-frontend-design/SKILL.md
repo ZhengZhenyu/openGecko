@@ -1,84 +1,84 @@
-# openGecko LFX Insights 浅色设计系统
+# openGecko LFX Insights Light Design System
 
-本项目前端统一使用 **LFX Insights 浅色主题**风格。所有页面、组件需严格遵循以下规范。
+This project's frontend uses the **LFX Insights light theme** throughout. All pages and components must strictly follow the specifications below.
 
 ---
 
-## 技术栈
+## Tech Stack
 
 - Vue 3 + TypeScript + Element Plus
-- `<style scoped>` 或 `<style lang="scss">` (FullCalendar 等需要穿透时)
-- CSS 变量作用域：定义在各组件的根选择器上（如 `.content-list`），**不使用 `:root`**
+- `<style scoped>` or plain `<style>` (prefer plain CSS; use `lang="scss"` only when `:deep()` penetration requires it)
+- CSS variables scoped to the component root selector (e.g., `.content-list`) — **never on `:root`**
 
 ---
 
-## 设计令牌 (Design Tokens)
+## Design Tokens
 
-每个页面组件的 `<style>` 中以 CSS 变量声明：
+Declare CSS variables on the component root selector in every page component's `<style>`:
 
 ```css
 .page-root {
-  --text-primary: #1e293b;
+  --text-primary:   #1e293b;
   --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --blue: #0095ff;
-  --green: #22c55e;
-  --orange: #f59e0b;
-  --red: #ef4444;
-  --border: #e2e8f0;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --radius: 12px;
+  --text-muted:     #94a3b8;
+  --blue:           #0095ff;
+  --green:          #22c55e;
+  --orange:         #f59e0b;
+  --red:            #ef4444;
+  --border:         #e2e8f0;
+  --shadow:         0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover:   0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius:         12px;
 }
 ```
 
-### 颜色映射
+### Color Reference
 
-| 用途 | 色值 | 变量 |
-|------|------|------|
-| 页面背景 | `#f5f7fa` | — (在 App.vue `.app-main`) |
-| 卡片/白色背景 | `#ffffff` | — |
-| 主要文字 | `#1e293b` | `--text-primary` |
-| 次要文字 | `#64748b` | `--text-secondary` |
-| 弱化文字 | `#94a3b8` | `--text-muted` |
-| 品牌蓝 | `#0095ff` | `--blue` |
-| 品牌蓝 hover | `#0080e6` | — |
-| 成功绿 | `#22c55e` | `--green` |
-| 警告橙 | `#f59e0b` | `--orange` |
-| 危险红 | `#ef4444` | `--red` |
-| 边框 | `#e2e8f0` | `--border` |
-| 内部分割线 | `#f1f5f9` | — |
-| 浅底色背景 | `#f8fafc` | — |
-| 蓝色浅底 | `#eff6ff` | — |
-| 绿色浅底 | `#f0fdf4` | — |
-| 橙色浅底 | `#fffbeb` | — |
-| 红色浅底 | `#fef2f2` | — |
+| Purpose | Value | Variable |
+|---------|-------|----------|
+| Page background | `#f5f7fa` | — (set in `App.vue .app-main`) |
+| Card / white background | `#ffffff` | — |
+| Primary text | `#1e293b` | `--text-primary` |
+| Secondary text | `#64748b` | `--text-secondary` |
+| Muted text | `#94a3b8` | `--text-muted` |
+| Brand blue | `#0095ff` | `--blue` |
+| Brand blue hover | `#0080e6` | — |
+| Success green | `#22c55e` | `--green` |
+| Warning orange | `#f59e0b` | `--orange` |
+| Danger red | `#ef4444` | `--red` |
+| Border | `#e2e8f0` | `--border` |
+| Divider | `#f1f5f9` | — |
+| Subtle background | `#f8fafc` | — |
+| Blue tint | `#eff6ff` | — |
+| Green tint | `#f0fdf4` | — |
+| Orange tint | `#fffbeb` | — |
+| Red tint | `#fef2f2` | — |
 
 ---
 
-## 布局规范
+## Layout
 
-### 页面容器
+### Page Container
 
 ```css
 .page-root {
   padding: 32px 40px 60px;
-  max-width: 1400px;  /* 或 1440px */
+  max-width: 1400px;  /* or 1440px */
   margin: 0 auto;
 }
 ```
 
-### 页面标题
+### Page Title Row
 
 ```css
-.page-title {
+.page-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 28px;
 }
 
-.page-title h2 {
+.page-title-row h2 {
   margin: 0 0 6px;
   font-size: 28px;
   font-weight: 700;
@@ -86,32 +86,31 @@
   letter-spacing: -0.02em;
 }
 
-.page-title .subtitle {
+.page-title-row .subtitle {
   margin: 0;
   font-size: 15px;
   color: var(--text-secondary);
 }
 ```
 
-### 区块卡片 (Section Card)
+### Section Card
 
 ```css
 .section-card {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: var(--radius);        /* 12px */
+  border-radius: var(--radius);   /* 12px */
   padding: 24px 28px;
   margin-bottom: 24px;
   box-shadow: var(--shadow);
   transition: all 0.2s ease;
 }
-
 .section-card:hover {
   box-shadow: var(--shadow-hover);
 }
 ```
 
-### 区块标题
+### Section Header
 
 ```css
 .section-header h3 {
@@ -120,24 +119,24 @@
   font-weight: 600;
   color: var(--text-primary);
 }
-/* 注意：section-header 无 border-bottom、无 padding-bottom */
+/* Note: section-header has no border-bottom and no padding-bottom */
 ```
 
 ---
 
-## 组件细节规范
+## Component Specifications
 
-### 徽章 (Badge / Tag)
+### Badges / Tags
 
-- 圆角: `6px`
-- **无边框** (border: none)
-- 使用 浅底色 + 深文字 配色：
-  - 蓝: `bg: #eff6ff; color: #1d4ed8`
-  - 绿: `bg: #f0fdf4; color: #15803d`
-  - 橙: `bg: #fffbeb; color: #b45309`
-  - 灰: `bg: #f1f5f9; color: #64748b`
+- Border-radius: `6px`; **no border**
+- Use light-background + dark-text pairs:
+  - Blue: `background: #eff6ff; color: #1d4ed8`
+  - Green: `background: #f0fdf4; color: #15803d`
+  - Orange: `background: #fffbeb; color: #b45309`
+  - Gray: `background: #f1f5f9; color: #64748b`
+  - Red: `background: #fef2f2; color: #dc2626`
 
-### 按钮
+### Buttons
 
 ```css
 :deep(.el-button) {
@@ -146,9 +145,9 @@
   transition: all 0.15s ease;
 }
 
-/* 主按钮 */
+/* Primary button */
 :deep(.el-button--primary) {
-  background: var(--blue);    /* #0095ff */
+  background: var(--blue);
   border-color: var(--blue);
 }
 :deep(.el-button--primary:hover) {
@@ -156,7 +155,7 @@
   border-color: #0080e6;
 }
 
-/* 默认按钮 */
+/* Default button */
 :deep(.el-button--default) {
   background: #ffffff;
   border: 1px solid var(--border);
@@ -168,10 +167,11 @@
 }
 ```
 
-- **禁止** 使用 `transform: translateY()` hover 效果
-- 文字链接按钮使用 `link` 属性，hover 加浅底色
+- **Never** use `transform: translateY()` on hover
+- Text-link buttons use the `link` attribute; hover adds a subtle background tint
+- **Caution**: `:deep(.el-button--primary)` background overrides also affect `text` type buttons — use custom CSS classes or `<span>` wrappers for text-style action links instead
 
-### 输入框
+### Inputs
 
 ```css
 :deep(.el-input__wrapper) {
@@ -183,7 +183,7 @@
 }
 ```
 
-### 表格
+### Tables
 
 ```css
 :deep(.el-table th) {
@@ -195,17 +195,15 @@
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
 }
-
 :deep(.el-table td) {
   border-bottom: 1px solid #f1f5f9;
 }
-
 :deep(.el-table .el-table__row:hover > td) {
   background: #f8fafc !important;
 }
 ```
 
-### 对话框
+### Dialogs
 
 ```css
 :deep(.el-dialog) {
@@ -216,7 +214,7 @@
 }
 ```
 
-### 分页
+### Pagination
 
 ```css
 :deep(.el-pagination .el-pager li.is-active) {
@@ -227,30 +225,29 @@
 
 ---
 
-## 侧边栏 (App.vue)
+## Sidebar (App.vue)
 
-- 背景: `#ffffff`
-- 右边框: `1px solid #e2e8f0`
-- Logo 区域: 白色背景 + `border-bottom: 1px solid #e2e8f0`
-- 菜单项文字: `#64748b`，激活: `#0095ff`
-- 菜单项 hover: `background: #f8fafc; color: #1e293b`
-- 菜单项 active: `background: #eff6ff; color: #0095ff`
-- 菜单项圆角: `8px`，margin: `2px 8px`
-- el-menu 内联属性: `background-color="#ffffff"` `text-color="#64748b"` `active-text-color="#0095ff"`
-
----
-
-## 登录页
-
-- 容器背景: `#f5f7fa` + 柔和径向渐变装饰
-- 卡片: 白色实底 + `border: 1px solid #e2e8f0` + `border-radius: 20px`
-- 标题: `#1e293b`，副标题: `#64748b`
-- 输入框: `bg: #f8fafc`, focus 白底 + `#0095ff` 边框 + 蓝色光晕
-- 登录按钮: `#0095ff`，无 transform 动效
+- Background: `#ffffff`; right border: `1px solid #e2e8f0`
+- Logo area: white background + `border-bottom: 1px solid #e2e8f0`
+- Menu item text: `#64748b`; active: `#0095ff`
+- Menu item hover: `background: #f8fafc; color: #1e293b`
+- Menu item active: `background: #eff6ff; color: #0095ff`
+- Menu item border-radius: `8px`; margin: `2px 8px`
+- `el-menu` inline props: `background-color="#ffffff"` `text-color="#64748b"` `active-text-color="#0095ff"`
 
 ---
 
-## 响应式断点
+## Login Page
+
+- Container background: `#f5f7fa` + soft radial-gradient decoration
+- Card: solid white + `border: 1px solid #e2e8f0` + `border-radius: 20px`
+- Title: `#1e293b`; subtitle: `#64748b`
+- Inputs: `background: #f8fafc`; focus: white background + `#0095ff` border + blue glow
+- Login button: `#0095ff`; no transform animation
+
+---
+
+## Responsive Breakpoints
 
 ```css
 @media (max-width: 1200px) {
@@ -258,45 +255,47 @@
 }
 @media (max-width: 734px) {
   .page-root { padding: 20px 16px; }
-  .page-title h2 { font-size: 22px; }
+  .page-title-row h2 { font-size: 22px; }
   .section-card { padding: 16px; }
 }
 ```
 
 ---
 
-## 禁止使用的旧色值
+## Forbidden Colors
 
-以下为 Element Plus 默认色或旧深色主题残留，**不得出现**：
+These are Element Plus defaults or old dark-theme remnants — **must not appear**:
 
-| 旧色值 | 应替换为 |
-|--------|----------|
-| `#409EFF` | `#0095ff` (--blue) |
-| `#303133` | `#1e293b` (--text-primary) |
-| `#606266` | `#64748b` (--text-secondary) |
-| `#909399` | `#94a3b8` (--text-muted) |
-| `#dcdfe6` / `#ebeef5` | `#e2e8f0` (--border) |
-| `#f0f0f0` | `#e2e8f0` (--border) 或 `#f1f5f9` |
-| `#1d2129` | `#1e293b` (--text-primary) |
-| `#86909c` | `#64748b` (--text-secondary) |
-| `#0071e3` | `#0095ff` (--blue) |
-| `--el-color-primary` | 直接用 `var(--blue)` |
-| `--el-text-color-*` | 直接用对应 `--text-*` 变量 |
-| `--el-fill-color-*` | 直接用 `#f8fafc` 或 `#f1f5f9` |
+| Forbidden | Replace with |
+|-----------|-------------|
+| `#409EFF` | `#0095ff` (`--blue`) |
+| `#303133` | `#1e293b` (`--text-primary`) |
+| `#606266` | `#64748b` (`--text-secondary`) |
+| `#909399` | `#94a3b8` (`--text-muted`) |
+| `#dcdfe6` / `#ebeef5` | `#e2e8f0` (`--border`) |
+| `#f0f0f0` | `#e2e8f0` (`--border`) or `#f1f5f9` |
+| `#1d2129` | `#1e293b` (`--text-primary`) |
+| `#86909c` | `#64748b` (`--text-secondary`) |
+| `#0071e3` | `#0095ff` (`--blue`) |
+| `--el-color-primary` | `var(--blue)` |
+| `--el-text-color-*` | corresponding `--text-*` variable |
+| `--el-fill-color-*` | `#f8fafc` or `#f1f5f9` |
+| `--el-border-color` | `var(--border)` |
 
 ---
 
-## 检查清单
+## Design Checklist
 
-新建或修改页面时，确保：
+When creating or modifying any page:
 
-- [ ] 组件根选择器中声明了完整的 CSS 变量
-- [ ] 页面 padding 为 `32px 40px 60px`，max-width `1400px`
-- [ ] h2 标题: `28px / 700 / letter-spacing: -0.02em`
-- [ ] subtitle: `15px / --text-secondary`
-- [ ] 卡片使用 `--border` + `--shadow` + `--radius`
-- [ ] 按钮圆角 `8px`，transition `0.15s ease`
-- [ ] 无 `transform: translateY` 的 hover 效果
-- [ ] 徽章/Tag 无边框
-- [ ] 未使用任何"禁止色值"
-- [ ] Element Plus 深度覆盖使用 `:deep()` 语法
+- [ ] CSS variables declared on component root selector (not `:root`)
+- [ ] Page padding: `32px 40px 60px`; max-width: `1400px`
+- [ ] `h2`: `28px / 700 / letter-spacing: -0.02em`
+- [ ] Subtitle: `15px / var(--text-secondary)`
+- [ ] Cards use `--border` + `--shadow` + `--radius`
+- [ ] Buttons: `border-radius: 8px`, `transition: 0.15s ease`
+- [ ] No `transform: translateY` hover effects
+- [ ] Badges/Tags: no border, light-bg + dark-text pairs
+- [ ] No forbidden colors
+- [ ] Element Plus overrides use `:deep()` syntax
+- [ ] No `lang="scss"` unless strictly necessary

@@ -15,6 +15,9 @@ COPY . .
 # 创建必要目录
 RUN mkdir -p /app/uploads /app/data
 
+# 复制并赋予 entrypoint 执行权限（在切换用户前完成）
+RUN chmod +x /app/entrypoint.sh
+
 # 创建非 root 用户，降低容器权限
 RUN addgroup --system --gid 1001 appgroup \
     && adduser --system --uid 1001 --ingroup appgroup appuser \
@@ -24,5 +27,7 @@ USER appuser
 
 EXPOSE 8000
 
+# entrypoint 先执行 alembic upgrade head，再启动应用
+ENTRYPOINT ["/app/entrypoint.sh"]
 # 开发环境使用 uvicorn，生产通过 docker-compose.prod.yml 覆盖为 gunicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

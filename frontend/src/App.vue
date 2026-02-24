@@ -116,7 +116,7 @@
               <el-icon><Tools /></el-icon>
               <span>平台管理</span>
             </template>
-            <el-menu-item index="/community-settings">
+            <el-menu-item v-if="!isSuperuser" index="/community-settings">
               <el-icon><Setting /></el-icon>
               <span>社区设置</span>
             </el-menu-item>

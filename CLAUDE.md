@@ -104,20 +104,260 @@ GitHub Actions workflows in `.github/workflows/`:
 
 Configured in `.pre-commit-config.yaml`: black, isort, flake8, mypy, bandit (backend); eslint, prettier (frontend); detect-secrets, no direct commits to main/develop.
 
-## Skills
+## Frontend Design Standards
 
-### openGecko LFX 设计系统
+All frontend pages **must** follow the **LFX Insights light theme**. Full reference: `.claude/skills/opengecko-frontend-design/SKILL.md`.
 
-**所有前端页面必须遵循 LFX Insights 浅色主题设计规范。** 完整的设计令牌、颜色映射、组件样式、布局规范和检查清单详见 `.claude/skills/opengecko-lfx-design-system.md`。
+### Design Tokens
 
-新建或修改任何前端页面/组件时，务必先阅读该 skill 文件，确保：
-- 使用正确的 CSS 变量（`--text-primary: #1e293b`、`--blue: #0095ff` 等）
-- 遵循统一的页面 padding、标题字号、卡片阴影规范
-- 不使用任何禁止色值（如 `#409EFF`、`#303133`、`--el-color-primary` 等）
+Declare CSS variables on the **component root selector** (never on `:root`):
+
+```css
+.page-root {
+  --text-primary:   #1e293b;
+  --text-secondary: #64748b;
+  --text-muted:     #94a3b8;
+  --blue:           #0095ff;
+  --green:          #22c55e;
+  --orange:         #f59e0b;
+  --red:            #ef4444;
+  --border:         #e2e8f0;
+  --shadow:         0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover:   0 4px 12px rgba(0, 0, 0, 0.08);
+  --radius:         12px;
+}
+```
+
+### Color Reference
+
+| Purpose | Value | Variable |
+|---------|-------|----------|
+| Page background | `#f5f7fa` | — (set in `App.vue .app-main`) |
+| Card / white background | `#ffffff` | — |
+| Primary text | `#1e293b` | `--text-primary` |
+| Secondary text | `#64748b` | `--text-secondary` |
+| Muted text | `#94a3b8` | `--text-muted` |
+| Brand blue | `#0095ff` | `--blue` |
+| Brand blue hover | `#0080e6` | — |
+| Success green | `#22c55e` | `--green` |
+| Warning orange | `#f59e0b` | `--orange` |
+| Danger red | `#ef4444` | `--red` |
+| Border | `#e2e8f0` | `--border` |
+| Divider | `#f1f5f9` | — |
+| Subtle background | `#f8fafc` | — |
+| Blue tint background | `#eff6ff` | — |
+| Green tint background | `#f0fdf4` | — |
+| Orange tint background | `#fffbeb` | — |
+| Red tint background | `#fef2f2` | — |
+
+### Layout
+
+```css
+/* Page container */
+.page-root {
+  padding: 32px 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Page title row */
+.page-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.page-title-row h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.page-title-row .subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* Section card */
+.section-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+.section-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Section header (no border-bottom) */
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+```
+
+### Responsive Breakpoints
+
+```css
+@media (max-width: 1200px) {
+  .page-root { padding: 28px 24px; }
+}
+@media (max-width: 734px) {
+  .page-root { padding: 20px 16px; }
+  .page-title-row h2 { font-size: 22px; }
+  .section-card { padding: 16px; }
+}
+```
+
+### Components
+
+#### Badges / Tags
+- Border-radius: `6px`; **no border**
+- Use light-background + dark-text pairs:
+  - Blue: `background: #eff6ff; color: #1d4ed8`
+  - Green: `background: #f0fdf4; color: #15803d`
+  - Orange: `background: #fffbeb; color: #b45309`
+  - Gray: `background: #f1f5f9; color: #64748b`
+  - Red: `background: #fef2f2; color: #dc2626`
+
+#### Buttons
+
+```css
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+/* Primary */
+:deep(.el-button--primary) {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+:deep(.el-button--primary:hover) {
+  background: #0080e6;
+  border-color: #0080e6;
+}
+/* Default */
+:deep(.el-button--default) {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+:deep(.el-button--default:hover) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+```
+
+- **Never** use `transform: translateY()` on hover
+- Text-link buttons use `link` attribute; hover adds a subtle background tint
+- **Avoid** applying `:deep(.el-button--primary)` background overrides that unintentionally affect `text` type buttons — use custom CSS classes or `<span>` wrappers instead
+
+#### Inputs
+
+```css
+:deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--border);
+  border-radius: 8px;
+}
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--blue), 0 0 0 3px rgba(0, 149, 255, 0.1);
+}
+```
+
+#### Tables
+
+```css
+:deep(.el-table th) {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+:deep(.el-table td) {
+  border-bottom: 1px solid #f1f5f9;
+}
+:deep(.el-table .el-table__row:hover > td) {
+  background: #f8fafc !important;
+}
+```
+
+#### Dialogs
+
+```css
+:deep(.el-dialog) { border-radius: var(--radius); }
+:deep(.el-dialog__header) { border-bottom: 1px solid #f1f5f9; }
+```
+
+#### Pagination
+
+```css
+:deep(.el-pagination .el-pager li.is-active) {
+  background: var(--blue);
+  color: white;
+}
+```
+
+### Sidebar (App.vue)
+
+- Background: `#ffffff`; right border: `1px solid #e2e8f0`
+- Logo area: white background + `border-bottom: 1px solid #e2e8f0`
+- Menu item text: `#64748b`; active: `#0095ff`
+- Menu item hover: `background: #f8fafc; color: #1e293b`
+- Menu item active: `background: #eff6ff; color: #0095ff`
+- Menu item border-radius: `8px`; margin: `2px 8px`
+- `el-menu` inline props: `background-color="#ffffff"` `text-color="#64748b"` `active-text-color="#0095ff"`
+
+### Forbidden Colors
+
+Never use these — they are Element Plus defaults or old dark-theme remnants:
+
+| Forbidden | Replace with |
+|-----------|-------------|
+| `#409EFF` | `var(--blue)` (#0095ff) |
+| `#303133` | `var(--text-primary)` (#1e293b) |
+| `#606266` | `var(--text-secondary)` (#64748b) |
+| `#909399` | `var(--text-muted)` (#94a3b8) |
+| `#dcdfe6` / `#ebeef5` | `var(--border)` (#e2e8f0) |
+| `#0071e3` | `var(--blue)` (#0095ff) |
+| `#1d2129` | `var(--text-primary)` (#1e293b) |
+| `#86909c` | `var(--text-secondary)` (#64748b) |
+| `--el-color-primary` | `var(--blue)` |
+| `--el-text-color-*` | corresponding `--text-*` variable |
+| `--el-fill-color-*` | `#f8fafc` or `#f1f5f9` |
+| `--el-border-color` | `var(--border)` |
+
+### Design Checklist
+
+When creating or modifying any page:
+
+- [ ] CSS variables declared on component root selector (not `:root`)
+- [ ] Page padding: `32px 40px 60px`; max-width: `1400px`
+- [ ] `h2`: `28px / 700 / letter-spacing: -0.02em`
+- [ ] Subtitle: `15px / var(--text-secondary)`
+- [ ] Cards use `--border` + `--shadow` + `--radius`
+- [ ] Buttons: `border-radius: 8px`, `transition: 0.15s ease`
+- [ ] No `transform: translateY` hover effects
+- [ ] Badges/Tags: no border, light-bg + dark-text
+- [ ] No forbidden colors
+- [ ] Element Plus overrides use `:deep()` syntax
+- [ ] No `lang="scss"` unless required for deep overrides (prefer plain CSS)
 
 ## Language
 
-Project documentation and commit messages are in Chinese. Code, comments, and variable names are in English.
+Commit messages and user-facing strings are in Chinese. Code, variable names, comments, and this file are in English.
 
 ## Security Coding Standards
 
@@ -245,39 +485,43 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 - **Minimum 80% code coverage required** — CI will fail if total coverage drops below 80%
 - Run full suite with coverage: `pytest --cov=app --cov-report=term-missing -q`
 - Test naming conventions:
-  - API 端点测试：`tests/test_{module}_api.py`（如 `test_contents_api.py`）
-  - 服务层单元测试：`tests/test_services.py`（统一放置所有纯 Python 服务的单元测试）
-  - 特定服务测试：`tests/test_{service}_service.py`（如 `test_wechat_service.py`）
+  - API endpoint tests: `tests/test_{module}_api.py` (e.g., `test_contents_api.py`)
+  - Service unit tests: `tests/test_services.py` (all pure-Python service unit tests in one file)
+  - Specific service tests: `tests/test_{service}_service.py` (e.g., `test_wechat_service.py`)
 - Use pytest as test framework
 - Mock external services (WeChat, email, SMTP) with `unittest.mock.patch` or `pytest-mock`
-  - 优先用 `mock.patch` 直接 patch service 方法，而非 `httpx_mock` 匹配 URL（URL 参数易变）
+  - Prefer `mock.patch` to directly patch service methods rather than `httpx_mock` URL matching (URLs change easily)
 - Test both success and error paths
 - Test RBAC permissions (admin/user/superuser)
 - Test multi-tenant isolation
 
 ### Critical Route & Dependency Facts
-这些是容易搞错的细节，写测试时务必核对：
-- `upload.router` 注册在 `/api/contents` 前缀下，实际路径为 `/api/contents/upload` 和 `/api/contents/{id}/cover`
-- `dashboard.router` 注册在 `/api/users/me` 前缀下，实际路径为 `/api/users/me/dashboard`、`/api/users/me/assigned/contents` 等
-- `get_current_community` 依赖返回的是 `int`（community_id），**不是** Community 对象
-- `Meeting` 模型的 `committee_id` 字段为 NOT NULL，创建 Meeting 时必须先创建 Committee
-- `Committee` 模型的 `slug` 字段为 NOT NULL，创建时必须提供 slug
-- `conftest.py` 中的 `test_user` 在 `community_users` 表中角色为 `admin`（非 `user`）
+
+These are easy-to-miss details — always verify when writing tests:
+
+- `upload.router` is registered under `/api/contents` prefix; actual paths are `/api/contents/upload` and `/api/contents/{id}/cover`
+- `dashboard.router` is registered under `/api/users/me` prefix; actual paths are `/api/users/me/dashboard`, `/api/users/me/assigned/contents`, etc.
+- `get_current_community` dependency returns `int` (community_id), **not** a Community object
+- `Meeting` model's `committee_id` is NOT NULL; must create a Committee before creating a Meeting
+- `Committee` model's `slug` is NOT NULL; must provide slug on creation
+- `test_user` in `conftest.py` has role `admin` in `community_users` (not `user`)
 
 ### Service Unit Test Patterns
-对纯 Python 服务（email、ics、notification、converter 等）编写单元测试时：
-- 使用 `MagicMock()` 模拟 SQLAlchemy 模型对象（无需真实数据库）
-- SMTP 测试通过 `patch('smtplib.SMTP')` / `patch('smtplib.SMTP_SSL')` 拦截网络调用
-- 对 `db.query(Model).filter(...).first()` 链式调用，用 `side_effect` 按 model 类型分发返回值
+
+When writing unit tests for pure Python services (email, ics, notification, converter, etc.):
+- Use `MagicMock()` to simulate SQLAlchemy model objects (no real database needed)
+- Intercept SMTP calls via `patch('smtplib.SMTP')` / `patch('smtplib.SMTP_SSL')`
+- For `db.query(Model).filter(...).first()` chain calls, use `side_effect` to dispatch return values by model type
 
 ### Coverage Improvement Checklist
-当覆盖率低于 80% 时，优先补充以下模块：
-1. `app/services/email.py` - SMTP 发送逻辑（用 mock 拦截 smtplib）
-2. `app/services/ics.py` - ICS 格式生成（纯函数，无需 mock）
-3. `app/services/notification.py` - 邮件提醒（mock DB + email）
-4. `app/services/converter.py` - Markdown/HTML 转换（纯函数）
-5. `app/api/dashboard.py` - 个人工作台端点
-6. `app/api/upload.py` - 文件上传端点
+
+When coverage falls below 80%, prioritize adding tests for:
+1. `app/services/email.py` — SMTP send logic (intercept smtplib with mock)
+2. `app/services/ics.py` — ICS format generation (pure functions, no mock needed)
+3. `app/services/notification.py` — email reminders (mock DB + email)
+4. `app/services/converter.py` — Markdown/HTML conversion (pure functions)
+5. `app/api/dashboard.py` — personal dashboard endpoints
+6. `app/api/upload.py` — file upload endpoints
 
 ### Frontend Testing
 - Unit tests for utilities and stores
@@ -317,7 +561,7 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 - Make atomic commits (one logical change per commit)
 - Run tests before committing
 - Run linting before committing
-- **在执行 `git push` 操作前，必须先询问用户**："是否现在推送到远程，还是等后续改动一并推送？"，得到明确确认后再执行；`git commit` 可由 AI 自行执行，无需询问
+- **Ask before running `git push`**: confirm whether to push now or wait for more changes to batch; `git commit` can be executed without asking
 
 ### Pull Request Process
 - Create PR from feature branch to develop
@@ -393,76 +637,65 @@ Project documentation and commit messages are in Chinese. Code, comments, and va
 
 ## Claude Code Workflow Tips
 
-### 分步生成大文件以避免超时
+### Generating Large Files Incrementally
 
-当需要生成较大的代码文件（测试文件、服务文件等，通常 > 200 行）时，**不要试图一次性生成整个文件**，应分步完成：
+When generating larger code files (test files, service files, typically > 200 lines), **do not attempt to generate the entire file at once**; work in steps:
 
-1. **先创建骨架**：用 `create_file` 写入文件头部、imports 和第一个测试类（~50-80 行）
-2. **逐类追加**：用 `replace_string_in_file` 在文件末尾依次追加后续测试类
-3. **最后验证**：运行 `pytest tests/该文件.py --no-cov -q` 确认全部通过
+1. **Create the skeleton first**: write file header, imports, and the first class (~50–80 lines)
+2. **Append class by class**: use `replace_string_in_file` to append subsequent classes to the end
+3. **Verify at the end**: run `pytest tests/that_file.py --no-cov -q` to confirm all pass
 
-```python
-# 步骤 1：create_file 写入头部 + 第一个类（~50-80 行）
-# 步骤 2：replace_string_in_file 追加第二个类
-# 步骤 3：replace_string_in_file 追加第三个类
-# ...
-# 步骤 N：运行测试验证
-```
+### Debugging Test Failures Efficiently
 
-### 调试测试失败的高效流程
-
-1. 先隔离失败的测试类/函数，避免受其他测试干扰：
+1. Isolate the failing test first to avoid interference from other tests:
    ```bash
    pytest tests/test_xxx.py::ClassName::test_method --no-cov -q --tb=short
    ```
-2. 查看实际 HTTP 响应体（不只看 status code）：
+2. Inspect the actual HTTP response body (not just the status code):
    ```python
-   print(response.json())  # 临时加入测试中
+   print(response.json())  # add temporarily in the test
    ```
-3. 检查路由注册前缀（`app/main.py` 中 `include_router` 的 `prefix` 参数）
-4. 检查依赖注入返回类型（`get_current_community` 返回 `int`，不是对象）
+3. Check route registration prefix (`prefix` param in `include_router` in `app/main.py`)
+4. Check dependency injection return types (`get_current_community` returns `int`, not an object)
 
-### 覆盖率未达标时的排查步骤
+### Diagnosing Low Coverage
 
 ```bash
-# 查看每个文件的未覆盖行
+# Show uncovered lines per file
 pytest --cov=app --cov-report=term-missing -q 2>&1 | grep -E "[0-9]+%"
 ```
 
-找到覆盖率低的模块后，优先针对**纯函数**和**独立服务类**补充单元测试（无需 HTTP client，速度快，覆盖率提升效果好）。
+After finding low-coverage modules, prioritize unit tests for **pure functions** and **standalone service classes** (no HTTP client needed, fast, high coverage gain per test).
 
-### 前后端 Schema 字段名一致性原则
+### Frontend-Backend Schema Field Name Consistency
 
-**问题根源**：后端 Pydantic schema 字段名与前端 TypeScript interface 字段名不一致时，API 返回的 JSON 中字段存在但前端读取到 `undefined`，导致页面显示空白甚至卡住（如骨架屏不消失）。这类 bug 不会有 console 报错，极难排查。
+**Root cause**: when backend Pydantic schema field names differ from frontend TypeScript interface field names, the API returns JSON with the fields present but the frontend reads `undefined`, causing blank pages or stuck loading (e.g., skeleton screen never disappears). These bugs produce no console errors and are very hard to diagnose.
 
-**黄金规则：以前端 interface 为准，后端 schema 字段名必须与前端保持一致。**
+**Golden rule: the frontend interface is the source of truth — backend schema field names must match exactly.**
 
-#### 处理原则
+#### Principles
 
-1. **新建 schema 前先看前端**：在 `backend/app/schemas/` 创建新 schema 前，先查阅 `frontend/src/api/` 对应的接口定义，确保字段名完全匹配。
+1. **Read the frontend before creating a new schema**: before creating a schema in `backend/app/schemas/`, check the corresponding interface in `frontend/src/api/` and ensure field names match exactly.
 
-2. **命名风格统一**：
-   - ✅ 用描述性名词：`reviewing_contents`、`total_members`、`upcoming_meetings`
-   - ❌ 避免冗余后缀：`pending_review_contents`（语义不明）、`members_count`（和 `total_members` 混用）、`upcoming_meetings_count` vs `upcoming_meetings`
-   - ❌ 避免 `_count`/`_counts` 后缀与 `total_` 前缀混用
+2. **Consistent naming style**:
+   - Use descriptive nouns: `reviewing_contents`, `total_members`, `upcoming_meetings`
+   - Avoid redundant suffixes: `pending_review_contents`, `members_count` (vs `total_members`)
+   - Do not mix `_count`/`_counts` suffixes with `total_` prefix
 
-3. **顶层响应字段名**：
-   - ✅ `monthly_trend`（和前端一致）
-   - ❌ `publish_trend`（前端叫 `monthly_trend` 时后端不能用 `publish_trend`）
+3. **Update tests when renaming fields**: after changing schema field names, update all assertions in `tests/` that reference those fields, otherwise CI will fail.
 
-4. **修改时同步更新测试**：修改 schema 字段名后，必须同步更新 `tests/` 中对该字段的断言，否则 CI 会失败。
-
-5. **排查卡住/空白页面的检查清单**：
+4. **Checklist for diagnosing blank/stuck pages**:
    ```bash
-   # 1. 直接调用后端 API，印出字段名
-   curl -H "Authorization: Bearer TOKEN" http://localhost:8000/api/xxx | python3 -m json.tool | grep -E '"[a-z_]+":' | head -20
-   # 2. 对比前端 api/*.ts 中对应 interface 的字段定义
-   # 3. 列出所有不一致的字段名，修改后端 schema 和 API 构造调用
+   # 1. Call backend API directly and print field names
+   curl -H "Authorization: Bearer TOKEN" http://localhost:8000/api/xxx \
+     | python3 -m json.tool | grep -E '"[a-z_]+":' | head -20
+   # 2. Compare with the field definitions in frontend/src/api/*.ts
+   # 3. List all mismatched field names and fix backend schema and API construction
    ```
 
-#### 典型错误对照表
+#### Common Error Reference
 
-| 前端 interface | 错误的后端字段 | 正确后端字段 |
+| Frontend interface | Wrong backend field | Correct backend field |
 |---|---|---|
 | `reviewing_contents` | `pending_review_contents` | `reviewing_contents` |
 | `total_committees` | `committees_count` | `total_committees` |
