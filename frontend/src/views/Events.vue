@@ -64,7 +64,7 @@
           <el-icon class="empty-icon"><Flag /></el-icon>
           <p>暂无活动，点击右上角创建第一个活动</p>
         </div>
-        <el-table v-else :data="events" style="width: 100%" @row-click="(row) => $router.push('/events/' + row.id)">
+        <el-table v-else :data="events" style="width: 100%" @row-click="(row: EventListItem) => $router.push('/events/' + row.id)">
           <el-table-column prop="title" label="活动名称" min-width="200" />
           <el-table-column prop="event_type" label="类型" width="100">
             <template #default="{ row }">
@@ -170,7 +170,7 @@ import { Flag, Plus, Calendar, Location, Search, List } from '@element-plus/icon
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions } from '@fullcalendar/core'
+import type { CalendarOptions, EventClickArg } from '@fullcalendar/core'
 import { listEvents, createEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
@@ -271,7 +271,7 @@ const calendarOptions = computed(() => ({
             statusTagMap[e.status] === 'danger' ? '#ef4444' : '#94a3b8',
     extendedProps: { type: 'event', resource_id: e.id },
   })),
-  eventClick: (info) => {
+  eventClick: (info: EventClickArg) => {
     router.push(`/events/${info.event.id}`)
   },
   dayMaxEvents: 3,

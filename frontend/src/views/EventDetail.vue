@@ -13,7 +13,7 @@
       <div class="info-card">
         <div class="info-top">
           <div class="info-title-row">
-            <h1 class="event-title">{{ isNewEvent ? '创建活动' : (isEditing ? editForm.title : event.title) }}</h1>
+            <h1 class="event-title">{{ isNewEvent ? '创建活动' : (isEditing ? editForm.title : event?.title) }}</h1>
             <div v-if="!isNewEvent && event" class="info-badges">
               <el-tag :type="typeTagMap[event.event_type] ?? 'info'">{{ typeLabel[event.event_type] ?? event.event_type }}</el-tag>
               <el-tag :type="statusTagMap[event.status] ?? 'info'">{{ statusLabel[event.status] ?? event.status }}</el-tag>

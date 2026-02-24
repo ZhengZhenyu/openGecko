@@ -383,6 +383,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, MoreFilled, Link } from '@element-plus/icons-vue'
 import type { Community } from '../stores/auth'
@@ -413,6 +414,7 @@ import {
 import { listAllUsers } from '../api/auth'
 import type { User } from '../stores/auth'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const isSuperuser = computed(() => authStore.isSuperuser)
 
