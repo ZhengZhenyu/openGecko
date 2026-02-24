@@ -51,6 +51,15 @@
             <el-icon><Link /></el-icon>
             <a :href="event.online_url" target="_blank">{{ event.online_url }}</a>
           </div>
+          <div v-if="event.communities && event.communities.length > 0" class="meta-item">
+            <el-icon><Connection /></el-icon>
+            <el-tag
+              v-for="c in event.communities"
+              :key="c.id"
+              size="small"
+              style="margin-right:4px"
+            >{{ c.name }}</el-tag>
+          </div>
         </div>
 
         <div v-else class="edit-form">
@@ -81,6 +90,21 @@
             </el-form-item>
             <el-form-item label="简介">
               <el-input v-model="editForm.description" type="textarea" :rows="3" />
+            </el-form-item>
+            <el-form-item label="关联社区">
+              <el-select
+                v-model="editForm.community_ids"
+                multiple
+                style="width: 100%"
+                placeholder="选择关联社区（可多选）"
+              >
+                <el-option
+                  v-for="c in authStore.communities"
+                  :key="c.id"
+                  :label="c.name"
+                  :value="c.id"
+                />
+              </el-select>
             </el-form-item>
           </el-form>
         </div>
@@ -332,7 +356,9 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Calendar, Location, Link, Plus } from '@element-plus/icons-vue'
+import { ArrowLeft, Calendar, Location, Link, Plus, Connection } from '@element-plus/icons-vue'
+import { useCommunityStore } from '../stores/community'
+import { useAuthStore } from '../stores/auth'
 import {
   getEvent,
   createEvent,
@@ -354,6 +380,8 @@ import type { EventDetail, ChecklistItem, Personnel, FeedbackItem, EventTask } f
 
 const route = useRoute()
 const router = useRouter()
+const communityStore = useCommunityStore()
+const authStore = useAuthStore()
 // 两种进入方式：静态路由 /events/new (name=EventNew, 无 :id 参数) 或动态路由 /events/:id
 const isNewEvent = computed(() => route.name === 'EventNew' || route.params.id === 'new')
 const eventId = computed(() => isNewEvent.value ? undefined : Number(route.params.id))
@@ -393,6 +421,7 @@ const editForm = ref({
   online_url: '',
   description: '',
   status: 'draft' as string,
+  community_ids: [] as number[],
 })
 
 const ganttEl = ref<HTMLElement | null>(null)
@@ -470,6 +499,7 @@ async function loadEvent() {
         online_url: '',
         description: '',
         status: 'draft',
+        community_ids: communityStore.currentCommunityId ? [communityStore.currentCommunityId] : [],
       }
     } else {
       event.value = await getEvent(eventId.value!)
@@ -516,6 +546,9 @@ function startEdit() {
     online_url: event.value.online_url || '',
     description: event.value.description || '',
     status: event.value.status,
+    community_ids: event.value.community_ids?.length
+      ? [...event.value.community_ids]
+      : (event.value.community_id ? [event.value.community_id] : []),
   }
   isEditing.value = true
 }
@@ -536,6 +569,7 @@ async function saveEdit() {
   saving.value = true
   try {
     if (isNewEvent.value) {
+      const communityIds = editForm.value.community_ids
       const newEvent = await createEvent({
         title: editForm.value.title,
         planned_at: editForm.value.planned_at || null,
@@ -544,6 +578,8 @@ async function saveEdit() {
         online_url: editForm.value.online_url || null,
         description: editForm.value.description || null,
         status: editForm.value.status,
+        community_id: communityIds[0] || null,
+        community_ids: communityIds,
       })
       router.push(`/events/${newEvent.id}`)
     } else {
@@ -554,6 +590,7 @@ async function saveEdit() {
         location: editForm.value.location || null,
         online_url: editForm.value.online_url || null,
         description: editForm.value.description || null,
+        community_ids: editForm.value.community_ids,
       })
       await loadEvent()
       isEditing.value = false

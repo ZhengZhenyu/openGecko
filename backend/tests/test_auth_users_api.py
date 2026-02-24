@@ -10,6 +10,8 @@ Endpoints:
 - POST /api/auth/password-reset/confirm
 """
 
+from unittest import mock
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -320,10 +322,15 @@ class TestPasswordResetRequest:
         db_session.add(user)
         db_session.commit()
 
-        response = client.post(
-            "/api/auth/password-reset/request",
-            json={"email": "reset_me@example.com"},
-        )
+        # 模拟无 SMTP 配置（即使 .env 中有配置也强制走开发模式）
+        with mock.patch("app.api.auth.settings") as mock_settings:
+            mock_settings.SMTP_HOST = ""
+            mock_settings.SMTP_USER = ""
+            mock_settings.FRONTEND_URL = "http://localhost:3000"
+            response = client.post(
+                "/api/auth/password-reset/request",
+                json={"email": "reset_me@example.com"},
+            )
         assert response.status_code == 200
         data = response.json()
         # 开发模式（测试环境无 SMTP）应有 token

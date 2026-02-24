@@ -39,6 +39,7 @@ export interface ContentListItem {
   scheduled_publish_at: string | null
   created_at: string
   updated_at: string
+  assignee_names: string[]
 }
 
 export interface ContentCalendarItem {
@@ -66,6 +67,7 @@ export async function fetchContents(params: {
   source_type?: string
   keyword?: string
   community_id?: number
+  unscheduled?: boolean
 }): Promise<PaginatedContents> {
   const { data } = await api.get('/contents', { params })
   return data

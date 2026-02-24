@@ -253,11 +253,11 @@ def get_community_dashboard(
     calendar_events: list[CalendarEvent] = []
 
     # 会议事件：按状态区分颜色
-    # scheduled → 蓝色 #0095ff；completed → 灰色 #94a3b8；cancelled → 浅红 #f87171
+    # scheduled → 蓝色 #0095ff；completed → 绿色 #10b981；cancelled → 灰色 #94a3b8
     MEETING_COLORS = {
         "scheduled": "#0095ff",
-        "completed": "#94a3b8",
-        "cancelled": "#f87171",
+        "completed": "#10b981",
+        "cancelled": "#94a3b8",
     }
     meeting_events = (
         db.query(Meeting)

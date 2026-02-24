@@ -5,6 +5,8 @@ import apiClient from './index'
 export interface EventListItem {
   id: number
   community_id: number | null
+  community_ids: number[]
+  communities: { id: number; name: string }[]
   title: string
   event_type: string
   status: string
@@ -17,6 +19,8 @@ export interface EventListItem {
 export interface EventDetail {
   id: number
   community_id: number | null
+  community_ids: number[]
+  communities: { id: number; name: string }[]
   title: string
   event_type: string
   template_id: number | null
@@ -42,6 +46,7 @@ export interface EventCreate {
   title: string
   event_type?: string
   community_id?: number | null
+  community_ids?: number[]
   template_id?: number | null
   planned_at?: string | null
   duration_minutes?: number | null
@@ -52,6 +57,7 @@ export interface EventCreate {
 }
 
 export interface EventUpdate extends Partial<Omit<EventCreate, 'status'>> {
+  community_ids?: number[]
   attendee_count?: number | null
   result_summary?: string | null
 }

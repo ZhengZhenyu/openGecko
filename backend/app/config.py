@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = "120/minute"
 
     # Database
-    DATABASE_URL: str = "sqlite:///./opengecko.db"
+    DATABASE_URL: str = "sqlite:///./data/opengecko.db"
 
     # Database Connection Pool (for PostgreSQL/MySQL)
     DB_POOL_SIZE: int = 5

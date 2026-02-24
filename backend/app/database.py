@@ -1,7 +1,16 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
+
+# Ensure SQLite parent directory exists (e.g., data/ in fresh CI checkout)
+if settings.DATABASE_URL.startswith("sqlite:///"):
+    _db_path = settings.DATABASE_URL[len("sqlite:///"):]
+    _db_dir = os.path.dirname(_db_path)
+    if _db_dir:
+        os.makedirs(_db_dir, exist_ok=True)
 
 # Database connection pool configuration
 # For SQLite, we need check_same_thread=False

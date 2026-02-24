@@ -170,8 +170,8 @@ import { Flag, Plus, Calendar, Location, Search, List } from '@element-plus/icon
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions, EventClickArg } from '@fullcalendar/core'
-import { listEvents, createEvent } from '../api/event'
+import type { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core'
+import { listEvents, createEvent, updateEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
 
@@ -271,8 +271,38 @@ const calendarOptions = computed(() => ({
             statusTagMap[e.status] === 'danger' ? '#ef4444' : '#94a3b8',
     extendedProps: { type: 'event', resource_id: e.id },
   })),
+  editable: true,
   eventClick: (info: EventClickArg) => {
     router.push(`/events/${info.event.id}`)
+  },
+  eventDrop: async (info: EventDropArg) => {
+    const id = Number(info.event.id)
+    const newStart = info.event.start
+    if (!newStart) { info.revert(); return }
+    // 保留原有时间部分，只替换日期
+    const original = events.value.find(e => e.id === id)
+    let newDateStr: string
+    if (original?.planned_at) {
+      const orig = new Date(original.planned_at)
+      const hours = orig.getHours().toString().padStart(2, '0')
+      const mins  = orig.getMinutes().toString().padStart(2, '0')
+      const secs  = orig.getSeconds().toString().padStart(2, '0')
+      const pad = (n: number) => String(n).padStart(2, '0')
+      newDateStr = `${newStart.getFullYear()}-${pad(newStart.getMonth()+1)}-${pad(newStart.getDate())}T${hours}:${mins}:${secs}`
+    } else {
+      const pad = (n: number) => String(n).padStart(2, '0')
+      newDateStr = `${newStart.getFullYear()}-${pad(newStart.getMonth()+1)}-${pad(newStart.getDate())}T00:00:00`
+    }
+    try {
+      await updateEvent(id, { planned_at: newDateStr })
+      // 同步本地数据
+      const idx = events.value.findIndex(e => e.id === id)
+      if (idx !== -1) events.value[idx] = { ...events.value[idx], planned_at: newDateStr }
+      ElMessage.success('活动时间已更新')
+    } catch {
+      info.revert()
+      ElMessage.error('更新失败，已还原')
+    }
   },
   dayMaxEvents: 3,
 }))

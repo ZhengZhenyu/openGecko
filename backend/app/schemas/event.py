@@ -66,6 +66,7 @@ class EventCreate(BaseModel):
     title: str
     event_type: str = "offline"
     community_id: int | None = None
+    community_ids: list[int] = []
     template_id: int | None = None
     planned_at: datetime | None = None
     duration_minutes: int | None = None
@@ -78,6 +79,7 @@ class EventCreate(BaseModel):
 class EventUpdate(BaseModel):
     title: str | None = None
     event_type: str | None = None
+    community_ids: list[int] | None = None
     planned_at: datetime | None = None
     duration_minutes: int | None = None
     location: str | None = None
@@ -97,9 +99,18 @@ class EventStatusUpdate(BaseModel):
     status: str  # draft / planning / ongoing / completed / cancelled
 
 
+class CommunitySimple(BaseModel):
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class EventOut(BaseModel):
     id: int
     community_id: int | None
+    community_ids: list[int] = []
+    communities: list[CommunitySimple] = []
     title: str
     event_type: str
     template_id: int | None
@@ -120,12 +131,22 @@ class EventOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        instance = super().model_validate(obj, **kwargs)
+        # 从 communities 关系派生 community_ids
+        if hasattr(obj, 'communities'):
+            instance.community_ids = [c.id for c in obj.communities]
+        return instance
+
     model_config = {"from_attributes": True}
 
 
 class EventListOut(BaseModel):
     id: int
     community_id: int | None
+    community_ids: list[int] = []
+    communities: list[CommunitySimple] = []
     title: str
     event_type: str
     status: str
@@ -133,6 +154,13 @@ class EventListOut(BaseModel):
     location: str | None
     owner_id: int | None
     created_at: datetime
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        instance = super().model_validate(obj, **kwargs)
+        if hasattr(obj, 'communities'):
+            instance.community_ids = [c.id for c in obj.communities]
+        return instance
 
     model_config = {"from_attributes": True}
 
