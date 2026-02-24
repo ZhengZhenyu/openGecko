@@ -28,6 +28,6 @@ USER appuser
 EXPOSE 8000
 
 # entrypoint 先执行 alembic upgrade head，再启动应用
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
 # 开发环境使用 uvicorn，生产通过 docker-compose.prod.yml 覆盖为 gunicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

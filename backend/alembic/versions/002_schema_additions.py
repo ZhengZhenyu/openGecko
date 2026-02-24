@@ -28,6 +28,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+
     # ── 1. contents.community_id → nullable ────────────────────────────────────
     with op.batch_alter_table("contents") as batch_op:
         batch_op.alter_column("community_id", existing_type=sa.Integer(), nullable=True)
