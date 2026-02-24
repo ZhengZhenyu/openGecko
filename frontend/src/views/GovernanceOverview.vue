@@ -111,13 +111,13 @@
                   <div class="committee-stats">
                     <span class="stat-item">
                       <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        <path d="M9 6a3 3 0 11-6 0-3 3 0 016 0zM17 6a3 3 0 11-6 0-3 3 0 016 0zM12 13a3 3 0 11-6 0-3 3 0 016 0zM17 14a3 3 0 11-6 0-3 3 0 016 0z" />
                       </svg>
                       {{ committee.member_count }} 成员
                     </span>
                     <span v-if="committee.is_active" class="stat-item active">
                       <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 11-8-8 8 8 0 018 0zM10 8a6 6 0 11-6-6 6 6 0 016 0zm-1 5h2a1 1 0 11 0 2v-2a1 1 0 11 0 2z" clip-rule="evenodd" />
                       </svg>
                       活跃中
                     </span>
@@ -125,12 +125,12 @@
                   </div>
                 </div>
                 <svg class="committee-chevron" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414 1.414 0 01-1.414 0 010 1.414L10.586 9.414a1 1 0 01-1.414 1.414 0 010-1.414 0 01-1.414L12.586 14.586a1 1 0 01-1.414 1.414 0 010-1.414 0 01-1.414z" clip-rule="evenodd" />
                 </svg>
               </div>
               <div v-if="committees.length === 0" class="empty-state-small">
                 <svg viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12 13a3 3 0 11-6 0 3 3 0 016 0zM17 14a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <p>暂无活跃委员会</p>
               </div>
@@ -475,10 +475,7 @@ function getMeetingStatusText(status: string) {
 }
 
 /* Main Content */
-.main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-}
+.main-content {}
 
 .content-columns {
   display: grid;

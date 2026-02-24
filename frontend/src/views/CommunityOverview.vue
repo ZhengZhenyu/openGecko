@@ -308,7 +308,10 @@ onMounted(() => {
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
   --radius: 12px;
 
-  padding: 0;
+  padding: 0 40px;
+  max-width: 1440px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* Page Title Row */
@@ -316,9 +319,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 32px 40px 24px;
-  max-width: 1440px;
-  margin: 0 auto;
+  padding: 32px 0 24px;
 }
 
 .page-title h2 {
@@ -356,9 +357,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0 40px 32px;
+  padding-bottom: 32px;
 }
 
 .metric-card {
@@ -402,10 +401,7 @@ onMounted(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 28px;
-  max-width: 1440px;
-  margin: 0 auto 24px;
-  margin-left: 40px;
-  margin-right: 40px;
+  margin-bottom: 24px;
   box-shadow: var(--shadow);
   transition: all 0.2s ease;
 }
@@ -623,17 +619,17 @@ onMounted(() => {
 
 /* Responsive */
 @media (max-width: 1200px) {
+  .community-overview {
+    padding: 0 24px;
+  }
+
   .page-title-row {
-    padding: 28px 24px 20px;
+    padding-top: 28px;
+    padding-bottom: 20px;
   }
 
   .metric-cards {
-    padding: 0 24px 24px;
-  }
-
-  .section-card {
-    margin-left: 24px;
-    margin-right: 24px;
+    padding-bottom: 24px;
   }
 }
 
@@ -644,10 +640,15 @@ onMounted(() => {
 }
 
 @media (max-width: 734px) {
+  .community-overview {
+    padding: 0 16px;
+  }
+
   .page-title-row {
     flex-direction: column;
     gap: 16px;
-    padding: 24px 16px 16px;
+    padding-top: 24px;
+    padding-bottom: 16px;
   }
 
   .page-title h2 {
@@ -656,12 +657,10 @@ onMounted(() => {
 
   .metric-cards {
     grid-template-columns: 1fr;
-    padding: 0 16px 16px;
+    padding-bottom: 16px;
   }
 
   .section-card {
-    margin-left: 16px;
-    margin-right: 16px;
     padding: 20px;
   }
 

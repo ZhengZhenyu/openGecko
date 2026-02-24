@@ -21,7 +21,8 @@
                 <el-icon class="more-icon"><MoreFilled /></el-icon>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="edit">编辑</el-dropdown-item>
+                    <el-dropdown-item command="settings">社区设置</el-dropdown-item>
+                    <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="edit" divided>编辑</el-dropdown-item>
                     <el-dropdown-item command="channels">渠道管理</el-dropdown-item>
                     <el-dropdown-item v-if="isSuperuser || community.role === 'admin'" command="email">邮件设置</el-dropdown-item>
                     <el-dropdown-item v-if="isSuperuser" command="members">成员管理</el-dropdown-item>
@@ -382,6 +383,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, MoreFilled, Link } from '@element-plus/icons-vue'
 import type { Community } from '../stores/auth'
@@ -412,6 +414,7 @@ import {
 import { listAllUsers } from '../api/auth'
 import type { User } from '../stores/auth'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const isSuperuser = computed(() => authStore.isSuperuser)
 
@@ -689,6 +692,9 @@ async function handleSubmit() {
 
 async function handleCommunityAction(command: string, community: Community) {
   switch (command) {
+    case 'settings':
+      router.push(`/community-settings/${community.id}`)
+      break
     case 'edit':
       showEditDialog(community)
       break
@@ -731,7 +737,7 @@ async function handleCommunityAction(command: string, community: Community) {
   }
 }
 
-async function showMembersDialog(community: Community) {
+  async function showMembersDialog(community: Community) {
   selectedCommunity.value = community
   selectedUserId.value = null
   try {

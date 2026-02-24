@@ -125,6 +125,7 @@ class EventOut(BaseModel):
 
 class EventListOut(BaseModel):
     id: int
+    community_id: int | None
     title: str
     event_type: str
     status: str

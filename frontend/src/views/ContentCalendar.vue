@@ -64,7 +64,6 @@
       @edit-content="handleEditContent"
     />
 
- 顶
   </div>
 </template>
 
