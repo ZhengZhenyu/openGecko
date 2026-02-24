@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
@@ -21,7 +23,10 @@ class PasswordResetToken(Base):
 
     @property
     def is_expired(self) -> bool:
-        return utc_now() > self.expires_at
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=UTC)
+        return utc_now() > expires
 
     @property
     def is_valid(self) -> bool:
