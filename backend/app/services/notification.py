@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import smtplib
-from datetime import datetime
 from html import escape
 
 from sqlalchemy.orm import Session
 
+from app.core.timezone import utc_now
 from app.models.community import Community
 from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
 from app.services.email import EmailAttachment, EmailMessage, get_sender_info, get_smtp_config, send_email
@@ -79,7 +79,7 @@ def send_meeting_reminder(db: Session, reminder_id: int) -> MeetingReminder:
     try:
         send_email(community, message)
         reminder.status = "sent"
-        reminder.sent_at = datetime.utcnow()
+        reminder.sent_at = utc_now()
         reminder.error_message = None
     except smtplib.SMTPException as exc:
         reminder.status = "failed"

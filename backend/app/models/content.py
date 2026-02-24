@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 # Association table for content → community (multi-community support)
@@ -14,7 +13,7 @@ content_communities = Table(
     Column("content_id", Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True),
     Column("community_id", Integer, ForeignKey("communities.id", ondelete="CASCADE"), nullable=False, index=True),
     Column("is_primary", Boolean, server_default="1"),
-    Column("linked_at", DateTime, default=datetime.utcnow),
+    Column("linked_at", DateTime(timezone=True), default=utc_now),
     Column("linked_by_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
 )
 
@@ -25,7 +24,7 @@ content_collaborators = Table(
     Column("id", Integer, primary_key=True),
     Column("content_id", Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-    Column("added_at", DateTime, default=datetime.utcnow),
+    Column("added_at", DateTime(timezone=True), default=utc_now),
 )
 
 
@@ -36,7 +35,7 @@ content_assignees = Table(
     Column("id", Integer, primary_key=True),
     Column("content_id", Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-    Column("assigned_at", DateTime, default=datetime.utcnow),
+    Column("assigned_at", DateTime(timezone=True), default=utc_now),
     Column("assigned_by_user_id", Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
 )
 
@@ -71,8 +70,8 @@ class Content(Base):
     # Calendar/scheduling field
     scheduled_publish_at = Column(DateTime, nullable=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     publish_records = relationship("PublishRecord", back_populates="content", cascade="all, delete-orphan")
     community = relationship("Community", back_populates="contents")

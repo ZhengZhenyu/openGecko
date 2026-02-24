@@ -3,11 +3,12 @@
 提供每日统计采集、多维度聚合计算、趋势数据查询等功能。
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
+from app.core.timezone import utc_now
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
 from app.models.wechat_stats import WechatArticleStat, WechatStatsAggregate
@@ -39,7 +40,7 @@ class WechatStatsService:
             for key, value in data.items():
                 if key not in ("publish_record_id", "stat_date"):
                     setattr(existing, key, value)
-            existing.collected_at = datetime.utcnow()
+            existing.collected_at = utc_now()
             db.commit()
             db.refresh(existing)
             return existing

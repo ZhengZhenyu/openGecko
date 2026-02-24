@@ -3,6 +3,8 @@ from datetime import datetime
 
 from slugify import slugify
 
+from app.core.timezone import to_app_tz, utc_now
+
 
 class HugoService:
     def _load_config(self, community_id: int) -> tuple[str, str]:
@@ -43,12 +45,12 @@ class HugoService:
     ) -> str:
         """Generate Hugo YAML front matter."""
         if date is None:
-            date = datetime.utcnow()
+            date = to_app_tz(utc_now())
 
         lines = [
             "---",
             f'title: "{title}"',
-            f"date: {date.strftime('%Y-%m-%dT%H:%M:%S+08:00')}",
+            f"date: {date.isoformat(timespec='seconds')}",
         ]
         if author:
             lines.append(f'author: "{author}"')

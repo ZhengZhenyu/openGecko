@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -29,8 +28,8 @@ class PersonProfile(Base):
         default="manual",
     )
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     community_roles = relationship("CommunityRole", back_populates="person", cascade="all, delete-orphan")
     event_attendances = relationship("EventAttendee", back_populates="person")

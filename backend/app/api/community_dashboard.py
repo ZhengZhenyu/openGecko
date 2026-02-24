@@ -7,13 +7,14 @@
 权限：社区成员（admin / user）均可访问，Superuser 可访问任意社区。
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user, get_user_community_role
+from app.core.timezone import utc_now
 from app.core.logging import get_logger
 from app.database import get_db
 from app.models import Community, User
@@ -77,7 +78,7 @@ def get_community_dashboard(
             detail="社区不存在",
         )
 
-    now = datetime.utcnow()
+    now = utc_now()
 
     # ── 1. 指标卡片聚合（单批查询）──────────────────────────────────────
 
@@ -432,7 +433,7 @@ def get_superuser_overview(
             detail="仅平台超级管理员可访问",
         )
 
-    now = datetime.utcnow()
+    now = utc_now()
     communities = db.query(Community).order_by(Community.created_at.desc()).all()
 
     # 批量查询各社区统计（避免 N+1）

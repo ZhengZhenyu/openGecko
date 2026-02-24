@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -22,9 +21,9 @@ class PublishRecord(Base):
     )
     platform_article_id = Column(String(200), nullable=True)
     platform_url = Column(String(500), nullable=True)
-    published_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
     community_id = Column(
         Integer,
         ForeignKey("communities.id", ondelete="CASCADE"),
@@ -46,6 +45,6 @@ class ContentAnalytics(Base):
     like_count = Column(Integer, default=0)
     share_count = Column(Integer, default=0)
     comment_count = Column(Integer, default=0)
-    collected_at = Column(DateTime, default=datetime.utcnow)
+    collected_at = Column(DateTime(timezone=True), default=utc_now)
 
     publish_record = relationship("PublishRecord", back_populates="analytics")

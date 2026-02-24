@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 # 活动 ↔ 社区 多对多关联表
@@ -31,7 +30,7 @@ class EventTemplate(Base):
     description = Column(Text, nullable=True)
     is_public = Column(Boolean, default=False)
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     checklist_items = relationship(
         "ChecklistTemplateItem", back_populates="template", cascade="all, delete-orphan"
@@ -78,7 +77,7 @@ class Event(Base):
         SAEnum("draft", "planning", "ongoing", "completed", "cancelled", name="event_status_enum"),
         default="draft",
     )
-    planned_at = Column(DateTime, nullable=True)
+    planned_at = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     location = Column(String(300), nullable=True)
     online_url = Column(String(500), nullable=True)
@@ -94,8 +93,8 @@ class Event(Base):
     result_summary = Column(Text, nullable=True)
     media_urls = Column(JSON, default=list)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     template = relationship("EventTemplate", back_populates="events")
     communities = relationship(
@@ -206,7 +205,7 @@ class FeedbackItem(Base):
         SAEnum("open", "in_progress", "closed", name="feedback_status_enum"), default="open"
     )
     assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     event = relationship("Event", back_populates="feedback_items")
     issue_links = relationship("IssueLink", back_populates="feedback", cascade="all, delete-orphan")
@@ -232,7 +231,7 @@ class IssueLink(Base):
     issue_status = Column(
         SAEnum("open", "closed", name="issue_status_enum"), default="open"
     )
-    linked_at = Column(DateTime, default=datetime.utcnow)
+    linked_at = Column(DateTime(timezone=True), default=utc_now)
     linked_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     feedback = relationship("FeedbackItem", back_populates="issue_links")

@@ -4,8 +4,6 @@
 粉丝互动数据，以及多维度时间聚合统计。
 """
 
-from datetime import datetime
-
 from sqlalchemy import (
     Column,
     Date,
@@ -20,6 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from app.core.timezone import utc_now
 from app.database import Base
 
 
@@ -72,7 +71,7 @@ class WechatArticleStat(Base):
         nullable=False,
         index=True,
     )
-    collected_at = Column(DateTime, default=datetime.utcnow)
+    collected_at = Column(DateTime(timezone=True), default=utc_now)
 
     # ── 关系 ──
     publish_record = relationship("PublishRecord", backref="wechat_stats")
@@ -143,7 +142,7 @@ class WechatStatsAggregate(Base):
     # ── 平均值指标 ──
     avg_read_count = Column(Integer, default=0)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     community = relationship("Community")
 

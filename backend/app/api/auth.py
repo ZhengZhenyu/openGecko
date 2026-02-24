@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from app.config import settings
 from app.core.dependencies import get_current_active_superuser, get_current_user
 from app.core.logging import get_logger
 from app.core.rate_limit import limiter
+from app.core.timezone import utc_now
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.database import get_db
 from app.models import User
@@ -383,7 +384,7 @@ def request_password_reset(
     reset_token = PasswordResetToken(
         user_id=user.id,
         token=token_value,
-        expires_at=datetime.utcnow() + timedelta(hours=1),
+        expires_at=utc_now() + timedelta(hours=1),
     )
     db.add(reset_token)
     db.commit()
