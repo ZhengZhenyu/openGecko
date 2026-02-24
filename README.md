@@ -125,7 +125,7 @@ docker compose down
 docker rmi opengecko-backend opengecko-frontend 2>/dev/null || true
 
 # 删除持久化数据库（⚠️ 数据不可恢复，谨慎操作）
-rm -f backend/opengecko.db
+rm -f data/opengecko.db
 
 # 重新构建并启动
 docker compose up -d --build
@@ -136,11 +136,11 @@ docker compose up -d --build
 ```bash
 docker compose down && \
 docker rmi opengecko-backend opengecko-frontend 2>/dev/null; \
-rm -f backend/opengecko.db && \
+rm -f data/opengecko.db && \
 docker compose up -d --build
 ```
 
-> **注意**：`backend/opengecko.db` 是通过 `docker-compose.override.yml` 挂载到宿主机的 SQLite 数据库文件，删除后所有数据（社区、内容、用户等）将清空，重启后重新初始化。生产环境使用 PostgreSQL 时此步骤不适用。
+> **注意**：`data/opengecko.db` 是通过 `docker-compose.yml` 中 `./data:/app/data` 卷挂载到宿主机的 SQLite 数据库文件，删除后所有数据（社区、内容、用户等）将清空，重启后重新初始化。生产环境使用 PostgreSQL 时此步骤不适用。
 
 ### 首次使用流程
 
