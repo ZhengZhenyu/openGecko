@@ -14,8 +14,8 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user, get_user_community_role
-from app.core.timezone import utc_now
 from app.core.logging import get_logger
+from app.core.timezone import utc_now
 from app.database import get_db
 from app.models import Community, User
 from app.models.channel import ChannelConfig

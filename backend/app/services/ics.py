@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone as _tz
+from datetime import UTC, datetime, timedelta
 
 from app.core.timezone import utc_now
 from app.models.community import Community
@@ -10,8 +10,8 @@ from app.models.meeting import Meeting
 def _format_dt_utc(dt: datetime) -> str:
     """将 datetime 格式化为 iCalendar UTC 格式（以 Z 结尾）。"""
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=_tz.utc)
-    return dt.astimezone(_tz.utc).strftime("%Y%m%dT%H%M%SZ")
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def build_meeting_ics(meeting: Meeting, community: Community, organizer_email: str) -> bytes:

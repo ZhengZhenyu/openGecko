@@ -1,11 +1,10 @@
-from datetime import datetime
-from datetime import timezone as _tz
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 
 def utc_now() -> datetime:
     """返回当前 UTC 时间（带时区信息）。"""
-    return datetime.now(_tz.utc)
+    return datetime.now(UTC)
 
 
 def get_app_tz() -> ZoneInfo:
@@ -18,5 +17,5 @@ def get_app_tz() -> ZoneInfo:
 def to_app_tz(dt: datetime) -> datetime:
     """将 datetime 转换为应用时区。用于服务端输出（邮件、ICS 等）。"""
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=_tz.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.astimezone(get_app_tz())
