@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
+from app.models.community import Community
 from app.models.event import (
     ChecklistItem,
     Event,
@@ -78,10 +79,18 @@ def create_event(
     if data.event_type not in VALID_EVENT_TYPES:
         raise HTTPException(400, f"event_type 必须为 {VALID_EVENT_TYPES}")
 
+    create_data = data.model_dump(exclude={"community_ids"})
     event = Event(
         owner_id=current_user.id,
-        **data.model_dump(),
+        **create_data,
     )
+    # 处理多对多社区关联
+    all_ids = list(dict.fromkeys(data.community_ids + ([data.community_id] if data.community_id else [])))
+    if all_ids:
+        comms = db.query(Community).filter(Community.id.in_(all_ids)).all()
+        event.communities = comms
+        if not event.community_id and comms:
+            event.community_id = comms[0].id
     db.add(event)
     db.flush()
 
@@ -124,8 +133,14 @@ def update_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "活动不存在")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    update_data = data.model_dump(exclude_unset=True, exclude={"community_ids"})
+    for key, value in update_data.items():
         setattr(event, key, value)
+    # 处理 community_ids 更新
+    if data.community_ids is not None:
+        comms = db.query(Community).filter(Community.id.in_(data.community_ids)).all()
+        event.communities = comms
+        event.community_id = comms[0].id if comms else None
     db.commit()
     db.refresh(event)
     return event

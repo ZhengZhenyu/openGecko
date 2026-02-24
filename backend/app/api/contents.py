@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import insert, or_
 from sqlalchemy import select as sa_select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import check_content_edit_permission, get_current_user
 from app.database import get_db
@@ -12,6 +12,7 @@ from app.models.content import content_communities
 from app.schemas.content import (
     ContentCalendarOut,
     ContentCreate,
+    ContentListOut,
     ContentOut,
     ContentScheduleUpdate,
     ContentStatusUpdate,
@@ -74,6 +75,7 @@ def list_contents(
     source_type: str | None = None,
     keyword: str | None = None,
     community_id: int | None = Query(None),
+    unscheduled: bool = Query(False, description="若为 true，只返回未设置 scheduled_publish_at 的内容"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -87,8 +89,24 @@ def list_contents(
         query = query.filter(Content.source_type == source_type)
     if keyword:
         query = query.filter(Content.title.contains(keyword))
+    if unscheduled:
+        query = query.filter(Content.scheduled_publish_at.is_(None))
     total = query.count()
-    items = query.order_by(Content.updated_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items_raw = (
+        query
+        .options(joinedload(Content.assignees))
+        .order_by(Content.updated_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    items = [
+        ContentListOut(
+            **{c.name: getattr(item, c.name) for c in item.__table__.columns},
+            assignee_names=[u.full_name or u.username for u in item.assignees],
+        )
+        for item in items_raw
+    ]
     return PaginatedContents(items=items, total=total, page=page, page_size=page_size)
 
 

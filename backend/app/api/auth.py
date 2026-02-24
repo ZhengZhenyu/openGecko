@@ -483,9 +483,15 @@ def _send_password_reset_email(to_email: str, token: str) -> None:
 
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        if settings.SMTP_USE_TLS:
-            server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(msg["From"], [to_email], msg.as_string())
+    # Port 465: direct SSL/TLS; port 587/others: STARTTLS
+    if settings.SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(msg["From"], [to_email], msg.as_string())
+    else:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+            if settings.SMTP_USE_TLS:
+                server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(msg["From"], [to_email], msg.as_string())
 

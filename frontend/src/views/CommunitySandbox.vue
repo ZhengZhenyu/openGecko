@@ -78,69 +78,24 @@
           <div class="card-header">
             <h3>社区事件日历</h3>
             <div class="calendar-legend">
-              <span class="legend-group">
-                <span class="legend-icon">📅</span>
-                <span class="legend-text">会议</span>
-                <span class="legend-dot meeting-scheduled-dot"></span>
-                <span class="legend-dot meeting-completed-dot"></span>
-                <span class="legend-dot meeting-cancelled-dot"></span>
-              </span>
-              <span class="legend-group">
-                <span class="legend-icon">🎉</span>
-                <span class="legend-text">活动</span>
-                <span class="legend-dot event-planning-dot"></span>
-                <span class="legend-dot event-ongoing-dot"></span>
-                <span class="legend-dot event-completed-dot"></span>
-              </span>
-              <span class="legend-group">
-                <span class="legend-icon">📝</span>
-                <span class="legend-text">内容</span>
-                <span class="legend-dot publish-dot"></span>
-                <span class="legend-dot scheduled-dot"></span>
-              </span>
+              <span class="legend-section-label">类型</span>
+              <span class="legend-bar lb-meeting">会议</span>
+              <span class="legend-bar lb-event">活动</span>
+              <span class="legend-bar lb-content">内容</span>
+              <span class="legend-divider"></span>
+              <span class="legend-section-label">状态</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-purple"></span>策划中</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-blue"></span>进行中</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-green"></span>已完成/发布</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-orange"></span>定时</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-gray"></span>已取消</span>
             </div>
           </div>
           <FullCalendar ref="calendarRef" :options="calendarOptions" class="ver-calendar" />
         </div>
 
-        <!-- 第二层：8 指标卡片 (2行x4列) -->
+        <!-- 第二层：治理 & 渠道指标 (3列) -->
         <div class="metrics-grid">
-          <div class="metric-card" @click="$router.push('/contents')">
-            <div class="metric-icon-wrap content-icon">
-              <el-icon><Document /></el-icon>
-            </div>
-            <div class="metric-body">
-              <div class="metric-value">{{ dashboardData.metrics.total_contents }}</div>
-              <div class="metric-label">内容总数</div>
-            </div>
-          </div>
-          <div class="metric-card highlight-green" @click="$router.push('/contents?status=published')">
-            <div class="metric-icon-wrap publish-icon">
-              <el-icon><Promotion /></el-icon>
-            </div>
-            <div class="metric-body">
-              <div class="metric-value">{{ dashboardData.metrics.published_contents }}</div>
-              <div class="metric-label">已发布</div>
-            </div>
-          </div>
-          <div class="metric-card highlight-orange" @click="$router.push('/contents?status=reviewing')">
-            <div class="metric-icon-wrap review-icon">
-              <el-icon><Clock /></el-icon>
-            </div>
-            <div class="metric-body">
-              <div class="metric-value">{{ dashboardData.metrics.reviewing_contents }}</div>
-              <div class="metric-label">待审核</div>
-            </div>
-          </div>
-          <div class="metric-card" @click="$router.push('/contents?status=draft')">
-            <div class="metric-icon-wrap draft-icon">
-              <el-icon><EditPen /></el-icon>
-            </div>
-            <div class="metric-body">
-              <div class="metric-value">{{ dashboardData.metrics.draft_contents }}</div>
-              <div class="metric-label">草稿</div>
-            </div>
-          </div>
           <div class="metric-card" @click="$router.push('/governance')">
             <div class="metric-icon-wrap gov-icon">
               <el-icon><Stamp /></el-icon>
@@ -170,7 +125,52 @@
           </div>
         </div>
 
-        <!-- 第三层：趋势图 + 渠道统计 -->
+        <!-- 第三层：内容动态（按状态分组） -->
+        <div class="section-card content-status-card">
+          <div class="card-header">
+            <div class="content-tabs">
+              <button
+                v-for="tab in contentTabs"
+                :key="tab.key"
+                class="content-tab"
+                :class="{ active: contentTab === tab.key }"
+                @click="contentTab = tab.key"
+              >
+                {{ tab.label }}
+                <span class="tab-count">{{ contentCountByStatus(tab.key) }}</span>
+              </button>
+            </div>
+            <router-link :to="`/contents?status=${contentTab}`" class="view-all">查看全部 →</router-link>
+          </div>
+          <div v-if="tabContents.length === 0" class="empty-hint">暂无{{ currentTabLabel }}内容</div>
+          <el-table
+            v-else
+            :data="tabContents"
+            style="width: 100%"
+            size="small"
+            @row-click="(row: any) => $router.push(`/contents/${row.id}/edit`)"
+            class="dashboard-table"
+          >
+            <el-table-column label="标题" prop="title" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span class="table-link">{{ row.title }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="负责人" prop="owner_name" width="100" show-overflow-tooltip />
+            <el-table-column label="工作状态" width="90">
+              <template #default="{ row }">
+                <span v-if="row.work_status" class="status-badge" :class="workStatusClass(row.work_status)">
+                  {{ workStatusLabel(row.work_status) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="日期" width="90">
+              <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 第四层：趋势图 + 渠道统计 -->
         <div class="charts-row">
           <div class="chart-card">
             <div class="card-header">
@@ -188,36 +188,36 @@
           </div>
         </div>
 
-        <!-- 第四层：最近内容 + 即将事件 -->
+        <!-- 第五层：近期活动 + 即将会议 -->
         <div class="bottom-row">
           <div class="section-card">
             <div class="card-header">
-              <h3>最近内容</h3>
-              <router-link to="/contents" class="view-all">查看全部 →</router-link>
+              <h3>近期活动</h3>
+              <router-link to="/events" class="view-all">查看全部 →</router-link>
             </div>
-            <div v-if="dashboardData.recent_contents.length === 0" class="empty-hint">暂无内容</div>
-            <div v-else class="content-list">
-              <div
-                v-for="item in dashboardData.recent_contents"
-                :key="item.id"
-                class="content-list-item"
-                @click="$router.push(`/contents/${item.id}/edit`)"
-              >
-                <div class="content-icon-col">
-                  <el-icon class="content-type-icon"><Document /></el-icon>
-                </div>
-                <div class="content-body">
-                  <div class="content-title">{{ item.title }}</div>
-                  <div class="content-meta">
-                    <span class="status-badge" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
-                    <span v-if="item.work_status" class="work-badge" :class="`wbadge-${item.work_status}`">{{ workStatusLabel(item.work_status) }}</span>
-                    <span class="meta-sep">·</span>
-                    <span class="meta-text">{{ item.owner_name }}</span>
-                    <span class="meta-text">{{ formatDate(item.created_at) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div v-if="recentEvents.length === 0" class="empty-hint">暂无近期活动</div>
+            <el-table
+              v-else
+              :data="recentEvents"
+              style="width: 100%"
+              size="small"
+              @row-click="(row: any) => $router.push(`/events/${row.id}`)"
+              class="dashboard-table"
+            >
+              <el-table-column label="活动名称" prop="title" min-width="140" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="table-link">{{ row.title }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="80">
+                <template #default="{ row }">
+                  <span class="status-badge" :class="eventStatusClass(row.status)">{{ eventStatusLabel(row.status) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="日期" width="90">
+                <template #default="{ row }">{{ row.planned_at ? formatDate(row.planned_at) : '—' }}</template>
+              </el-table-column>
+            </el-table>
           </div>
 
           <div class="section-card">
@@ -228,27 +228,32 @@
             <div v-if="dashboardData.upcoming_meetings.length === 0" class="empty-hint">
               近期无会议安排
             </div>
-            <div v-else class="meeting-list">
-              <div
-                v-for="m in dashboardData.upcoming_meetings"
-                :key="m.id"
-                class="meeting-item"
-                @click="$router.push(`/meetings/${m.id}`)"
-              >
-                <div class="meeting-date-col">
-                  <div class="meeting-day">{{ formatDay(m.scheduled_at) }}</div>
-                  <div class="meeting-month">{{ formatMonth(m.scheduled_at) }}</div>
-                </div>
-                <div class="meeting-info">
-                  <div class="meeting-title">{{ m.title }}</div>
-                  <div class="meeting-committee">
-                    <el-icon style="font-size:11px;vertical-align:-1px;"><Connection /></el-icon>
-                    {{ m.committee_name }}
+            <el-table
+              v-else
+              :data="dashboardData.upcoming_meetings"
+              style="width: 100%"
+              size="small"
+              @row-click="(row: any) => $router.push(`/meetings/${row.id}`)"
+              class="dashboard-table"
+            >
+              <el-table-column label="时间" width="76">
+                <template #default="{ row }">
+                  <div class="meeting-cell-date">
+                    <div class="mcd-day">{{ formatDay(row.scheduled_at) }}</div>
+                    <div class="mcd-month">{{ formatMonth(row.scheduled_at) }}</div>
                   </div>
-                </div>
-                <div class="meeting-time">{{ formatTime(m.scheduled_at) }}</div>
-              </div>
-            </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="会议名称" prop="title" min-width="130" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="table-link">{{ row.title }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="委员会" prop="committee_name" width="100" show-overflow-tooltip />
+              <el-table-column label="开始时间" width="72">
+                <template #default="{ row }">{{ formatTime(row.scheduled_at) }}</template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
       </template>
@@ -272,14 +277,14 @@ import VChart from 'vue-echarts'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions } from '@fullcalendar/core'
+import type { CalendarOptions, EventContentArg } from '@fullcalendar/core'
 import {
-  Document, Promotion, Clock, EditPen, Stamp,
-  Calendar, Connection, Plus, Setting,
+  Stamp, Calendar, Connection, Plus, Setting,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
 import { getCommunityDashboard, type CommunityDashboardResponse } from '../api/communityDashboard'
+import { listEvents, type EventListItem } from '../api/event'
 
 // 按需注册 ECharts 组件（Tree Shaking）
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent])
@@ -291,6 +296,24 @@ const communityStore = useCommunityStore()
 const loading = ref(false)
 const dashboardData = ref<CommunityDashboardResponse | null>(null)
 const calendarRef = ref()
+const recentEvents = ref<EventListItem[]>([])
+
+// Content status tabs
+const contentTab = ref<string>('reviewing')
+const contentTabs = [
+  { key: 'reviewing', label: '待审核' },
+  { key: 'draft',     label: '草稿' },
+  { key: 'published', label: '近期发布' },
+]
+const tabContents = computed(() =>
+  (dashboardData.value?.recent_contents ?? []).filter(c => c.status === contentTab.value)
+)
+const currentTabLabel = computed(() =>
+  contentTabs.find(t => t.key === contentTab.value)?.label ?? ''
+)
+function contentCountByStatus(status: string) {
+  return (dashboardData.value?.recent_contents ?? []).filter(c => c.status === status).length
+}
 
 // 当前激活社区信息
 const currentCommunity = computed(() =>
@@ -327,15 +350,33 @@ async function loadDashboard() {
   }
 }
 
+async function loadEvents() {
+  if (!communityStore.currentCommunityId) return
+  try {
+    const res = await listEvents({ community_id: communityStore.currentCommunityId, page: 1, page_size: 6 })
+    recentEvents.value = res.items
+  } catch (e) {
+    console.error('Failed to load events', e)
+  }
+}
+
 onMounted(() => {
-  if (communityStore.currentCommunityId) loadDashboard()
+  if (communityStore.currentCommunityId) {
+    loadDashboard()
+    loadEvents()
+  }
 })
 
 watch(
   () => communityStore.currentCommunityId,
   (newId) => {
-    if (newId) loadDashboard()
-    else dashboardData.value = null
+    if (newId) {
+      loadDashboard()
+      loadEvents()
+    } else {
+      dashboardData.value = null
+      recentEvents.value = []
+    }
   }
 )
 
@@ -434,14 +475,35 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     right: '',
   },
   buttonText: { today: '今天' },
-  height: 400,
+  height: 580,
   events: (dashboardData.value?.calendar_events ?? []).map((e, idx) => ({
     id: `${e.resource_type}_${e.resource_id}_${e.type}_${idx}`,
     title: e.title,
     date: e.date,
-    color: e.color,
-    extendedProps: { type: e.type, resource_id: e.resource_id, resource_type: e.resource_type },
+    color: 'transparent',
+    textColor: 'transparent',
+    extendedProps: { type: e.type, resource_id: e.resource_id, resource_type: e.resource_type, statusColor: e.color },
   })),
+  eventContent: (arg: EventContentArg) => {
+    const { type, statusColor } = arg.event.extendedProps as { type: string; statusColor: string; resource_id: number; resource_type: string }
+    let barBg = '#f8fafc'
+    let barText = '#64748b'
+    let barAccent = '#94a3b8'  // 左边框颜色 = 类型色，与状态无关
+    if (type?.startsWith('meeting')) { barBg = '#eff6ff'; barText = '#1d4ed8'; barAccent = '#1d4ed8' }
+    else if (type?.startsWith('event')) { barBg = '#f5f3ff'; barText = '#6d28d9'; barAccent = '#6d28d9' }
+    else { barBg = '#f0fdf4'; barText = '#15803d'; barAccent = '#15803d' }  // content
+    const dotColor = statusColor || barAccent  // 圆点颜色 = 状态色
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = `display:flex;align-items:center;gap:4px;background:${barBg};border-left:3px solid ${barAccent};padding:1px 5px 1px 4px;border-radius:3px;width:100%;box-sizing:border-box;overflow:hidden;`
+    const dot = document.createElement('span')
+    dot.style.cssText = `width:6px;height:6px;border-radius:50%;background:${dotColor};flex-shrink:0;`
+    const titleEl = document.createElement('span')
+    titleEl.style.cssText = `font-size:11px;font-weight:500;color:${barText};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;`
+    titleEl.textContent = arg.event.title
+    wrapper.appendChild(dot)
+    wrapper.appendChild(titleEl)
+    return { domNodes: [wrapper] }
+  },
   eventClick: (info) => {
     const { type, resource_id } = info.event.extendedProps
     if (type?.startsWith('meeting')) router.push(`/meetings/${resource_id}`)
@@ -464,12 +526,31 @@ function workStatusLabel(s: string | null) {
   return s ? (m[s] || s) : ''
 }
 
+function workStatusClass(s: string) {
+  const m: Record<string, string> = { planning: 'badge-gray', in_progress: 'badge-orange', completed: 'badge-green' }
+  return m[s] || 'badge-gray'
+}
+
 function statusClass(s: string) {
   const m: Record<string, string> = {
     draft: 'badge-gray',
     reviewing: 'badge-orange',
     approved: 'badge-blue',
     published: 'badge-green',
+  }
+  return m[s] || 'badge-gray'
+}
+
+function eventStatusLabel(s: string) {
+  const m: Record<string, string> = {
+    planning: '策划中', ongoing: '进行中', completed: '已完成', cancelled: '已取消',
+  }
+  return m[s] || s
+}
+
+function eventStatusClass(s: string) {
+  const m: Record<string, string> = {
+    planning: 'badge-gray', ongoing: 'badge-blue', completed: 'badge-green', cancelled: 'badge-gray',
   }
   return m[s] || 'badge-gray'
 }
@@ -614,10 +695,10 @@ function formatTime(dt: string) {
   padding: 24px 0;
 }
 
-/* ===== 8 指标卡片网格 ===== */
+/* ===== 治理指标卡片网格 (3列) ===== */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -733,65 +814,111 @@ function formatTime(dt: string) {
 .calendar-legend {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
 }
-.legend-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.legend-icon {
-  font-size: 14px;
-}
-.legend-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.meeting-scheduled-dot  { background: #0095ff; }
-.meeting-completed-dot  { background: #94a3b8; }
-.meeting-cancelled-dot  { background: #f87171; }
-.event-planning-dot    { background: #8b5cf6; }
-.event-ongoing-dot     { background: #0095ff; }
-.event-completed-dot   { background: #10b981; }
-.publish-dot            { background: #10b981; }
-.scheduled-dot          { background: #f59e0b; }
-.legend-text {
+.legend-section-label {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-right: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-right: 2px;
 }
-.calendar-legend {
-  display: flex;
+/* Legend: bar samples for type */
+.legend-bar {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px 2px 5px;
+  border-radius: 4px;
+  border-left: 3px solid;
+  white-space: nowrap;
+}
+.lb-meeting { background: #eff6ff; color: #1d4ed8; border-left-color: #1d4ed8; }
+.lb-event   { background: #f5f3ff; color: #6d28d9; border-left-color: #6d28d9; }
+.lb-content { background: #f0fdf4; color: #15803d; border-left-color: #15803d; }
+
+/* Legend: dot + label samples for status */
+.legend-dot-item {
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 .legend-dot {
-  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
-.meeting-scheduled-dot  { background: #0095ff; }
-.meeting-completed-dot  { background: #94a3b8; }
-.meeting-cancelled-dot  { background: #f87171; }
-.event-planning-dot    { background: #8b5cf6; }
-.event-ongoing-dot     { background: #0095ff; }
-.event-completed-dot   { background: #10b981; }
-.publish-dot            { background: #10b981; }
-.scheduled-dot          { background: #f59e0b; }
+.ld-purple { background: #8b5cf6; }
+.ld-blue   { background: #0095ff; }
+.ld-green  { background: #10b981; }
+.ld-orange { background: #f59e0b; }
+.ld-gray   { background: #94a3b8; }
+
 .legend-divider {
   width: 1px;
-  height: 12px;
+  height: 16px;
   background: #e2e8f0;
-  margin: 0 8px;
+  margin: 0 4px;
 }
-.legend-text {
-  font-size: 12px;
+
+/* ===== 内容动态卡片 ===== */
+.content-status-card {
+  margin-bottom: 20px;
+}
+
+.content-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.content-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-secondary);
-  margin-right: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.content-tab:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.content-tab.active {
+  background: #eff6ff;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.content-tab.active .tab-count {
+  background: var(--blue);
+  color: #fff;
 }
 
 /* ===== 底部两栏 ===== */
@@ -801,62 +928,59 @@ function formatTime(dt: string) {
   gap: 20px;
 }
 
-/* ===== 最近内容列表 ===== */
-.content-list-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.content-list-item:last-child { border-bottom: none; }
-
-.content-icon-col {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f0fdf4;
-  border-radius: 7px;
-  margin-top: 1px;
-}
-.content-type-icon {
-  font-size: 14px;
-  color: #16a34a;
-}
-
-.content-body { flex: 1; min-width: 0; }
-
-.content-title {
-  font-size: 14px;
-  font-weight: 500;
+/* ===== 底部表格样式 ===== */
+.table-link {
   color: var(--text-primary);
-  margin-bottom: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;
+  cursor: pointer;
   transition: color 0.15s;
 }
-.content-list-item:hover .content-title { color: var(--blue); }
+.dashboard-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+.dashboard-table :deep(.el-table__row:hover > td) {
+  background: #f8fafc !important;
+}
+.dashboard-table :deep(.el-table__row:hover .table-link) {
+  color: var(--blue);
+}
+.dashboard-table :deep(.el-table th) {
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+.dashboard-table :deep(.el-table td) {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 0;
+}
 
-.content-meta {
-  display: flex;
+/* 会议日期单元格 */
+.meeting-cell-date {
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
+  width: 36px;
+  height: 38px;
+  background: #eff6ff;
+  border-radius: 7px;
+  justify-content: center;
 }
-.meta-text {
-  font-size: 12px;
-  color: var(--text-muted);
+.mcd-day {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--blue);
+  line-height: 1;
 }
-.meta-sep {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0 1px;
+.mcd-month {
+  font-size: 9px;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-top: 1px;
 }
 
 /* Status badges */
@@ -871,85 +995,6 @@ function formatTime(dt: string) {
 .badge-orange { background: #fff7ed; color: #c2410c; }
 .badge-blue   { background: #eff6ff; color: #1d4ed8; }
 .badge-green  { background: #f0fdf4; color: #15803d; }
-
-/* Work status chips */
-.work-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-.wbadge-planning    { background: #f8fafc; color: #94a3b8; }
-.wbadge-in_progress { background: #fff8ed; color: #b45309; }
-.wbadge-completed   { background: #f0fdf4; color: #15803d; }
-
-/* ===== 会议列表 ===== */
-.meeting-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.meeting-item:last-child { border-bottom: none; }
-.meeting-item:hover .meeting-title { color: var(--blue); }
-
-.meeting-date-col {
-  text-align: center;
-  width: 42px;
-  height: 46px;
-  flex-shrink: 0;
-  background: #eff6ff;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.meeting-day {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--blue);
-  line-height: 1;
-}
-.meeting-month {
-  font-size: 10px;
-  color: #60a5fa;
-  font-weight: 600;
-  margin-top: 1px;
-}
-
-.meeting-info { flex: 1; min-width: 0; }
-.meeting-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 0.15s;
-}
-.meeting-committee {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 3px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.meeting-time {
-  font-size: 12px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  background: #f8fafc;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 2px 7px;
-  font-weight: 500;
-}
 
 /* ===== 空提示 ===== */
 .empty-hint {
@@ -1116,13 +1161,12 @@ function formatTime(dt: string) {
   text-decoration: none !important;
 }
 
-/* 事件胶囊 */
+/* 事件胶囊 — 背景/边框由 eventContent 的 domNodes 控制 */
 :deep(.fc-event) {
-  font-size: 11px;
   border-radius: 4px !important;
   border: none !important;
-  border-left: 3px solid rgba(0,0,0,0.16) !important;
-  padding: 1px 5px !important;
+  background: transparent !important;
+  padding: 0 !important;
   margin: 0 3px 2px !important;
   cursor: pointer !important;
   transition: transform 0.11s, box-shadow 0.11s !important;
@@ -1130,6 +1174,10 @@ function formatTime(dt: string) {
 :deep(.fc-event:hover) {
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(0,0,0,0.12) !important;
+}
+:deep(.fc-event-main) {
+  overflow: hidden;
+  border-radius: 3px;
 }
 
 /* "更多"链接 */
@@ -1159,7 +1207,7 @@ function formatTime(dt: string) {
     padding: 20px 20px 40px;
   }
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   .charts-row,
   .bottom-row {
@@ -1168,11 +1216,14 @@ function formatTime(dt: string) {
 }
 @media (max-width: 600px) {
   .metrics-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
   .community-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .content-tabs {
+    flex-wrap: wrap;
   }
 }
 </style>

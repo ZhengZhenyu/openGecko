@@ -81,6 +81,7 @@ import type { CalendarOptions, EventInput, EventDropArg, DateSelectArg, EventCli
 import { useCommunityStore } from '../stores/community'
 import {
   fetchCalendarEvents,
+  fetchContents,
   updateContentSchedule,
   type ContentCalendarItem,
 } from '../api/content'
@@ -233,14 +234,37 @@ async function loadEvents(start: string, end: string) {
       end: end.slice(0, 10),
       status: statusFilter.value || undefined,
     })
-
-    // 分离已排期和未排期
+    // 只取已排期的内容显示在日历上；未排期内容由 loadUnscheduledContent 单独加载
     calendarEvents.value = items.filter((i) => i.scheduled_publish_at)
-    unscheduledEvents.value = items.filter((i) => !i.scheduled_publish_at)
   } catch (err: any) {
     ElMessage.error('加载日历数据失败: ' + (err?.response?.data?.detail || err.message))
   } finally {
     loading.value = false
+  }
+}
+
+// 单独加载全部未排期内容（不受当前日历视图日期范围限制）
+async function loadUnscheduledContent() {
+  if (!communityStore.currentCommunityId) return
+  try {
+    const res = await fetchContents({
+      community_id: communityStore.currentCommunityId,
+      unscheduled: true,
+      page_size: 100,
+      ...(statusFilter.value ? { status: statusFilter.value } : {}),
+    })
+    unscheduledEvents.value = res.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      status: item.status,
+      source_type: item.source_type,
+      author: item.author,
+      category: item.category,
+      scheduled_publish_at: null,
+      created_at: item.created_at,
+    }))
+  } catch (err: any) {
+    console.error('加载未排期内容失败', err)
   }
 }
 
@@ -264,7 +288,7 @@ async function handleEventDrop(info: EventDropArg) {
 
 async function handleEventDragStop(info: any) {
   // 检测事件是否被拖到了未排期面板区域
-  const panelEl = unscheduledPanelRef.value?.panelRef?.value
+  const panelEl = unscheduledPanelRef.value?.$el
   if (!panelEl) return
 
   const rect = panelEl.getBoundingClientRect()
@@ -305,7 +329,7 @@ function initDraggable() {
     draggableInstance.destroy()
     draggableInstance = null
   }
-  const container = unscheduledPanelRef.value?.containerRef?.value
+  const container = unscheduledPanelRef.value?.$el?.querySelector('.panel-body')
   if (!container) return
   draggableInstance = new Draggable(container, {
     itemSelector: '.unscheduled-item',
@@ -389,7 +413,10 @@ async function refetchEvents() {
   const calendarApi = calendarRef.value?.getApi()
   if (calendarApi) {
     const view = calendarApi.view
-    await loadEvents(view.activeStart.toISOString(), view.activeEnd.toISOString())
+    await Promise.all([
+      loadEvents(view.activeStart.toISOString(), view.activeEnd.toISOString()),
+      loadUnscheduledContent(),
+    ])
   }
 }
 
@@ -398,6 +425,7 @@ watch(
   () => communityStore.currentCommunityId,
   () => {
     refetchEvents()
+    loadUnscheduledContent()
   }
 )
 
@@ -418,6 +446,8 @@ watch(panelCollapsed, (collapsed) => {
 
 onMounted(() => {
   nextTick(() => initDraggable())
+  // 日历事件由 datesSet 触发加载；未排期内容单独预加载
+  loadUnscheduledContent()
 })
 
 onBeforeUnmount(() => {

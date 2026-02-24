@@ -88,10 +88,19 @@
               <span v-else class="no-community">—</span>
             </template>
           </el-table-column>
-          <el-table-column prop="assignees" label="责任人" width="100">
+          <el-table-column label="责任人" width="180">
             <template #default="{ row }">
-              <el-icon><User /></el-icon>
-              {{ (row as any).assignee_ids?.length || 0 }}
+              <div v-if="row.assignee_names?.length" class="assignee-chips">
+                <span
+                  v-for="name in row.assignee_names.slice(0, 2)"
+                  :key="name"
+                  class="assignee-chip"
+                >{{ name }}</span>
+                <span v-if="row.assignee_names.length > 2" class="assignee-more">
+                  +{{ row.assignee_names.length - 2 }}
+                </span>
+              </div>
+              <span v-else class="no-assignee">—</span>
             </template>
           </el-table-column>
           <el-table-column prop="updated_at" label="更新时间" width="180">
@@ -128,7 +137,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Upload, User } from '@element-plus/icons-vue'
+import { Plus, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchContents, deleteContent, uploadFile, type ContentListItem } from '../api/content'
 import { useRouter } from 'vue-router'
@@ -411,6 +420,38 @@ watch(
 }
 
 .no-community {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.assignee-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.assignee-chip {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 5px;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignee-more {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.no-assignee {
   color: var(--text-muted);
   font-size: 13px;
 }

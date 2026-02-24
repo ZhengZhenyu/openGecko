@@ -79,6 +79,7 @@ class ContentListOut(BaseModel):
     scheduled_publish_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    assignee_names: list[str] = []
 
     model_config = {"from_attributes": True}
 

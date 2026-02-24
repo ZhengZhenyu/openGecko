@@ -1,10 +1,18 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+# 活动 ↔ 社区 多对多关联表
+event_communities_table = Table(
+    "event_communities",
+    Base.metadata,
+    Column("event_id", Integer, ForeignKey("events.id", ondelete="CASCADE"), primary_key=True),
+    Column("community_id", Integer, ForeignKey("communities.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class EventTemplate(Base):
@@ -90,6 +98,9 @@ class Event(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     template = relationship("EventTemplate", back_populates="events")
+    communities = relationship(
+        "Community", secondary="event_communities", lazy="selectin"
+    )
     checklist_items = relationship(
         "ChecklistItem", back_populates="event", cascade="all, delete-orphan"
     )
