@@ -102,6 +102,17 @@
               <span v-else class="no-community">—</span>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="80" align="center">
+            <template #default="{ row }">
+              <div class="action-buttons" @click.stop>
+                <el-popconfirm title="确定永久删除此活动？" @confirm="handleDeleteEvent(row)">
+                  <template #reference>
+                    <el-button size="small" link type="danger">删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
      </div>
 
@@ -171,7 +182,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core'
-import { listEvents, createEvent, updateEvent } from '../api/event'
+import { listEvents, createEvent, updateEvent, deleteEvent } from '../api/event'
 import type { EventListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
 
@@ -357,6 +368,16 @@ async function handleCreate() {
   }
 }
 
+async function handleDeleteEvent(row: EventListItem) {
+  try {
+    await deleteEvent(row.id)
+    ElMessage.success('活动已删除')
+    await loadEvents()
+  } catch {
+    ElMessage.error('删除失败，请重试')
+  }
+}
+
 onMounted(loadEvents)
 </script>
 
@@ -429,6 +450,31 @@ onMounted(loadEvents)
 .no-community {
   color: #94a3b8;
   font-size: 13px;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.action-buttons :deep(.el-button.is-link) {
+  height: auto;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.action-buttons :deep(.el-button--danger.is-link) {
+  color: var(--red, #ef4444);
+  background: transparent;
+}
+
+.action-buttons :deep(.el-button--danger.is-link:hover) {
+  color: #dc2626;
+  background: #fef2f2;
 }
 
 .events-table-container {

@@ -87,7 +87,7 @@
               <span class="legend-dot-item"><span class="legend-dot ld-purple"></span>策划中</span>
               <span class="legend-dot-item"><span class="legend-dot ld-blue"></span>进行中</span>
               <span class="legend-dot-item"><span class="legend-dot ld-green"></span>已完成/发布</span>
-              <span class="legend-dot-item"><span class="legend-dot ld-orange"></span>定时</span>
+              <span class="legend-dot-item"><span class="legend-dot ld-orange"></span>已排期</span>
               <span class="legend-dot-item"><span class="legend-dot ld-gray"></span>已取消</span>
             </div>
           </div>

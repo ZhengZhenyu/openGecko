@@ -34,6 +34,13 @@
             >
               <el-option v-for="(label, val) in statusLabel" :key="val" :label="label" :value="val" />
             </el-select>
+            <el-button
+              v-if="!isNewEvent && event"
+              size="small"
+              type="danger"
+              link
+              @click="handleDeleteEvent"
+            >删除活动</el-button>
           </div>
         </div>
 
@@ -373,6 +380,7 @@ import {
   listTasks,
   createTask,
   deleteTask,
+  deleteEvent,
   updateEventStatus,
   updateEvent,
 } from '../api/event'
@@ -652,6 +660,26 @@ async function handleDeleteTask(tid: number) {
     await deleteTask(eventId.value!, tid)
     await loadTasks()
   } catch { /* cancelled */ }
+}
+
+async function handleDeleteEvent() {
+  if (!eventId.value || !event.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要永久删除活动「${event.value.title}」吗？此操作不可撤销。`,
+      '删除活动',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await deleteEvent(eventId.value)
+    ElMessage.success('活动已删除')
+    router.push('/events')
+  } catch {
+    ElMessage.error('删除失败，请重试')
+  }
 }
 
 async function handleConfirmPersonnel(pid: number, confirmed: string) {
