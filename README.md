@@ -105,13 +105,42 @@ cd openGecko
 cp backend/.env.example backend/.env
 # ⚠️ 生产环境务必编辑 backend/.env，修改 JWT_SECRET_KEY 为强随机字符串
 
-# 3. 启动
-docker compose up -d
+# 3. 构建并启动（首次或代码更新后必须加 --build）
+docker compose up -d --build
 ```
 
 启动后访问：
 - 🖥️ **平台界面**：http://localhost
 - 📖 **API 文档**：http://localhost:8000/docs
+
+### 完整清理重部署
+
+升级遇到问题或需要全量重置时，用以下命令彻底清除旧环境后重新部署：
+
+```bash
+# 停止并移除容器、网络
+docker compose down
+
+# 删除旧镜像（强制下次重新构建）
+docker rmi opengecko-backend opengecko-frontend 2>/dev/null || true
+
+# 删除持久化数据库（⚠️ 数据不可恢复，谨慎操作）
+rm -f backend/opengecko.db
+
+# 重新构建并启动
+docker compose up -d --build
+```
+
+一行执行版：
+
+```bash
+docker compose down && \
+docker rmi opengecko-backend opengecko-frontend 2>/dev/null; \
+rm -f backend/opengecko.db && \
+docker compose up -d --build
+```
+
+> **注意**：`backend/opengecko.db` 是通过 `docker-compose.override.yml` 挂载到宿主机的 SQLite 数据库文件，删除后所有数据（社区、内容、用户等）将清空，重启后重新初始化。生产环境使用 PostgreSQL 时此步骤不适用。
 
 ### 首次使用流程
 

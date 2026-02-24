@@ -186,6 +186,7 @@ def upgrade():
         "publish_records",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("content_id", sa.Integer(), nullable=False),
+        sa.Column("community_id", sa.Integer(), nullable=True, index=True),
         sa.Column("channel", sa.String(50), nullable=False),
         sa.Column("status", sa.String(50), nullable=True),
         sa.Column("platform_article_id", sa.String(200), nullable=True),
@@ -194,6 +195,7 @@ def upgrade():
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(["content_id"], ["contents.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["community_id"], ["communities.id"], ondelete="CASCADE"),
     )
 
     # ------------------------------------------------------------------
