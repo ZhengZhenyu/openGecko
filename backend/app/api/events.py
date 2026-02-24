@@ -164,6 +164,19 @@ def update_event_status(
     return event
 
 
+@router.delete("/{event_id}", status_code=204)
+def delete_event(
+    event_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="活动不存在")
+    db.delete(event)
+    db.commit()
+
+
 # ─── Checklist ────────────────────────────────────────────────────────────────
 
 @router.get("/{event_id}/checklist", response_model=list[ChecklistItemOut])

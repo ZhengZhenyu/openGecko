@@ -253,3 +253,7 @@ export async function updateTask(eventId: number, tid: number, data: EventTaskUp
 export async function deleteTask(eventId: number, tid: number) {
   await apiClient.delete(`/events/${eventId}/tasks/${tid}`)
 }
+
+export async function deleteEvent(id: number): Promise<void> {
+  await apiClient.delete(`/events/${id}`)
+}
