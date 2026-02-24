@@ -313,7 +313,10 @@ watch(() => communityId.value, async (val) => {
 <template>
   <div class="settings-page">
     <div class="settings-header">
-      <el-button text @click="router.back()"><el-icon><ArrowLeft /></el-icon> 返回</el-button>
+      <el-button text @click="authStore.isSuperuser ? router.push('/communities') : router.back()">
+        <el-icon><ArrowLeft /></el-icon>
+        {{ authStore.isSuperuser ? '返回社区列表' : '返回' }}
+      </el-button>
       <div class="header-title">
         <h1>{{ community?.name || '社区设置' }}</h1>
         <span class="community-slug" v-if="community?.slug">{{ community.slug }}</span>
@@ -544,7 +547,7 @@ watch(() => communityId.value, async (val) => {
 </template>
 <style scoped>
 .settings-page {
-  padding: 24px 32px;
+  padding: 32px 40px 60px;
   max-width: 860px;
   margin: 0 auto;
 }
@@ -552,7 +555,7 @@ watch(() => communityId.value, async (val) => {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 .header-title { display: flex; align-items: baseline; gap: 10px; }
 .header-title h1 { font-size: 20px; font-weight: 700; color: #1e293b; margin: 0; }

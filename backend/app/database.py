@@ -42,12 +42,16 @@ def get_db():
 def init_db():
     from app.models import (  # noqa: F401
         audit,
+        campaign,
         channel,
         committee,
         community,
         content,
+        ecosystem,
+        event,
         meeting,
         password_reset,
+        people,
         publish_record,
         user,
         wechat_stats,
