@@ -184,6 +184,12 @@ const router = createRouter({
       component: () => import('../views/EventDetail.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/event-templates',
+      name: 'EventTemplates',
+      component: () => import('../views/EventTemplates.vue'),
+      meta: { requiresAuth: true },
+    },
     // Phase 4a 占位路由 (People)
     {
       path: '/people',

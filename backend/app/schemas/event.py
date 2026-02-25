@@ -8,7 +8,24 @@ class ChecklistTemplateItemCreate(BaseModel):
     phase: str  # pre / during / post
     title: str
     description: str | None = None
+    is_mandatory: bool = False
+    responsible_role: str | None = None
+    deadline_offset_days: int | None = None
+    estimated_hours: float | None = None
+    reference_url: str | None = None
     order: int = 0
+
+
+class ChecklistTemplateItemUpdate(BaseModel):
+    phase: str | None = None
+    title: str | None = None
+    description: str | None = None
+    is_mandatory: bool | None = None
+    responsible_role: str | None = None
+    deadline_offset_days: int | None = None
+    estimated_hours: float | None = None
+    reference_url: str | None = None
+    order: int | None = None
 
 
 class ChecklistTemplateItemOut(BaseModel):
@@ -16,6 +33,11 @@ class ChecklistTemplateItemOut(BaseModel):
     phase: str
     title: str
     description: str | None
+    is_mandatory: bool
+    responsible_role: str | None
+    deadline_offset_days: int | None
+    estimated_hours: float | None
+    reference_url: str | None
     order: int
 
     model_config = {"from_attributes": True}
@@ -178,20 +200,44 @@ class ChecklistItemOut(BaseModel):
     id: int
     phase: str
     title: str
+    description: str | None
+    is_mandatory: bool
+    responsible_role: str | None
+    reference_url: str | None
     status: str
     assignee_id: int | None
     due_date: date | None
     notes: str | None
+    completed_at: datetime | None
     order: int
 
     model_config = {"from_attributes": True}
 
 
+class ChecklistItemCreate(BaseModel):
+    phase: str
+    title: str
+    description: str | None = None
+    is_mandatory: bool = False
+    responsible_role: str | None = None
+    reference_url: str | None = None
+    due_date: date | None = None
+    notes: str | None = None
+    order: int = 0
+
+
 class ChecklistItemUpdate(BaseModel):
+    phase: str | None = None
+    title: str | None = None
+    description: str | None = None
+    is_mandatory: bool | None = None
+    responsible_role: str | None = None
+    reference_url: str | None = None
     status: str | None = None
     assignee_id: int | None = None
     due_date: date | None = None
     notes: str | None = None
+    order: int | None = None
 
 
 # ─── Event Personnel ──────────────────────────────────────────────────────────

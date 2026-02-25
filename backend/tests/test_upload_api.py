@@ -6,11 +6,22 @@ Endpoints tested:
 - POST /api/upload/{content_id}/cover
 """
 import io
+import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.community import Community
 from app.models.content import Content
+from app.services.storage import LocalStorage
+
+
+@pytest.fixture(autouse=True)
+def use_local_storage(tmp_path):
+    """测试期间强制使用本地存储，避免依赖 boto3 / S3 配置"""
+    storage = LocalStorage(str(tmp_path))
+    with patch("app.api.upload.get_storage", return_value=storage):
+        yield
 
 
 class TestUploadFile:

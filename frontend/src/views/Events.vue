@@ -131,7 +131,7 @@
     />
 
     <!-- Create Dialog -->
-    <el-dialog v-model="showCreateDialog" title="创建活动" width="500px" destroy-on-close>
+    <el-dialog v-model="showCreateDialog" title="创建活动" width="500px" destroy-on-close @open="loadTemplateList">
       <el-form :model="createForm" label-width="90px">
         <el-form-item label="活动名称" required>
           <el-input v-model="createForm.title" placeholder="请输入活动名称" />
@@ -159,6 +159,26 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="SOP 模板">
+          <el-select
+            v-model="createForm.template_id"
+            clearable
+            placeholder="选择模板（可选，自动生成清单项）"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="t in templateList"
+              :key="t.id"
+              :label="t.name"
+              :value="t.id"
+            />
+          </el-select>
+          <div v-if="!templateList.length" style="margin-top:4px;font-size:12px;color:#94a3b8">
+            暂无可用模板，可先在
+            <el-button link size="small" style="font-size:12px;padding:0" @click="$router.push('/event-templates')">SOP 模板管理</el-button>
+            中创建
+          </div>
+        </el-form-item>
         <el-form-item label="简介">
           <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="活动简介" />
         </el-form-item>
@@ -180,8 +200,8 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core'
-import { listEvents, createEvent, updateEvent, deleteEvent } from '../api/event'
-import type { EventListItem } from '../api/event'
+import { listEvents, createEvent, updateEvent, deleteEvent, listTemplates } from '../api/event'
+import type { EventListItem, EventTemplateListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -204,6 +224,8 @@ const calendarRef = ref()
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
+const templateList = ref<EventTemplateListItem[]>([])
+
 const createForm = ref({
   title: '',
   event_type: 'offline',
@@ -211,6 +233,7 @@ const createForm = ref({
   planned_at: null as string | null,
   location: '',
   description: '',
+  template_id: null as number | null,
 })
 
 const statusLabel: Record<string, string> = {
@@ -332,8 +355,16 @@ async function loadEvents() {
   }
 }
 
+async function loadTemplateList() {
+  try {
+    templateList.value = await listTemplates()
+  } catch {
+    templateList.value = []
+  }
+}
+
 function openCreateDialog() {
-  createForm.value = { title: '', event_type: 'offline', community_id: null, planned_at: null, location: '', description: '' }
+  createForm.value = { title: '', event_type: 'offline', community_id: null, planned_at: null, location: '', description: '', template_id: null }
   showCreateDialog.value = true
 }
 
@@ -351,6 +382,7 @@ async function handleCreate() {
       planned_at: createForm.value.planned_at || null,
       location: createForm.value.location || null,
       description: createForm.value.description || null,
+      template_id: createForm.value.template_id || null,
     })
     showCreateDialog.value = false
     ElMessage.success('活动已创建')
