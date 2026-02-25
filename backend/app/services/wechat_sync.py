@@ -4,12 +4,11 @@
 写入 Content / PublishRecord / WechatArticleStat 表。
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.core.timezone import utc_now
 from app.models.content import Content
 from app.models.publish_record import PublishRecord
 from app.services.wechat import wechat_service
@@ -52,7 +51,7 @@ class WechatSyncService:
                 article_id = item.get("article_id", "")
                 update_time = item.get("update_time", 0)
                 published_at = (
-                    datetime.fromtimestamp(update_time, tz=timezone.utc)
+                    datetime.fromtimestamp(update_time, tz=UTC)
                     if update_time
                     else None
                 )
