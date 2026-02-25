@@ -288,11 +288,9 @@ def get_community_dashboard(
     # 活动事件：按状态区分颜色
     # planning → 紫色 #8b5cf6；ongoing → 蓝色 #0095ff；completed → 绿色 #10b981；cancelled → 灰色 #94a3b8
     EVENT_COLORS = {
-        "draft": "#94a3b8",
         "planning": "#8b5cf6",
         "ongoing": "#0095ff",
         "completed": "#10b981",
-        "cancelled": "#94a3b8",
     }
     event_events = (
         db.query(Event)
@@ -359,15 +357,15 @@ def get_community_dashboard(
 
     # 活动事件（跨天支持）：如果活动时长超过1天，则创建多天事件
     for e in event_events:
-        event_color = EVENT_COLORS.get(e.status or "draft", "#94a3b8")
-        if e.planned_at and e.duration_minutes and e.duration_minutes > 1440:
-            days_count = (e.duration_minutes + 1439) // 1440  # 1440分钟 = 24小时 = 1天
+        event_color = EVENT_COLORS.get(e.status or "planning", "#8b5cf6")
+        if e.planned_at and e.duration_hours and e.duration_hours > 24:
+            days_count = int(e.duration_hours / 24) + (1 if e.duration_hours % 24 else 0)
             for day_offset in range(days_count):
                 day_date = e.planned_at + timedelta(days=day_offset)
                 calendar_events.append(
                     CalendarEvent(
                         id=e.id,
-                        type=f"event_{e.status or 'draft'}",
+                        type=f"event_{e.status or 'planning'}",
                         title=f"{e.title}" + (f" (第{day_offset + 1}天)" if day_offset > 0 else ""),
                         date=day_date,
                         color=event_color,
@@ -379,7 +377,7 @@ def get_community_dashboard(
             calendar_events.append(
                 CalendarEvent(
                     id=e.id,
-                    type=f"event_{e.status or 'draft'}",
+                    type=f"event_{e.status or 'planning'}",
                     title=e.title,
                     date=e.planned_at,
                     color=event_color,

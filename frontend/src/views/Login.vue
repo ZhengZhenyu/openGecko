@@ -3,7 +3,7 @@
     <el-card class="login-card">
       <template #header>
         <div class="card-header">
-          <img src="/openGecko-Horizontal.png" alt="openGecko" class="logo" />
+          <img src="/openGecko-vertical.png" alt="openGecko" class="logo" />
           <h2>openGecko</h2>
           <p class="subtitle">多社区运营管理平台<br/>Manage All, Publish Everywhere</p>
         </div>

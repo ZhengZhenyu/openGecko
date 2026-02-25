@@ -39,7 +39,7 @@ from app.schemas.event import (
 
 router = APIRouter()
 
-VALID_EVENT_STATUSES = {"draft", "planning", "ongoing", "completed", "cancelled"}
+VALID_EVENT_STATUSES = {"planning", "ongoing", "completed"}
 VALID_EVENT_TYPES = {"online", "offline", "hybrid"}
 
 

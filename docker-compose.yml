@@ -1,15 +1,41 @@
 services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9001:9001"    # MinIO Console — available at http://localhost:9001 (admin UI)
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     volumes:
-      - ./uploads:/app/uploads
       - ./data:/app/data
     env_file:
       - ./backend/.env
     environment:
       TZ: ${APP_TIMEZONE:-Asia/Shanghai}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-opengecko}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://minio:9000/opengecko}
+    depends_on:
+      minio:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -31,3 +57,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+volumes:
+  minio_data:

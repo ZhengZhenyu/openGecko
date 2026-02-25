@@ -48,7 +48,7 @@
           <div v-if="event.planned_at" class="meta-item">
             <el-icon><Calendar /></el-icon>
             <span>{{ formatDateTime(event.planned_at) }}</span>
-            <span v-if="event.duration_minutes" class="meta-sub">（{{ event.duration_minutes }} 分钟）</span>
+            <span v-if="event.duration_hours" class="meta-sub">（{{ event.duration_hours }} 小时）</span>
           </div>
           <div v-if="event.location" class="meta-item">
             <el-icon><Location /></el-icon>
@@ -74,20 +74,25 @@
             <el-form-item label="活动名称">
               <el-input v-model="editForm.title" />
             </el-form-item>
+            <el-form-item label="活动类型">
+              <el-select v-model="editForm.event_type" style="width: 100%">
+                <el-option label="线下" value="offline" />
+                <el-option label="线上" value="online" />
+                <el-option label="混合" value="hybrid" />
+              </el-select>
+            </el-form-item>
             <el-form-item label="活动状态">
               <el-select v-model="editForm.status" style="width: 100%">
-                <el-option label="草稿" value="draft" />
                 <el-option label="策划中" value="planning" />
                 <el-option label="进行中" value="ongoing" />
                 <el-option label="已完成" value="completed" />
-                <el-option label="已取消" value="cancelled" />
               </el-select>
             </el-form-item>
             <el-form-item label="计划时间">
               <el-date-picker v-model="editForm.planned_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="时长（分钟）">
-              <el-input-number v-model="editForm.duration_minutes" :min="0" style="width: 100%" />
+            <el-form-item label="时长（小时）">
+              <el-input-number v-model="editForm.duration_hours" :min="0" :step="0.5" :precision="1" style="width: 100%" />
             </el-form-item>
             <el-form-item label="地点">
               <el-input v-model="editForm.location" />
@@ -423,12 +428,13 @@ const isEditing = ref(false)
 const saving = ref(false)
 const editForm = ref({
   title: '',
+  event_type: 'offline' as string,
   planned_at: null as string | null,
-  duration_minutes: null as number | null,
+  duration_hours: null as number | null,
   location: '',
   online_url: '',
   description: '',
-  status: 'draft' as string,
+  status: 'planning' as string,
   community_ids: [] as number[],
 })
 
@@ -439,8 +445,8 @@ const personnelForm = ref({ role: '', role_label: '', assignee_type: 'internal',
 const feedbackForm = ref({ category: 'question', raised_by: '', content: '' })
 
 // ─── Labels & Maps ────────────────────────────────────────────────────────────
-const statusLabel: Record<string, string> = { draft: '草稿', planning: '策划中', ongoing: '进行中', completed: '已完成', cancelled: '已取消' }
-const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { draft: 'info', planning: 'warning', ongoing: 'primary', completed: 'success', cancelled: 'danger' }
+const statusLabel: Record<string, string> = { planning: '策划中', ongoing: '进行中', completed: '已完成' }
+const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { planning: 'warning', ongoing: 'primary', completed: 'success' }
 const typeLabel: Record<string, string> = { offline: '线下', online: '线上', hybrid: '混合' }
 const typeTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { offline: '', online: 'success', hybrid: 'warning' }
 const phaseLabel: Record<string, string> = { pre: '会前', during: '会中', post: '会后' }
@@ -501,12 +507,13 @@ async function loadEvent() {
       isEditing.value = true
       editForm.value = {
         title: '',
+        event_type: 'offline',
         planned_at: null,
-        duration_minutes: null,
+        duration_hours: null,
         location: '',
         online_url: '',
         description: '',
-        status: 'draft',
+        status: 'planning',
         community_ids: communityStore.currentCommunityId ? [communityStore.currentCommunityId] : [],
       }
     } else {
@@ -548,8 +555,9 @@ function startEdit() {
   if (!event.value) return
   editForm.value = {
     title: event.value.title,
+    event_type: event.value.event_type,
     planned_at: event.value.planned_at,
-    duration_minutes: event.value.duration_minutes,
+    duration_hours: event.value.duration_hours,
     location: event.value.location || '',
     online_url: event.value.online_url || '',
     description: event.value.description || '',
@@ -580,8 +588,9 @@ async function saveEdit() {
       const communityIds = editForm.value.community_ids
       const newEvent = await createEvent({
         title: editForm.value.title,
+        event_type: editForm.value.event_type,
         planned_at: editForm.value.planned_at || null,
-        duration_minutes: editForm.value.duration_minutes || null,
+        duration_hours: editForm.value.duration_hours || null,
         location: editForm.value.location || null,
         online_url: editForm.value.online_url || null,
         description: editForm.value.description || null,
@@ -593,8 +602,9 @@ async function saveEdit() {
     } else {
       await updateEvent(eventId.value!, {
         title: editForm.value.title,
+        event_type: editForm.value.event_type,
         planned_at: editForm.value.planned_at,
-        duration_minutes: editForm.value.duration_minutes,
+        duration_hours: editForm.value.duration_hours,
         location: editForm.value.location || null,
         online_url: editForm.value.online_url || null,
         description: editForm.value.description || null,

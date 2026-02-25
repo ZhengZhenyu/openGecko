@@ -69,7 +69,7 @@ class EventCreate(BaseModel):
     community_ids: list[int] = []
     template_id: int | None = None
     planned_at: datetime | None = None
-    duration_minutes: int | None = None
+    duration_hours: float | None = None
     location: str | None = None
     online_url: str | None = None
     description: str | None = None
@@ -81,7 +81,7 @@ class EventUpdate(BaseModel):
     event_type: str | None = None
     community_ids: list[int] | None = None
     planned_at: datetime | None = None
-    duration_minutes: int | None = None
+    duration_hours: float | None = None
     location: str | None = None
     online_url: str | None = None
     description: str | None = None
@@ -96,7 +96,7 @@ class EventUpdate(BaseModel):
 
 
 class EventStatusUpdate(BaseModel):
-    status: str  # draft / planning / ongoing / completed / cancelled
+    status: str  # planning / ongoing / completed
 
 
 class CommunitySimple(BaseModel):
@@ -116,7 +116,7 @@ class EventOut(BaseModel):
     template_id: int | None
     status: str
     planned_at: datetime | None
-    duration_minutes: int | None
+    duration_hours: float | None
     location: str | None
     online_url: str | None
     description: str | None

@@ -35,11 +35,9 @@
          />
        </el-select>
        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 140px" @change="loadEvents">
-         <el-option label="草稿" value="draft" />
          <el-option label="策划中" value="planning" />
          <el-option label="进行中" value="ongoing" />
          <el-option label="已完成" value="completed" />
-         <el-option label="已取消" value="cancelled" />
        </el-select>
        <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 140px" @change="loadEvents">
          <el-option label="线上" value="online" />
@@ -216,19 +214,15 @@ const createForm = ref({
 })
 
 const statusLabel: Record<string, string> = {
-  draft: '草稿',
   planning: '策划中',
   ongoing: '进行中',
   completed: '已完成',
-  cancelled: '已取消',
 }
 
 const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
-  draft: 'info',
   planning: 'warning',
   ongoing: 'primary',
   completed: 'success',
-  cancelled: 'danger',
 }
 
 const typeLabel: Record<string, string> = {

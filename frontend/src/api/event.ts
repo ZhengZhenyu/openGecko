@@ -26,7 +26,7 @@ export interface EventDetail {
   template_id: number | null
   status: string
   planned_at: string | null
-  duration_minutes: number | null
+  duration_hours: number | null
   location: string | null
   online_url: string | null
   description: string | null
@@ -49,7 +49,7 @@ export interface EventCreate {
   community_ids?: number[]
   template_id?: number | null
   planned_at?: string | null
-  duration_minutes?: number | null
+  duration_hours?: number | null
   location?: string | null
   online_url?: string | null
   description?: string | null

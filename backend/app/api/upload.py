@@ -1,5 +1,5 @@
 import os
-import uuid
+import tempfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -10,7 +10,8 @@ from app.database import get_db
 from app.models.content import Content
 from app.models.user import User
 from app.schemas.content import ContentOut
-from app.services.converter import convert_docx_to_markdown, convert_markdown_to_html, read_markdown_file
+from app.services.converter import convert_docx_to_markdown, convert_markdown_to_html
+from app.services.storage import StorageService, get_storage
 
 router = APIRouter()
 
@@ -31,33 +32,38 @@ async def upload_file(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {ext}. Allowed: {ALLOWED_EXTENSIONS}")
 
-    # Save uploaded file
-    save_name = f"{uuid.uuid4().hex}{ext}"
-    save_path = os.path.join(settings.UPLOAD_DIR, save_name)
     file_content = await file.read()
-
     if len(file_content) > settings.MAX_UPLOAD_SIZE:
         raise HTTPException(400, f"File too large. Max size: {settings.MAX_UPLOAD_SIZE // 1024 // 1024}MB")
 
-    with open(save_path, "wb") as f:
-        f.write(file_content)
-
-    # Convert to markdown
     title = os.path.splitext(file.filename)[0]
 
     if ext == ".docx":
-        markdown_text, image_paths = convert_docx_to_markdown(save_path)
+        # python-docx requires a real file path; write to a temp file, parse, then clean up
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(file_content)
+            tmp_path = tmp.name
+        try:
+            markdown_text, _image_paths = convert_docx_to_markdown(tmp_path)
+        finally:
+            os.unlink(tmp_path)
     else:
-        markdown_text = read_markdown_file(save_path)
+        # Markdown files can be decoded in-memory without touching the filesystem
+        markdown_text = file_content.decode("utf-8", errors="replace").strip()
 
     content_html = convert_markdown_to_html(markdown_text) if markdown_text else ""
+
+    # Persist to configured storage backend (local or S3/MinIO)
+    storage = get_storage()
+    key = StorageService.generate_key(ext)
+    storage.save(file_content, key)
 
     content = Content(
         title=title,
         content_markdown=markdown_text,
         content_html=content_html,
         source_type="contribution",
-        source_file=save_name,
+        source_file=key,
         status="draft",
         community_id=None,
         created_by_user_id=current_user.id,
@@ -86,20 +92,15 @@ async def upload_cover_image(
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         raise HTTPException(400, f"不支持的图片格式: {ext}。支持: {ALLOWED_IMAGE_EXTENSIONS}")
 
-    covers_dir = os.path.join(settings.UPLOAD_DIR, "covers")
-    os.makedirs(covers_dir, exist_ok=True)
-
-    save_name = f"{uuid.uuid4().hex}{ext}"
-    save_path = os.path.join(covers_dir, save_name)
     file_content = await file.read()
-
-    if len(file_content) > 10 * 1024 * 1024:  # 10MB limit for images
+    if len(file_content) > 10 * 1024 * 1024:
         raise HTTPException(400, "图片不能超过 10MB")
 
-    with open(save_path, "wb") as f:
-        f.write(file_content)
+    storage = get_storage()
+    key = StorageService.generate_key(ext, "covers")
+    file_url = storage.save(file_content, key)
 
-    content.cover_image = f"/uploads/covers/{save_name}"
+    content.cover_image = file_url
     db.commit()
     db.refresh(content)
     return content

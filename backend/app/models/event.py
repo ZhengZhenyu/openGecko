@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
@@ -74,11 +74,11 @@ class Event(Base):
         Integer, ForeignKey("event_templates.id", ondelete="SET NULL"), nullable=True
     )
     status = Column(
-        SAEnum("draft", "planning", "ongoing", "completed", "cancelled", name="event_status_enum"),
-        default="draft",
+        SAEnum("planning", "ongoing", "completed", name="event_status_enum"),
+        default="planning",
     )
     planned_at = Column(DateTime(timezone=True), nullable=True)
-    duration_minutes = Column(Integer, nullable=True)
+    duration_hours = Column(Float, nullable=True)
     location = Column(String(300), nullable=True)
     online_url = Column(String(500), nullable=True)
     description = Column(Text, nullable=True)

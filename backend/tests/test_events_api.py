@@ -11,7 +11,7 @@ def _create_event(
     db_session: Session,
     community_id: int,
     title: str = "测试活动",
-    status: str = "draft",
+    status: str = "planning",
     event_type: str = "offline",
 ) -> Event:
     event = Event(
@@ -64,16 +64,16 @@ class TestDeleteEvent:
         resp = client.delete(f"/api/events/{event.id}")
         assert resp.status_code == 401
 
-    def test_delete_cancelled_event(
+    def test_delete_completed_event(
         self,
         client: TestClient,
         auth_headers: dict,
         db_session: Session,
         test_community: Community,
     ):
-        """已取消状态的活动也可以被删除"""
+        """已完成状态的活动也可以被删除"""
         event = _create_event(
-            db_session, test_community.id, title="已取消活动", status="cancelled"
+            db_session, test_community.id, title="已完成活动", status="completed"
         )
         resp = client.delete(f"/api/events/{event.id}", headers=auth_headers)
         assert resp.status_code == 204

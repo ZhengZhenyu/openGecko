@@ -12,6 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api import (
+    admin,
     analytics,
     auth,
     campaigns,
@@ -157,8 +158,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Serve uploaded files
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# Serve uploaded files — only in local storage mode.
+# When STORAGE_BACKEND=s3, nginx proxies /uploads/ directly to MinIO.
+if settings.STORAGE_BACKEND == "local":
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 # Register API routers
@@ -179,6 +182,7 @@ app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 
 @app.get("/api/health")
