@@ -90,6 +90,19 @@ export interface ArticleRankItem {
   published_at: string | null
 }
 
+// ── Sync Types ──
+
+export interface SyncArticlesResponse {
+  synced: number
+  skipped: number
+  total: number
+}
+
+export interface SyncStatsResponse {
+  days_processed: number
+  stats_written: number
+}
+
 // ── API Functions ──
 
 export async function getWechatStatsOverview(): Promise<WechatStatsOverview> {
@@ -153,5 +166,20 @@ export async function rebuildAggregates(params: {
   end_date?: string
 }): Promise<{ rebuilt_count: number; period_type: string }> {
   const { data } = await api.post('/wechat-stats/aggregates/rebuild', null, { params })
+  return data
+}
+
+// ── Sync Functions ──
+
+export async function syncWechatArticles(): Promise<SyncArticlesResponse> {
+  const { data } = await api.post('/wechat-stats/sync/articles')
+  return data
+}
+
+export async function syncWechatStats(params: {
+  start_date: string
+  end_date: string
+}): Promise<SyncStatsResponse> {
+  const { data } = await api.post('/wechat-stats/sync/stats', params)
   return data
 }

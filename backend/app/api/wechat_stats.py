@@ -16,6 +16,9 @@ from app.models.publish_record import PublishRecord
 from app.schemas.wechat_stats import (
     ArticleCategoryUpdate,
     ArticleRankItem,
+    SyncArticlesResponse,
+    SyncStatsRequest,
+    SyncStatsResponse,
     TrendResponse,
     WechatArticleStatOut,
     WechatDailyStatBatchCreate,
@@ -23,6 +26,7 @@ from app.schemas.wechat_stats import (
     WechatStatsOverview,
 )
 from app.services.wechat_stats import wechat_stats_service
+from app.services.wechat_sync import wechat_sync_service
 
 router = APIRouter()
 
@@ -183,3 +187,49 @@ def rebuild_aggregates(
         end_date=end_date,
     )
     return {"rebuilt_count": count, "period_type": period_type}
+
+
+# ── 微信数据同步 ──
+
+@router.post("/sync/articles", response_model=SyncArticlesResponse)
+async def sync_wechat_articles(
+    community_id: int = Depends(get_current_community),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """从微信公众号同步已发布文章列表。"""
+    try:
+        result = await wechat_sync_service.sync_articles(
+            db, community_id=community_id, user_id=user.id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.post("/sync/stats", response_model=SyncStatsResponse)
+async def sync_wechat_stats(
+    body: SyncStatsRequest,
+    community_id: int = Depends(get_current_community),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """从微信公众号同步文章阅读统计数据。"""
+    if (body.end_date - body.start_date).days > 30:
+        raise HTTPException(status_code=400, detail="日期范围不能超过30天")
+    if body.end_date < body.start_date:
+        raise HTTPException(status_code=400, detail="结束日期不能早于开始日期")
+    try:
+        result = await wechat_sync_service.sync_stats(
+            db,
+            community_id=community_id,
+            start_date=body.start_date,
+            end_date=body.end_date,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))

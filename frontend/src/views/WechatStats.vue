@@ -13,7 +13,50 @@
           <h2>微信阅读统计</h2>
           <p class="subtitle">文章阅读量 · 互动数据 · 粉丝增长趋势分析</p>
         </div>
+        <el-button type="primary" @click="showSyncDialog = true">
+          同步微信数据
+        </el-button>
       </div>
+
+      <!-- Sync Dialog -->
+      <el-dialog v-model="showSyncDialog" title="同步微信数据" width="500px" destroy-on-close>
+        <div class="sync-section">
+          <h4 class="sync-section-title">同步已发布文章</h4>
+          <p class="sync-desc">从微信公众号拉取所有已发布文章，自动创建发布记录。</p>
+          <el-button type="primary" :loading="syncingArticles" @click="handleSyncArticles">
+            开始同步文章
+          </el-button>
+          <div v-if="articleSyncResult" class="sync-result">
+            新增 <strong>{{ articleSyncResult.synced }}</strong> 篇，
+            跳过 <strong>{{ articleSyncResult.skipped }}</strong> 篇，
+            微信端共 <strong>{{ articleSyncResult.total }}</strong> 篇
+          </div>
+        </div>
+        <el-divider />
+        <div class="sync-section">
+          <h4 class="sync-section-title">同步阅读统计</h4>
+          <p class="sync-desc">从微信数据接口拉取文章阅读数据（最多30天）。请先同步文章再同步统计。</p>
+          <div class="sync-date-row">
+            <el-date-picker
+              v-model="statsSyncRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              size="default"
+              value-format="YYYY-MM-DD"
+              style="width: 280px"
+            />
+            <el-button type="primary" :loading="syncingStats" :disabled="!statsSyncRange" @click="handleSyncStats">
+              开始同步统计
+            </el-button>
+          </div>
+          <div v-if="statsSyncResult" class="sync-result">
+            处理 <strong>{{ statsSyncResult.days_processed }}</strong> 天，
+            写入 <strong>{{ statsSyncResult.stats_written }}</strong> 条统计
+          </div>
+        </div>
+      </el-dialog>
 
       <!-- Loading -->
       <div v-if="loading" class="skeleton-wrap">
@@ -186,13 +229,18 @@ import {
 } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { useCommunityStore } from '../stores/community'
+import { ElMessage } from 'element-plus'
 import {
   getWechatStatsOverview,
   getWechatStatsTrend,
   getWechatArticleRanking,
+  syncWechatArticles,
+  syncWechatStats,
   type WechatStatsOverview,
   type TrendResponse,
   type ArticleRankItem,
+  type SyncArticlesResponse,
+  type SyncStatsResponse,
 } from '../api/wechatStats'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent])
@@ -207,6 +255,14 @@ const ranking = ref<ArticleRankItem[]>([])
 const trendPeriod = ref('daily')
 const trendCategory = ref<string>('')
 const rankingCategory = ref<string>('')
+
+// Sync state
+const showSyncDialog = ref(false)
+const syncingArticles = ref(false)
+const syncingStats = ref(false)
+const articleSyncResult = ref<SyncArticlesResponse | null>(null)
+const statsSyncResult = ref<SyncStatsResponse | null>(null)
+const statsSyncRange = ref<[string, string] | null>(null)
 
 const CATEGORY_LABELS: Record<string, string> = {
   release: '版本发布',
@@ -320,6 +376,48 @@ async function loadRanking() {
     })
   } catch (e) {
     console.error('Failed to load ranking', e)
+  }
+}
+
+// ── Sync Handlers ──
+
+async function handleSyncArticles() {
+  syncingArticles.value = true
+  articleSyncResult.value = null
+  try {
+    const result = await syncWechatArticles()
+    articleSyncResult.value = result
+    ElMessage.success(`同步完成：新增 ${result.synced} 篇文章`)
+    if (result.synced > 0) {
+      await loadAll()
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.detail || '同步文章失败'
+    ElMessage.error(msg)
+  } finally {
+    syncingArticles.value = false
+  }
+}
+
+async function handleSyncStats() {
+  if (!statsSyncRange.value) return
+  syncingStats.value = true
+  statsSyncResult.value = null
+  try {
+    const result = await syncWechatStats({
+      start_date: statsSyncRange.value[0],
+      end_date: statsSyncRange.value[1],
+    })
+    statsSyncResult.value = result
+    ElMessage.success(`同步完成：写入 ${result.stats_written} 条统计`)
+    if (result.stats_written > 0) {
+      await loadAll()
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.detail || '同步统计失败'
+    ElMessage.error(msg)
+  } finally {
+    syncingStats.value = false
   }
 }
 
@@ -545,6 +643,51 @@ watch(
 /* ── Skeleton ── */
 .skeleton-wrap {
   padding: 24px;
+}
+
+/* ── Sync dialog ── */
+.sync-section {
+  margin-bottom: 8px;
+}
+
+.sync-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+
+.sync-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.sync-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  color: #15803d;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+:deep(.el-dialog) {
+  border-radius: var(--radius);
+}
+
+:deep(.el-dialog__header) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+:deep(.el-divider) {
+  border-color: #f1f5f9;
 }
 
 /* ── Responsive ── */

@@ -305,5 +305,73 @@ class WechatService:
             )
             return resp.json()
 
+    async def fetch_published_articles(self, community_id: int, offset: int = 0, count: int = 20) -> dict:
+        """Fetch published articles list via freepublish/batchget API.
+
+        Args:
+            community_id: Community ID for credential lookup.
+            offset: Pagination offset (0-based).
+            count: Number of articles per page (max 20).
+
+        Returns:
+            Dict with ``total_count``, ``item_count`` and ``item`` list.
+        """
+        token = await self._get_access_token(community_id)
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{WECHAT_API_BASE}/cgi-bin/freepublish/batchget",
+                    params={"access_token": token},
+                    json={"offset": offset, "count": min(count, 20), "no_content": 1},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "errcode" in data and data["errcode"] != 0:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"获取已发布文章失败 [errcode={errcode}]: {errmsg}")
+
+                return data
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试") from None
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}") from e
+
+    async def fetch_article_total_stats(self, community_id: int, begin_date: str, end_date: str) -> dict:
+        """Fetch per-article statistics via datacube/getarticletotal API.
+
+        Note: WeChat limits this to a single-day range (begin_date == end_date).
+
+        Args:
+            community_id: Community ID for credential lookup.
+            begin_date: Date string in ``YYYY-MM-DD`` format.
+            end_date: Date string in ``YYYY-MM-DD`` format (same as begin_date).
+
+        Returns:
+            Dict with ``list`` containing per-article stats for that day.
+        """
+        token = await self._get_access_token(community_id)
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{WECHAT_API_BASE}/cgi-bin/datacube/getarticletotal",
+                    params={"access_token": token},
+                    json={"begin_date": begin_date, "end_date": end_date},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if "errcode" in data and data["errcode"] != 0:
+                    errcode = data.get("errcode", "unknown")
+                    errmsg = data.get("errmsg", "未知错误")
+                    raise Exception(f"获取文章统计失败 [errcode={errcode}]: {errmsg}")
+
+                return data
+        except httpx.TimeoutException:
+            raise Exception("微信API请求超时，请稍后重试") from None
+        except httpx.HTTPError as e:
+            raise Exception(f"微信API网络错误: {e}") from e
+
 
 wechat_service = WechatService()

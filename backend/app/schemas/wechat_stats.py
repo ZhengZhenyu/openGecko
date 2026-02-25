@@ -149,3 +149,24 @@ class ArticleRankItem(BaseModel):
     share_count: int
     comment_count: int
     published_at: datetime | None
+
+
+# ── 同步 ──
+
+class SyncArticlesResponse(BaseModel):
+    """文章同步结果。"""
+    synced: int = Field(description="新同步的文章数")
+    skipped: int = Field(description="已存在跳过的文章数")
+    total: int = Field(description="微信端文章总数")
+
+
+class SyncStatsRequest(BaseModel):
+    """统计同步请求。"""
+    start_date: date
+    end_date: date
+
+
+class SyncStatsResponse(BaseModel):
+    """统计同步结果。"""
+    days_processed: int = Field(description="处理的天数")
+    stats_written: int = Field(description="写入的统计条数")
