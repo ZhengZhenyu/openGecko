@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Annotated
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
