@@ -3,6 +3,19 @@
 # 此文件不会被 docker compose up 自动加载
 
 services:
+  minio:
+    # 生产环境仅暴露 Console 端口，S3 API 仅限容器间通信
+    ports:
+      - "9001:9001"
+    mem_limit: 256m
+    cpus: "0.5"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+
   backend:
     # 生产环境使用 gunicorn + uvicorn worker，多进程提升吞吐量
     command: >
