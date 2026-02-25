@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
+from app.core.timezone import utc_now
 from app.database import get_db
 from app.models import User
 from app.models.community import Community
@@ -16,6 +19,7 @@ from app.models.event import (
     IssueLink,
 )
 from app.schemas.event import (
+    ChecklistItemCreate,
     ChecklistItemOut,
     ChecklistItemUpdate,
     EventCreate,
@@ -99,10 +103,18 @@ def create_event(
         template = db.query(EventTemplate).filter(EventTemplate.id == data.template_id).first()
         if template:
             for titem in template.checklist_items:
+                due = None
+                if titem.deadline_offset_days is not None and event.planned_at:
+                    due = (event.planned_at + timedelta(days=titem.deadline_offset_days)).date()
                 db.add(ChecklistItem(
                     event_id=event.id,
                     phase=titem.phase,
                     title=titem.title,
+                    description=titem.description,
+                    is_mandatory=titem.is_mandatory,
+                    responsible_role=titem.responsible_role,
+                    reference_url=titem.reference_url,
+                    due_date=due,
                     order=titem.order,
                 ))
 
@@ -206,9 +218,46 @@ def update_checklist_item(
         raise HTTPException(404, "检查项不存在")
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(item, key, value)
+    if data.status == "done" and item.completed_at is None:
+        item.completed_at = utc_now()
+    elif data.status in ("pending", "skipped"):
+        item.completed_at = None
     db.commit()
     db.refresh(item)
     return item
+
+
+@router.post("/{event_id}/checklist", response_model=ChecklistItemOut, status_code=201)
+def create_checklist_item(
+    event_id: int,
+    data: ChecklistItemCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(404, "活动不存在")
+    item = ChecklistItem(event_id=event_id, **data.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.delete("/{event_id}/checklist/{item_id}", status_code=204)
+def delete_checklist_item(
+    event_id: int,
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(ChecklistItem).filter(
+        ChecklistItem.id == item_id, ChecklistItem.event_id == event_id
+    ).first()
+    if not item:
+        raise HTTPException(404, "检查项不存在")
+    db.delete(item)
+    db.commit()
 
 
 # ─── Personnel ────────────────────────────────────────────────────────────────

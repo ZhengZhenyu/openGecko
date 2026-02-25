@@ -73,11 +73,49 @@ export interface ChecklistItem {
   id: number
   phase: string
   title: string
+  description: string | null
+  is_mandatory: boolean
+  responsible_role: string | null
+  reference_url: string | null
   status: string
   assignee_id: number | null
   due_date: string | null
   notes: string | null
+  completed_at: string | null
   order: number
+}
+
+export interface ChecklistTemplateItem {
+  id: number
+  phase: string
+  title: string
+  description: string | null
+  is_mandatory: boolean
+  responsible_role: string | null
+  deadline_offset_days: number | null
+  estimated_hours: number | null
+  reference_url: string | null
+  order: number
+}
+
+export interface EventTemplateListItem {
+  id: number
+  name: string
+  event_type: string
+  is_public: boolean
+  created_at: string
+}
+
+export interface EventTemplate {
+  id: number
+  community_id: number | null
+  name: string
+  event_type: string
+  description: string | null
+  is_public: boolean
+  created_by_id: number | null
+  created_at: string
+  checklist_items: ChecklistTemplateItem[]
 }
 
 export interface Personnel {
@@ -194,9 +232,39 @@ export async function getChecklist(eventId: number) {
   return res.data
 }
 
-export async function updateChecklistItem(eventId: number, itemId: number, data: { status?: string; notes?: string; due_date?: string | null }) {
+export async function updateChecklistItem(eventId: number, itemId: number, data: Partial<{
+  phase: string
+  title: string
+  description: string | null
+  is_mandatory: boolean
+  responsible_role: string | null
+  reference_url: string | null
+  status: string
+  due_date: string | null
+  notes: string | null
+  order: number
+}>) {
   const res = await apiClient.patch<ChecklistItem>(`/events/${eventId}/checklist/${itemId}`, data)
   return res.data
+}
+
+export async function createChecklistItem(eventId: number, data: {
+  phase: string
+  title: string
+  description?: string | null
+  is_mandatory?: boolean
+  responsible_role?: string | null
+  reference_url?: string | null
+  due_date?: string | null
+  notes?: string | null
+  order?: number
+}) {
+  const res = await apiClient.post<ChecklistItem>(`/events/${eventId}/checklist`, data)
+  return res.data
+}
+
+export async function deleteChecklistItem(eventId: number, itemId: number) {
+  await apiClient.delete(`/events/${eventId}/checklist/${itemId}`)
 }
 
 // ─── Personnel ────────────────────────────────────────────────────────────────
@@ -256,4 +324,74 @@ export async function deleteTask(eventId: number, tid: number) {
 
 export async function deleteEvent(id: number): Promise<void> {
   await apiClient.delete(`/events/${id}`)
+}
+
+// ─── Event Templates ──────────────────────────────────────────────────────────
+
+export async function listTemplates() {
+  const res = await apiClient.get<EventTemplateListItem[]>('/event-templates')
+  return res.data
+}
+
+export async function getTemplate(id: number) {
+  const res = await apiClient.get<EventTemplate>(`/event-templates/${id}`)
+  return res.data
+}
+
+export async function createTemplate(data: {
+  name: string
+  event_type: string
+  description?: string | null
+  is_public?: boolean
+}) {
+  const res = await apiClient.post<EventTemplate>('/event-templates', data)
+  return res.data
+}
+
+export async function updateTemplate(id: number, data: {
+  name?: string
+  event_type?: string
+  description?: string | null
+  is_public?: boolean
+}) {
+  const res = await apiClient.patch<EventTemplate>(`/event-templates/${id}`, data)
+  return res.data
+}
+
+export async function addTemplateItem(templateId: number, data: {
+  phase: string
+  title: string
+  description?: string | null
+  is_mandatory?: boolean
+  responsible_role?: string | null
+  deadline_offset_days?: number | null
+  estimated_hours?: number | null
+  reference_url?: string | null
+  order?: number
+}) {
+  const res = await apiClient.post<ChecklistTemplateItem>(`/event-templates/${templateId}/items`, data)
+  return res.data
+}
+
+export async function updateTemplateItem(templateId: number, itemId: number, data: Partial<{
+  phase: string
+  title: string
+  description: string | null
+  is_mandatory: boolean
+  responsible_role: string | null
+  deadline_offset_days: number | null
+  estimated_hours: number | null
+  reference_url: string | null
+  order: number
+}>) {
+  const res = await apiClient.patch<ChecklistTemplateItem>(`/event-templates/${templateId}/items/${itemId}`, data)
+  return res.data
+}
+
+export async function deleteTemplateItem(templateId: number, itemId: number) {
+  await apiClient.delete(`/event-templates/${templateId}/items/${itemId}`)
+}
+
+export async function deleteTemplate(templateId: number) {
+  await apiClient.delete(`/event-templates/${templateId}`)
 }

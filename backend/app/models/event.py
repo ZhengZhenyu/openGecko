@@ -51,6 +51,11 @@ class ChecklistTemplateItem(Base):
     )
     title = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
+    is_mandatory = Column(Boolean, default=False)
+    responsible_role = Column(String(100), nullable=True)
+    deadline_offset_days = Column(Integer, nullable=True)
+    estimated_hours = Column(Float, nullable=True)
+    reference_url = Column(String(500), nullable=True)
     order = Column(Integer, default=0)
 
     template = relationship("EventTemplate", back_populates="checklist_items")
@@ -127,12 +132,17 @@ class ChecklistItem(Base):
         SAEnum("pre", "during", "post", name="checklist_item_phase_enum"), nullable=False
     )
     title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    is_mandatory = Column(Boolean, default=False)
+    responsible_role = Column(String(100), nullable=True)
+    reference_url = Column(String(500), nullable=True)
     status = Column(
         SAEnum("pending", "done", "skipped", name="checklist_status_enum"), default="pending"
     )
     assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     due_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     order = Column(Integer, default=0)
 
     event = relationship("Event", back_populates="checklist_items")

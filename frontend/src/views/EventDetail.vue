@@ -71,6 +71,20 @@
 
         <div v-else class="edit-form">
           <el-form :model="editForm" label-width="90px" size="small">
+            <el-form-item v-if="isNewEvent" label="SOP 模板">
+              <el-select
+                v-model="editForm.template_id"
+                clearable
+                placeholder="选择模板（可选）"
+                style="width:100%"
+                @change="onTemplateChange"
+              >
+                <el-option v-for="t in templateList" :key="t.id" :label="t.name" :value="t.id" />
+              </el-select>
+              <div v-if="selectedTemplate" style="margin-top:4px;color:#64748b;font-size:12px">
+                将自动生成 {{ selectedTemplate.checklist_items.length }} 条清单项
+              </div>
+            </el-form-item>
             <el-form-item label="活动名称">
               <el-input v-model="editForm.title" />
             </el-form-item>
@@ -129,9 +143,22 @@
         <!-- 清单 Tab -->
         <el-tab-pane label="执行清单" name="checklist">
           <div v-loading="checklistLoading" class="tab-content">
+            <div class="tab-actions">
+              <el-button size="small" type="primary" @click="handleAddChecklistItem('pre')">
+                <el-icon><Plus /></el-icon>添加清单项
+              </el-button>
+              <el-button size="small" @click="openImportTemplateDialog">
+                从模板导入
+              </el-button>
+            </div>
             <div v-if="checklistByPhase.pre.length || checklistByPhase.during.length || checklistByPhase.post.length">
               <div v-for="phase in phases" :key="phase.key" class="checklist-phase">
-                <h4 class="phase-title">{{ phase.label }}</h4>
+                <div class="phase-header">
+                  <h4 class="phase-title">{{ phase.label }}</h4>
+                  <el-button link size="small" class="phase-add-btn" @click="handleAddChecklistItem(phase.key)">
+                    <el-icon><Plus /></el-icon>添加
+                  </el-button>
+                </div>
                 <div v-if="checklistByPhase[phase.key].length === 0" class="phase-empty">本阶段无清单项</div>
                 <div
                   v-for="item in checklistByPhase[phase.key]"
@@ -139,17 +166,34 @@
                   class="checklist-item"
                   :class="{ done: item.status === 'done' }"
                 >
-                  <el-checkbox
-                    :model-value="item.status === 'done'"
-                    @change="(v: boolean) => toggleChecklist(item, v)"
-                  />
-                  <span class="checklist-title">{{ item.title }}</span>
-                  <el-tag v-if="item.status === 'done'" type="success" size="small">已完成</el-tag>
-                  <el-tag v-else-if="item.status === 'in_progress'" type="warning" size="small">进行中</el-tag>
+                  <div class="checklist-row">
+                    <el-checkbox
+                      :model-value="item.status === 'done'"
+                      @change="(v: boolean) => toggleChecklist(item, v)"
+                    />
+                    <span class="checklist-title">{{ item.title }}</span>
+                    <span v-if="item.responsible_role" class="role-badge">{{ item.responsible_role }}</span>
+                    <el-tag v-if="item.is_mandatory" type="danger" size="small" style="margin-left:4px;flex-shrink:0">必须</el-tag>
+                    <el-tag v-if="item.status === 'done'" type="success" size="small" style="margin-left:4px;flex-shrink:0">已完成</el-tag>
+                    <el-icon
+                      v-if="item.description"
+                      class="expand-btn"
+                      :class="{ expanded: expandedItems.has(item.id) }"
+                      @click="toggleExpand(item.id)"
+                    ><ArrowRight /></el-icon>
+                    <div class="item-actions">
+                      <el-button link size="small" @click="handleEditChecklistItem(item)">编辑</el-button>
+                      <el-button link size="small" type="danger" @click="handleDeleteChecklistItem(item)">删除</el-button>
+                    </div>
+                  </div>
+                  <div v-if="item.description && expandedItems.has(item.id)" class="item-description">
+                    {{ item.description }}
+                    <a v-if="item.reference_url" :href="item.reference_url" target="_blank" class="ref-link">参考链接 →</a>
+                  </div>
                 </div>
               </div>
             </div>
-            <div v-else class="tab-empty">暂无清单项（创建活动时选择模板可自动生成）</div>
+            <div v-else class="tab-empty">暂无清单项，点击「添加清单项」或创建活动时选择模板可自动生成</div>
           </div>
         </el-tab-pane>
 
@@ -338,6 +382,99 @@
       </template>
     </el-dialog>
 
+    <!-- Import from Template Dialog -->
+    <el-dialog v-model="showImportTemplateDialog" title="从模板导入清单" width="540px" destroy-on-close>
+      <div class="import-template-body">
+        <div class="import-template-selector">
+          <span class="import-label">选择模板</span>
+          <el-select
+            v-model="importTemplateId"
+            placeholder="请选择 SOP 模板"
+            style="flex:1"
+            @change="onImportTemplateChange"
+          >
+            <el-option v-for="t in templateList" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
+        </div>
+
+        <div v-if="importingTemplateDetail" v-loading="loadingImportTemplate" class="import-preview">
+          <div v-for="phase in phases" :key="phase.key" class="import-phase">
+            <template v-if="importItemsByPhase[phase.key].length > 0">
+              <div class="import-phase-title">{{ phase.label }}</div>
+              <div
+                v-for="item in importItemsByPhase[phase.key]"
+                :key="item.id"
+                class="import-item-row"
+              >
+                <el-tag v-if="item.is_mandatory" type="danger" size="small" class="import-mandatory">必须</el-tag>
+                <span class="import-item-title">{{ item.title }}</span>
+                <span v-if="item.responsible_role" class="import-item-role">{{ item.responsible_role }}</span>
+              </div>
+            </template>
+          </div>
+          <div v-if="importTotalCount === 0" class="import-empty">该模板暂无清单条目</div>
+          <div v-else class="import-count">共 {{ importTotalCount }} 条清单项将被导入</div>
+        </div>
+        <div v-else-if="!importTemplateId" class="import-empty">请先选择一个模板</div>
+      </div>
+      <template #footer>
+        <el-button @click="showImportTemplateDialog = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="importingChecklist"
+          :disabled="!importTemplateId || importTotalCount === 0"
+          @click="handleImportFromTemplate"
+        >
+          导入 {{ importTotalCount > 0 ? `(${importTotalCount} 条)` : '' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Add/Edit Checklist Item Dialog -->
+    <el-dialog
+      v-model="showChecklistItemDialog"
+      :title="editingChecklistItem ? '编辑清单项' : '添加清单项'"
+      width="480px"
+      destroy-on-close
+    >
+      <el-form :model="checklistItemForm" label-width="90px">
+        <el-form-item label="阶段" required>
+          <el-select v-model="checklistItemForm.phase" style="width: 100%">
+            <el-option label="会前准备" value="pre" />
+            <el-option label="会中执行" value="during" />
+            <el-option label="会后复盘" value="post" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="标题" required>
+          <el-input v-model="checklistItemForm.title" placeholder="清单项标题" />
+        </el-form-item>
+        <el-form-item label="说明">
+          <el-input v-model="checklistItemForm.description" type="textarea" :rows="3" placeholder="可选，操作说明或指引" />
+        </el-form-item>
+        <el-form-item label="负责角色">
+          <el-input v-model="checklistItemForm.responsible_role" placeholder="如：主持人、后勤组" />
+        </el-form-item>
+        <el-form-item label="参考链接">
+          <el-input v-model="checklistItemForm.reference_url" placeholder="https://..." />
+        </el-form-item>
+        <el-form-item label="截止日期">
+          <el-date-picker v-model="checklistItemForm.due_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="checklistItemForm.notes" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="必须完成">
+          <el-switch v-model="checklistItemForm.is_mandatory" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showChecklistItemDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingChecklistItem" @click="handleSaveChecklistItem">
+          {{ editingChecklistItem ? '保存' : '添加' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- Add Feedback Dialog -->
     <el-dialog v-model="showAddFeedbackDialog" title="记录反馈" width="420px" destroy-on-close>
       <el-form :model="feedbackForm" label-width="80px">
@@ -368,7 +505,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Calendar, Location, Link, Plus, Connection } from '@element-plus/icons-vue'
+import { ArrowLeft, Calendar, Location, Link, Plus, Connection, ArrowRight } from '@element-plus/icons-vue'
 import { useCommunityStore } from '../stores/community'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -376,6 +513,8 @@ import {
   createEvent,
   getChecklist,
   updateChecklistItem,
+  createChecklistItem,
+  deleteChecklistItem,
   listPersonnel,
   addPersonnel,
   confirmPersonnel,
@@ -388,8 +527,10 @@ import {
   deleteEvent,
   updateEventStatus,
   updateEvent,
+  listTemplates,
+  getTemplate,
 } from '../api/event'
-import type { EventDetail, ChecklistItem, Personnel, FeedbackItem, EventTask } from '../api/event'
+import type { EventDetail, ChecklistItem, Personnel, FeedbackItem, EventTask, EventTemplateListItem, EventTemplate } from '../api/event'
 
 const route = useRoute()
 const router = useRouter()
@@ -424,6 +565,38 @@ const savingTask = ref(false)
 const savingPersonnel = ref(false)
 const savingFeedback = ref(false)
 
+// Checklist item dialog
+const showChecklistItemDialog = ref(false)
+const editingChecklistItem = ref<ChecklistItem | null>(null)
+const checklistItemForm = ref({
+  phase: 'pre' as string,
+  title: '',
+  description: '',
+  is_mandatory: false,
+  responsible_role: '',
+  reference_url: '',
+  due_date: null as string | null,
+  notes: '',
+})
+const savingChecklistItem = ref(false)
+
+// Import template dialog
+const showImportTemplateDialog = ref(false)
+const importTemplateId = ref<number | null>(null)
+const importingTemplateDetail = ref<EventTemplate | null>(null)
+const loadingImportTemplate = ref(false)
+const importingChecklist = ref(false)
+
+const importItemsByPhase = computed(() => ({
+  pre: importingTemplateDetail.value?.checklist_items.filter(i => i.phase === 'pre') ?? [],
+  during: importingTemplateDetail.value?.checklist_items.filter(i => i.phase === 'during') ?? [],
+  post: importingTemplateDetail.value?.checklist_items.filter(i => i.phase === 'post') ?? [],
+}))
+
+const importTotalCount = computed(() =>
+  (importingTemplateDetail.value?.checklist_items.length ?? 0)
+)
+
 const isEditing = ref(false)
 const saving = ref(false)
 const editForm = ref({
@@ -436,7 +609,33 @@ const editForm = ref({
   description: '',
   status: 'planning' as string,
   community_ids: [] as number[],
+  template_id: null as number | null,
 })
+
+// ─── Template ─────────────────────────────────────────────────────────────────
+const templateList = ref<EventTemplateListItem[]>([])
+const selectedTemplate = ref<EventTemplate | null>(null)
+const expandedItems = ref(new Set<number>())
+
+function toggleExpand(id: number) {
+  if (expandedItems.value.has(id)) {
+    expandedItems.value.delete(id)
+  } else {
+    expandedItems.value.add(id)
+  }
+}
+
+async function onTemplateChange(val: number | null) {
+  if (val) {
+    try {
+      selectedTemplate.value = await getTemplate(val)
+    } catch {
+      selectedTemplate.value = null
+    }
+  } else {
+    selectedTemplate.value = null
+  }
+}
 
 const ganttEl = ref<HTMLElement | null>(null)
 
@@ -515,6 +714,7 @@ async function loadEvent() {
         description: '',
         status: 'planning',
         community_ids: communityStore.currentCommunityId ? [communityStore.currentCommunityId] : [],
+        template_id: null,
       }
     } else {
       event.value = await getEvent(eventId.value!)
@@ -565,6 +765,7 @@ function startEdit() {
     community_ids: event.value.community_ids?.length
       ? [...event.value.community_ids]
       : (event.value.community_id ? [event.value.community_id] : []),
+    template_id: event.value.template_id,
   }
   isEditing.value = true
 }
@@ -597,6 +798,7 @@ async function saveEdit() {
         status: editForm.value.status,
         community_id: communityIds[0] || null,
         community_ids: communityIds,
+        template_id: editForm.value.template_id || null,
       })
       router.push(`/events/${newEvent.id}`)
     } else {
@@ -755,6 +957,147 @@ async function handleUpdateFeedbackStatus(fid: number, status: string) {
   }
 }
 
+// ─── Checklist Item CRUD ──────────────────────────────────────────────────────
+function handleAddChecklistItem(phase: string) {
+  editingChecklistItem.value = null
+  checklistItemForm.value = {
+    phase,
+    title: '',
+    description: '',
+    is_mandatory: false,
+    responsible_role: '',
+    reference_url: '',
+    due_date: null,
+    notes: '',
+  }
+  showChecklistItemDialog.value = true
+}
+
+function handleEditChecklistItem(item: ChecklistItem) {
+  editingChecklistItem.value = item
+  checklistItemForm.value = {
+    phase: item.phase,
+    title: item.title,
+    description: item.description || '',
+    is_mandatory: item.is_mandatory,
+    responsible_role: item.responsible_role || '',
+    reference_url: item.reference_url || '',
+    due_date: item.due_date || null,
+    notes: item.notes || '',
+  }
+  showChecklistItemDialog.value = true
+}
+
+async function handleDeleteChecklistItem(item: ChecklistItem) {
+  if (!eventId.value) return
+  try {
+    await ElMessageBox.confirm(`确定删除清单项「${item.title}」？`, '确认', { type: 'warning' })
+    await deleteChecklistItem(eventId.value, item.id)
+    checklist.value = checklist.value.filter(i => i.id !== item.id)
+    ElMessage.success('已删除')
+  } catch { /* cancelled */ }
+}
+
+async function handleSaveChecklistItem() {
+  if (!eventId.value) return
+  if (!checklistItemForm.value.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  savingChecklistItem.value = true
+  try {
+    if (editingChecklistItem.value) {
+      const updated = await updateChecklistItem(eventId.value, editingChecklistItem.value.id, {
+        phase: checklistItemForm.value.phase,
+        title: checklistItemForm.value.title,
+        description: checklistItemForm.value.description || null,
+        is_mandatory: checklistItemForm.value.is_mandatory,
+        responsible_role: checklistItemForm.value.responsible_role || null,
+        reference_url: checklistItemForm.value.reference_url || null,
+        due_date: checklistItemForm.value.due_date || null,
+        notes: checklistItemForm.value.notes || null,
+      })
+      const idx = checklist.value.findIndex(i => i.id === editingChecklistItem.value!.id)
+      if (idx !== -1) checklist.value[idx] = updated
+      ElMessage.success('已更新')
+    } else {
+      const created = await createChecklistItem(eventId.value, {
+        phase: checklistItemForm.value.phase,
+        title: checklistItemForm.value.title,
+        description: checklistItemForm.value.description || null,
+        is_mandatory: checklistItemForm.value.is_mandatory,
+        responsible_role: checklistItemForm.value.responsible_role || null,
+        reference_url: checklistItemForm.value.reference_url || null,
+        due_date: checklistItemForm.value.due_date || null,
+        notes: checklistItemForm.value.notes || null,
+      })
+      checklist.value.push(created)
+      ElMessage.success('已添加')
+    }
+    showChecklistItemDialog.value = false
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    savingChecklistItem.value = false
+  }
+}
+
+// ─── Import Template ──────────────────────────────────────────────────────────
+function openImportTemplateDialog() {
+  importTemplateId.value = null
+  importingTemplateDetail.value = null
+  showImportTemplateDialog.value = true
+}
+
+async function onImportTemplateChange(id: number | null) {
+  if (!id) { importingTemplateDetail.value = null; return }
+  loadingImportTemplate.value = true
+  try {
+    importingTemplateDetail.value = await getTemplate(id)
+  } catch {
+    ElMessage.error('加载模板详情失败')
+    importingTemplateDetail.value = null
+  } finally {
+    loadingImportTemplate.value = false
+  }
+}
+
+async function handleImportFromTemplate() {
+  if (!eventId.value || !importingTemplateDetail.value) return
+  importingChecklist.value = true
+  try {
+    const items = importingTemplateDetail.value.checklist_items
+    const plannedAt = event.value?.planned_at ? new Date(event.value.planned_at) : null
+
+    const created = await Promise.all(items.map(item => {
+      let dueDate: string | null = null
+      if (item.deadline_offset_days !== null && plannedAt) {
+        const d = new Date(plannedAt)
+        d.setDate(d.getDate() + item.deadline_offset_days)
+        dueDate = d.toISOString().split('T')[0]
+      }
+      return createChecklistItem(eventId.value!, {
+        phase: item.phase,
+        title: item.title,
+        description: item.description ?? null,
+        is_mandatory: item.is_mandatory,
+        responsible_role: item.responsible_role ?? null,
+        reference_url: item.reference_url ?? null,
+        due_date: dueDate,
+        order: item.order,
+      })
+    }))
+
+    checklist.value.push(...created)
+    ElMessage.success(`已导入 ${created.length} 条清单项`)
+    showImportTemplateDialog.value = false
+  } catch {
+    ElMessage.error('导入失败，请重试')
+  } finally {
+    importingChecklist.value = false
+  }
+}
+
 // ─── Gantt Chart ──────────────────────────────────────────────────────────────
 async function renderGantt() {
   if (!ganttEl.value || ganttTasks.value.length === 0) return
@@ -784,6 +1127,12 @@ watch([ganttTasks, activeTab], async ([, tab]) => {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  // Load template list for new event form
+  try {
+    templateList.value = await listTemplates()
+  } catch {
+    templateList.value = []
+  }
   await loadEvent()
   // Load all tabs data in parallel
   await Promise.all([loadChecklist(), loadPersonnel(), loadTasks(), loadFeedback()])
@@ -905,13 +1254,31 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
+.phase-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .phase-title {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.phase-add-btn {
+  font-size: 12px;
+  color: #94a3b8;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.checklist-phase:hover .phase-add-btn {
+  opacity: 1;
 }
 
 .phase-empty {
@@ -922,10 +1289,15 @@ onMounted(async () => {
 
 .checklist-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
   padding: 6px 0;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .checklist-item.done .checklist-title {
@@ -937,6 +1309,68 @@ onMounted(async () => {
   flex: 1;
   font-size: 14px;
   color: #1e293b;
+}
+
+.role-badge {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.item-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.checklist-item:hover .item-actions {
+  opacity: 1;
+}
+
+.expand-btn {
+  cursor: pointer;
+  color: #94a3b8;
+  transition: transform 0.2s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.expand-btn:hover {
+  color: #0095ff;
+}
+
+.expand-btn.expanded {
+  transform: rotate(90deg);
+  color: #0095ff;
+}
+
+.item-description {
+  margin-top: 6px;
+  margin-left: 28px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-left: 3px solid #0095ff;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.ref-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #0095ff;
+  text-decoration: none;
+}
+
+.ref-link:hover {
+  text-decoration: underline;
 }
 
 /* Feedback */
@@ -1003,6 +1437,92 @@ onMounted(async () => {
 
 .gantt-container {
   overflow-x: auto;
+}
+
+/* Import template dialog */
+.import-template-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-template-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-label {
+  font-size: 14px;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.import-preview {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.import-phase {
+  margin-bottom: 12px;
+}
+
+.import-phase:last-child {
+  margin-bottom: 0;
+}
+
+.import-phase-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.import-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.import-item-row:last-child {
+  border-bottom: none;
+}
+
+.import-mandatory {
+  flex-shrink: 0;
+}
+
+.import-item-title {
+  flex: 1;
+  color: #1e293b;
+}
+
+.import-item-role {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.import-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.import-count {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* frappe-gantt global override (scoped doesn't apply to library DOM) */

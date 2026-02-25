@@ -82,11 +82,21 @@
           </el-menu-item>
         </el-sub-menu>
 
-        <!-- 活动管理（Phase 4a 占位） -->
-        <el-menu-item index="/events">
-          <el-icon><Flag /></el-icon>
-          <span>活动管理</span>
-        </el-menu-item>
+        <!-- 活动管理 -->
+        <el-sub-menu index="events">
+          <template #title>
+            <el-icon><Flag /></el-icon>
+            <span>活动管理</span>
+          </template>
+          <el-menu-item index="/events">
+            <el-icon><List /></el-icon>
+            <span>活动列表</span>
+          </el-menu-item>
+          <el-menu-item index="/event-templates">
+            <el-icon><Document /></el-icon>
+            <span>SOP 模板</span>
+          </el-menu-item>
+        </el-sub-menu>
 
         <!-- 洞察与人脉 -->
         <el-sub-menu index="insights">
