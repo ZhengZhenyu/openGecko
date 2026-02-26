@@ -355,6 +355,44 @@ When creating or modifying any page:
 - [ ] Element Plus overrides use `:deep()` syntax
 - [ ] No `lang="scss"` unless required for deep overrides (prefer plain CSS)
 
+## Contributing to Upstream (Issue + PR Workflow)
+
+When a user asks to submit work to the upstream repository (`opensourceways/openGecko`) — phrases like "create a PR", "open a PR", "submit to upstream", "提 PR" — **always use the `github-pr` skill** (`/github-pr`).
+
+### What the skill does
+
+1. **Auto-detects fork identity** from `git remote get-url origin` — no username is ever hardcoded.
+2. **Creates an issue** on `opensourceways/openGecko` describing the feature/fix.
+3. **Squashes all commits into one** before pushing — the upstream CI bot adds a `needs-squash` label that **blocks merging** when a PR has more than one commit.
+4. **Pushes the branch** to the contributor's fork (rebases first if fork is ahead).
+5. **Creates a PR** from `{fork_user}:{branch}` → `opensourceways/openGecko:main` with `Closes #<issue>` in the body.
+
+> **`needs-squash` quick fix**: if the label is added to an existing PR, run:
+> ```bash
+> git reset --soft upstream/main
+> git commit -m 'type: message'
+> git push origin <branch> --force-with-lease
+> ```
+
+### Remote conventions
+
+| Remote | Points to |
+|--------|-----------|
+| `upstream` | `opensourceways/openGecko` (canonical repo) |
+| `origin` | contributor's personal fork |
+
+If `upstream` is not configured, add it:
+
+```bash
+git remote add upstream https://github.com/opensourceways/openGecko.git
+```
+
+### Skill reference
+
+Full workflow details: `.claude/skills/github-pr/SKILL.md`
+
+---
+
 ## Language
 
 Commit messages and user-facing strings are in Chinese. Code, variable names, comments, and this file are in English.
@@ -568,6 +606,7 @@ When coverage falls below 80%, prioritize adding tests for:
 - All CI checks must pass
 - Request review from at least one maintainer
 - Squash commits when merging to develop/main
+- **Upstream PRs must contain exactly one commit** — the upstream CI adds a `needs-squash` label that blocks merging if there are multiple commits. Use `git reset --soft upstream/main && git commit` to squash before pushing.
 
 ## API Design Standards
 
