@@ -9,20 +9,29 @@
     <!-- 顶部统计卡片 -->
     <div class="metric-cards">
       <div class="metric-card">
+        <div class="metric-icon-wrap blue"><el-icon :size="20"><User /></el-icon></div>
         <div class="metric-value">{{ users.length }}</div>
         <div class="metric-label">活跃成员</div>
       </div>
       <div class="metric-card">
+        <div class="metric-icon-wrap gray"><el-icon :size="20"><List /></el-icon></div>
         <div class="metric-value">{{ totalItems }}</div>
         <div class="metric-label">总任务数</div>
       </div>
       <div class="metric-card highlight-warning">
+        <div class="metric-icon-wrap orange"><el-icon :size="20"><Clock /></el-icon></div>
         <div class="metric-value">{{ totalInProgress }}</div>
         <div class="metric-label">进行中</div>
       </div>
       <div class="metric-card highlight-success">
+        <div class="metric-icon-wrap green"><el-icon :size="20"><CircleCheck /></el-icon></div>
         <div class="metric-value">{{ totalCompleted }}</div>
         <div class="metric-label">已完成</div>
+      </div>
+      <div class="metric-card" :class="totalOverdue > 0 ? 'highlight-danger' : ''">
+        <div class="metric-icon-wrap" :class="totalOverdue > 0 ? 'red' : 'gray'"><el-icon :size="20"><Warning /></el-icon></div>
+        <div class="metric-value">{{ totalOverdue }}</div>
+        <div class="metric-label">已逾期</div>
       </div>
     </div>
 
@@ -30,7 +39,13 @@
     <div class="leaderboard-section">
       <div class="section-header">
         <h3>成员工作量排行</h3>
-        <span class="section-desc">按总任务数排序</span>
+        <div class="section-header-right">
+          <el-radio-group v-model="sortKey" size="small">
+            <el-radio-button value="total">按总量</el-radio-button>
+            <el-radio-button value="overdue">按逾期</el-radio-button>
+            <el-radio-button value="in_progress">按进行中</el-radio-button>
+          </el-radio-group>
+        </div>
       </div>
       <div class="leaderboard">
         <div
@@ -48,6 +63,11 @@
           </div>
           <div class="task-bar-wrapper">
             <div class="task-bar">
+              <div
+                class="bar-segment overdue"
+                :style="{ width: barWidth(user, 'overdue') }"
+                :title="`逾期: ${overdueTotal(user)}`"
+              />
               <div
                 class="bar-segment planning"
                 :style="{ width: barWidth(user, 'planning') }"
@@ -78,6 +98,12 @@
                 {{ meetingTotal(user) }}
               </span>
             </el-tooltip>
+            <el-tooltip v-if="overdueTotal(user) > 0" content="逾期任务" placement="top">
+              <span class="count-badge overdue-badge">
+                <el-icon :size="12"><Warning /></el-icon>
+                {{ overdueTotal(user) }}
+              </span>
+            </el-tooltip>
             <span class="total-count">{{ user.total }}</span>
           </div>
         </div>
@@ -98,13 +124,19 @@
           :key="'detail-' + user.user_id"
           class="detail-card"
         >
-          <div class="detail-card-header">
+          <div class="detail-card-header" :class="overdueTotal(user) > 0 ? 'has-overdue' : ''">
             <div class="user-avatar small">{{ (user.full_name || user.username).charAt(0).toUpperCase() }}</div>
             <div>
               <div class="user-name">{{ user.full_name || user.username }}</div>
               <div class="user-username">@{{ user.username }}</div>
             </div>
-            <div class="total-badge">{{ user.total }} 任务</div>
+            <div class="detail-card-badges">
+              <div v-if="overdueTotal(user) > 0" class="overdue-pill">
+                <el-icon :size="11"><Warning /></el-icon>
+                {{ overdueTotal(user) }} 逾期
+              </div>
+              <div class="total-badge">{{ user.total }} 任务</div>
+            </div>
           </div>
           <div class="detail-card-body">
             <div class="stat-group">
@@ -126,6 +158,11 @@
                 <span class="stat-label">已完成</span>
                 <span class="stat-value">{{ user.content_stats.completed }}</span>
               </div>
+              <div v-if="user.content_stats.overdue > 0" class="stat-row overdue-row">
+                <span class="stat-dot overdue" />
+                <span class="stat-label">逾期未完成</span>
+                <span class="stat-value overdue-value">{{ user.content_stats.overdue }}</span>
+              </div>
             </div>
             <div class="stat-group">
               <div class="stat-group-title">
@@ -145,6 +182,11 @@
                 <span class="stat-dot completed" />
                 <span class="stat-label">已完成</span>
                 <span class="stat-value">{{ user.meeting_stats.completed }}</span>
+              </div>
+              <div v-if="user.meeting_stats.overdue > 0" class="stat-row overdue-row">
+                <span class="stat-dot overdue" />
+                <span class="stat-label">逾期未完成</span>
+                <span class="stat-value overdue-value">{{ user.meeting_stats.overdue }}</span>
               </div>
             </div>
             <div class="stat-group">
@@ -169,6 +211,7 @@
 
     <!-- 图例 -->
     <div class="legend">
+      <span class="legend-item"><span class="legend-dot overdue" /> 逾期未完成</span>
       <span class="legend-item"><span class="legend-dot planning" /> 计划中</span>
       <span class="legend-item"><span class="legend-dot in-progress" /> 进行中</span>
       <span class="legend-item"><span class="legend-dot completed" /> 已完成</span>
@@ -179,13 +222,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Document, Calendar } from '@element-plus/icons-vue'
+import { Document, Calendar, Warning, Clock, CircleCheck, List, User } from '@element-plus/icons-vue'
 import apiClient from '../api'
 
 interface WorkStatusStats {
   planning: number
   in_progress: number
   completed: number
+  overdue: number
 }
 
 interface ContentByTypeStats {
@@ -206,9 +250,19 @@ interface UserWorkloadItem {
 
 const users = ref<UserWorkloadItem[]>([])
 const loading = ref(false)
+const sortKey = ref<'total' | 'overdue' | 'in_progress'>('total')
 
 const sortedUsers = computed(() =>
-  [...users.value].sort((a, b) => b.total - a.total)
+  [...users.value].sort((a, b) => {
+    if (sortKey.value === 'overdue') {
+      return overdueTotal(b) - overdueTotal(a)
+    }
+    if (sortKey.value === 'in_progress') {
+      return (b.content_stats.in_progress + b.meeting_stats.in_progress)
+           - (a.content_stats.in_progress + a.meeting_stats.in_progress)
+    }
+    return b.total - a.total
+  })
 )
 
 const totalItems = computed(() => users.value.reduce((sum, u) => sum + u.total, 0))
@@ -217,6 +271,9 @@ const totalInProgress = computed(() =>
 )
 const totalCompleted = computed(() =>
   users.value.reduce((sum, u) => sum + u.content_stats.completed + u.meeting_stats.completed, 0)
+)
+const totalOverdue = computed(() =>
+  users.value.reduce((sum, u) => sum + (u.content_stats.overdue || 0) + (u.meeting_stats.overdue || 0), 0)
 )
 
 const maxTotal = computed(() => Math.max(...users.value.map(u => u.total), 1))
@@ -230,12 +287,14 @@ const meetingPlanning = (u: UserWorkloadItem) => u.meeting_stats.planning
 const meetingInProgress = (u: UserWorkloadItem) => u.meeting_stats.in_progress
 const meetingCompleted = (u: UserWorkloadItem) => u.meeting_stats.completed
 const meetingTotal = (u: UserWorkloadItem) => u.meeting_stats.planning + u.meeting_stats.in_progress + u.meeting_stats.completed
+const overdueTotal = (u: UserWorkloadItem) => (u.content_stats.overdue || 0) + (u.meeting_stats.overdue || 0)
 
 function barWidth(user: UserWorkloadItem, status: string) {
   const total = user.total
   if (total === 0) return '0%'
   let count = 0
-  if (status === 'planning') count = contentPlanning(user) + meetingPlanning(user)
+  if (status === 'overdue') count = overdueTotal(user)
+  else if (status === 'planning') count = contentPlanning(user) + meetingPlanning(user)
   else if (status === 'in_progress') count = contentInProgress(user) + meetingInProgress(user)
   else if (status === 'completed') count = contentCompleted(user) + meetingCompleted(user)
   // Scale relative to maxTotal so the top user fills the bar
@@ -302,34 +361,51 @@ onMounted(loadData)
 /* Metric Cards */
 .metric-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 20px;
   margin-bottom: 32px;
 }
 .metric-card {
   background: #ffffff;
   border-radius: var(--radius);
-  padding: 24px 28px;
+  padding: 20px 24px;
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
   transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .metric-card:hover {
   box-shadow: var(--shadow-hover);
 }
+.metric-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.metric-icon-wrap.blue   { background: #eff6ff; color: #0095ff; }
+.metric-icon-wrap.gray   { background: #f1f5f9; color: #64748b; }
+.metric-icon-wrap.orange { background: #fffbeb; color: #f59e0b; }
+.metric-icon-wrap.green  { background: #f0fdf4; color: #22c55e; }
+.metric-icon-wrap.red    { background: #fef2f2; color: #ef4444; }
 .metric-value {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
 }
 .metric-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 8px;
 }
 .metric-card.highlight-warning .metric-value { color: #f59e0b; }
 .metric-card.highlight-success .metric-value { color: #22c55e; }
+.metric-card.highlight-danger  .metric-value { color: #ef4444; }
 
 /* Section */
 .leaderboard-section, .detail-section {
@@ -349,12 +425,19 @@ onMounted(loadData)
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .section-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+}
+.section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .section-desc {
   font-size: 14px;
@@ -449,16 +532,17 @@ onMounted(loadData)
   transition: width 0.4s ease;
   min-width: 0;
 }
-.bar-segment.planning { background: #94a3b8; }
-.bar-segment.in-progress { background: #f59e0b; }
-.bar-segment.completed { background: #22c55e; }
+.bar-segment.overdue    { background: #ef4444; }
+.bar-segment.planning   { background: #94a3b8; }
+.bar-segment.in-progress{ background: #f59e0b; }
+.bar-segment.completed  { background: #22c55e; }
 
 .task-counts {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
-  min-width: 160px;
+  min-width: 180px;
   justify-content: flex-end;
 }
 .count-badge {
@@ -470,13 +554,14 @@ onMounted(loadData)
   border-radius: 8px;
   font-weight: 600;
 }
-.content-badge { background: #eff6ff; color: #1d4ed8; }
-.meeting-badge { background: #f0fdf4; color: #15803d; }
+.content-badge  { background: #eff6ff; color: #1d4ed8; }
+.meeting-badge  { background: #f0fdf4; color: #15803d; }
+.overdue-badge  { background: #fef2f2; color: #dc2626; }
 .total-count {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
-  min-width: 40px;
+  min-width: 36px;
   text-align: right;
 }
 
@@ -505,10 +590,30 @@ onMounted(loadData)
   background: #f8fafc;
   border-bottom: 1px solid #f1f5f9;
 }
+.detail-card-header.has-overdue {
+  background: #fff5f5;
+  border-bottom-color: #fecaca;
+}
 .detail-card-header .user-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .detail-card-header .user-username { font-size: 12px; color: var(--text-muted); }
-.total-badge {
+.detail-card-badges {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.overdue-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+.total-badge {
   font-size: 12px;
   font-weight: 500;
   color: #1d4ed8;
@@ -543,9 +648,10 @@ onMounted(loadData)
   border-radius: 50%;
   flex-shrink: 0;
 }
-.stat-dot.planning { background: #94a3b8; }
-.stat-dot.in-progress { background: #f59e0b; }
-.stat-dot.completed { background: #22c55e; }
+.stat-dot.overdue    { background: #ef4444; }
+.stat-dot.planning   { background: #94a3b8; }
+.stat-dot.in-progress{ background: #f59e0b; }
+.stat-dot.completed  { background: #22c55e; }
 .stat-label {
   font-size: 13px;
   color: var(--text-secondary);
@@ -555,6 +661,15 @@ onMounted(loadData)
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+}
+.overdue-row {
+  background: #fff5f5;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: 2px -8px;
+}
+.overdue-value {
+  color: #dc2626;
 }
 .type-tags {
   display: flex;
@@ -586,14 +701,25 @@ onMounted(loadData)
   height: 12px;
   border-radius: 4px;
 }
-.legend-dot.planning { background: #94a3b8; }
-.legend-dot.in-progress { background: #f59e0b; }
-.legend-dot.completed { background: #22c55e; }
+.legend-dot.overdue    { background: #ef4444; }
+.legend-dot.planning   { background: #94a3b8; }
+.legend-dot.in-progress{ background: #f59e0b; }
+.legend-dot.completed  { background: #22c55e; }
 
 .empty-state {
   text-align: center;
   padding: 48px;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .metric-cards { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .workload-overview { padding: 24px 20px; }
+  .metric-cards { grid-template-columns: repeat(2, 1fr); }
+  .user-info { min-width: 140px; }
 }
 </style>

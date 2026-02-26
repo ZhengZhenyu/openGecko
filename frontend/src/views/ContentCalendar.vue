@@ -52,6 +52,11 @@
       <!-- FullCalendar -->
       <div class="section-card calendar-main">
         <FullCalendar ref="calendarRef" :options="calendarOptions" />
+        <!-- 节假日图例 -->
+        <div class="holiday-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>法定节假日</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>传统节日</span>
+        </div>
       </div>
     </div>
 
@@ -87,6 +92,7 @@ import {
 } from '../api/content'
 import UnscheduledPanel from '../components/calendar/UnscheduledPanel.vue'
 import ContentDetailDialog from '../components/calendar/ContentDetailDialog.vue'
+import { loadHolidayEvents, renderHolidayContent, type HolidayEvent } from '../utils/chineseHolidays'
 
 const router = useRouter()
 const communityStore = useCommunityStore()
@@ -102,6 +108,7 @@ const detailDialogVisible = ref(false)
 const selectedEvent = ref<any>(null)
 const calendarEvents = ref<ContentCalendarItem[]>([])
 const unscheduledEvents = ref<ContentCalendarItem[]>([])
+const holidayEvents = ref<HolidayEvent[]>([])
 
 const eventCount = computed(() => calendarEvents.value.length + unscheduledEvents.value.length)
 
@@ -193,7 +200,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   nowIndicator: true,
 
   // 事件
-  events: transformToEvents(calendarEvents.value),
+  events: [...holidayEvents.value, ...transformToEvents(calendarEvents.value)],
   
   // 日期范围变化（切换月份/视图时获取数据）
   datesSet: handleDatesSet,
@@ -269,6 +276,7 @@ async function loadUnscheduledContent() {
 }
 
 async function handleEventDrop(info: EventDropArg) {
+  if (info.event.extendedProps?.isHoliday) { info.revert(); return }
   const contentId = Number(info.event.id)
   const newDate = info.event.start
 
@@ -287,6 +295,7 @@ async function handleEventDrop(info: EventDropArg) {
 }
 
 async function handleEventDragStop(info: any) {
+  if (info.event.extendedProps?.isHoliday) return
   // 检测事件是否被拖到了未排期面板区域
   const panelEl = unscheduledPanelRef.value?.$el
   if (!panelEl) return
@@ -311,6 +320,7 @@ async function handleEventDragStop(info: any) {
 }
 
 function handleEventClick(info: EventClickArg) {
+  if (info.event.extendedProps?.isHoliday) return
   selectedEvent.value = {
     id: info.event.id,
     title: info.event.title,
@@ -348,6 +358,7 @@ function initDraggable() {
 }
 
 async function handleEventReceive(info: any) {
+  if (info.event.extendedProps?.isHoliday) { info.revert(); return }
   const contentId = Number(info.event.extendedProps.id || info.event.id)
   const newDate = info.event.start
   if (!newDate) {
@@ -365,6 +376,8 @@ async function handleEventReceive(info: any) {
 }
 
 function renderEventContent(arg: any) {
+  const holidayEl = renderHolidayContent(arg)
+  if (holidayEl) return holidayEl
   const status = arg.event.extendedProps.status
   const author = arg.event.extendedProps.author
   const timeText = arg.timeText
@@ -444,10 +457,12 @@ watch(panelCollapsed, (collapsed) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   nextTick(() => initDraggable())
   // 日历事件由 datesSet 触发加载；未排期内容单独预加载
   loadUnscheduledContent()
+  // 加载节假日
+  holidayEvents.value = await loadHolidayEvents()
 })
 
 onBeforeUnmount(() => {
@@ -961,6 +976,33 @@ onBeforeUnmount(() => {
       }
     }
   }
+}
+
+// ==================== 节假日图例 ====================
+
+.holiday-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 // ==================== 响应式 ====================

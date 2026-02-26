@@ -9,7 +9,7 @@ Endpoints tested:
 - PATCH /api/dashboard/meetings/{meeting_id}/work-status
 - GET /api/dashboard/workload-overview
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -35,13 +35,21 @@ def _create_committee(db_session, community, name="Test Committee"):
     return committee
 
 
-def _create_content(db_session, community, user, title="Test Content", work_status="planning"):
+def _create_content(
+    db_session,
+    community,
+    user,
+    title="Test Content",
+    work_status="planning",
+    scheduled_publish_at=None,
+):
     content = Content(
         title=title,
         content_markdown="Test markdown",
         community_id=community.id,
         source_type="contribution",
         work_status=work_status,
+        scheduled_publish_at=scheduled_publish_at,
     )
     db_session.add(content)
     db_session.flush()
@@ -51,13 +59,22 @@ def _create_content(db_session, community, user, title="Test Content", work_stat
     return content
 
 
-def _create_meeting(db_session, community, user, title="Test Meeting", status="scheduled"):
+def _create_meeting(
+    db_session,
+    community,
+    user,
+    title="Test Meeting",
+    status="scheduled",
+    scheduled_at=None,
+):
     committee = _create_committee(db_session, community)
+    if scheduled_at is None:
+        scheduled_at = datetime(2025, 6, 1, 10, 0)
     meeting = Meeting(
         title=title,
         community_id=community.id,
         committee_id=committee.id,
-        scheduled_at=datetime(2025, 6, 1, 10, 0),
+        scheduled_at=scheduled_at,
         duration=60,
         status=status,
     )
@@ -445,3 +462,232 @@ class TestGetWorkloadOverview:
         data = response.json()
         assert "users" in data
         assert isinstance(data["users"], list)
+
+
+class TestOverdueStatsCalculation:
+    """Tests for overdue detection in content_stats and meeting_stats.
+
+    The `overdue` counter increments when:
+      - work_status != 'completed'  AND
+      - deadline is set  AND
+      - deadline < now
+    """
+
+    # ── Content overdue tests ──────────────────────────────────────────────
+
+    def test_overdue_field_present_in_dashboard_stats(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+    ):
+        """The `overdue` key must be present in both content_stats and meeting_stats."""
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "overdue" in data["content_stats"]
+        assert "overdue" in data["meeting_stats"]
+
+    def test_content_past_deadline_not_completed_is_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Non-completed content with a past deadline is counted as overdue."""
+        past = datetime.utcnow() - timedelta(days=3)
+        _create_content(
+            db_session, test_community, test_user, "Overdue Task", "in_progress", past
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["content_stats"]
+        assert stats["overdue"] >= 1
+
+    def test_completed_content_with_past_deadline_not_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Completed content is never overdue even if deadline has passed."""
+        past = datetime.utcnow() - timedelta(days=3)
+        _create_content(
+            db_session, test_community, test_user, "Done Task", "completed", past
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["content_stats"]
+        # completed items should not bump overdue
+        assert stats["overdue"] == 0
+
+    def test_content_without_deadline_not_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Content with no deadline is never overdue."""
+        _create_content(
+            db_session, test_community, test_user, "No Deadline Task", "planning", None
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["content_stats"]
+        assert stats["overdue"] == 0
+
+    def test_content_with_future_deadline_not_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Content whose deadline is in the future is not overdue."""
+        future = datetime.utcnow() + timedelta(days=7)
+        _create_content(
+            db_session, test_community, test_user, "Future Task", "in_progress", future
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["content_stats"]
+        assert stats["overdue"] == 0
+
+    def test_overdue_count_matches_qualifying_items(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Exactly N qualifying items raise overdue count by N."""
+        past = datetime.utcnow() - timedelta(days=1)
+        future = datetime.utcnow() + timedelta(days=7)
+        # 2 overdue
+        _create_content(db_session, test_community, test_user, "Overdue 1", "planning", past)
+        _create_content(db_session, test_community, test_user, "Overdue 2", "in_progress", past)
+        # 1 not overdue (future)
+        _create_content(db_session, test_community, test_user, "Not Yet", "planning", future)
+        # 1 not overdue (completed + past)
+        _create_content(db_session, test_community, test_user, "Done", "completed", past)
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["content_stats"]
+        assert stats["overdue"] == 2
+
+    # ── Meeting overdue tests ──────────────────────────────────────────────
+
+    def test_meeting_past_scheduled_not_completed_is_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Non-completed meeting whose scheduled_at has passed counts as overdue."""
+        past = datetime.utcnow() - timedelta(days=2)
+        _create_meeting(
+            db_session, test_community, test_user, "Overdue Meeting", "scheduled", past
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["meeting_stats"]
+        assert stats["overdue"] >= 1
+
+    def test_completed_meeting_with_past_scheduled_not_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Completed meeting is never considered overdue."""
+        past = datetime.utcnow() - timedelta(days=2)
+        _create_meeting(
+            db_session, test_community, test_user, "Done Meeting", "completed", past
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["meeting_stats"]
+        assert stats["overdue"] == 0
+
+    def test_future_meeting_not_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Meeting scheduled in the future is not overdue."""
+        future = datetime.utcnow() + timedelta(days=5)
+        _create_meeting(
+            db_session, test_community, test_user, "Upcoming Meeting", "scheduled", future
+        )
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stats = response.json()["meeting_stats"]
+        assert stats["overdue"] == 0
+
+    # ── Workload overview overdue tests ────────────────────────────────────
+
+    def test_workload_overview_user_entry_has_overdue_fields(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        superuser_auth_headers: dict,
+    ):
+        """Each user entry in workload overview has overdue in content_stats and meeting_stats."""
+        past = datetime.utcnow() - timedelta(days=1)
+        _create_content(db_session, test_community, test_user, "Admin Overdue", "planning", past)
+
+        response = client.get("/api/users/me/workload-overview", headers=superuser_auth_headers)
+        assert response.status_code == 200
+        users = response.json()["users"]
+        # At least the test_user should appear (has an assigned content)
+        assert len(users) >= 1
+        for user_entry in users:
+            assert "overdue" in user_entry["content_stats"]
+            assert "overdue" in user_entry["meeting_stats"]
+
+    def test_workload_overview_overdue_count_reflects_assignments(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        superuser_auth_headers: dict,
+    ):
+        """Overdue count for a user correctly reflects their overdue content."""
+        past = datetime.utcnow() - timedelta(days=5)
+        future = datetime.utcnow() + timedelta(days=5)
+        _create_content(db_session, test_community, test_user, "Late Task", "in_progress", past)
+        _create_content(db_session, test_community, test_user, "On Time Task", "planning", future)
+
+        response = client.get("/api/users/me/workload-overview", headers=superuser_auth_headers)
+        assert response.status_code == 200
+        users = response.json()["users"]
+        # Find the test_user entry by looking for users with any overdue > 0
+        user_entries = [u for u in users if u["content_stats"]["overdue"] > 0]
+        assert len(user_entries) >= 1
+        # The overdue user should have exactly 1 overdue content item
+        assert user_entries[0]["content_stats"]["overdue"] == 1

@@ -92,6 +92,11 @@
             </div>
           </div>
           <FullCalendar ref="calendarRef" :options="calendarOptions" class="ver-calendar" />
+          <!-- 节假日图例 -->
+          <div class="holiday-legend-row">
+            <span class="hlr-item"><span class="hlr-dot" style="background:#ef4444"></span>法定节假日</span>
+            <span class="hlr-item"><span class="hlr-dot" style="background:#f59e0b"></span>传统节日</span>
+          </div>
         </div>
 
         <!-- 第二层：治理 & 渠道指标 (3列) -->
@@ -285,6 +290,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
 import { getCommunityDashboard, type CommunityDashboardResponse } from '../api/communityDashboard'
 import { listEvents, type EventListItem } from '../api/event'
+import { loadHolidayEvents, renderHolidayContent, type HolidayEvent } from '../utils/chineseHolidays'
 
 // 按需注册 ECharts 组件（Tree Shaking）
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent])
@@ -297,6 +303,7 @@ const loading = ref(false)
 const dashboardData = ref<CommunityDashboardResponse | null>(null)
 const calendarRef = ref()
 const recentEvents = ref<EventListItem[]>([])
+const holidayEvents = ref<HolidayEvent[]>([])
 
 // Content status tabs
 const contentTab = ref<string>('reviewing')
@@ -360,11 +367,12 @@ async function loadEvents() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (communityStore.currentCommunityId) {
     loadDashboard()
     loadEvents()
   }
+  holidayEvents.value = await loadHolidayEvents()
 })
 
 watch(
@@ -476,15 +484,20 @@ const calendarOptions = computed<CalendarOptions>(() => ({
   },
   buttonText: { today: '今天' },
   height: 580,
-  events: (dashboardData.value?.calendar_events ?? []).map((e, idx) => ({
+  events: [
+    ...holidayEvents.value,
+    ...(dashboardData.value?.calendar_events ?? []).map((e, idx) => ({
     id: `${e.resource_type}_${e.resource_id}_${e.type}_${idx}`,
     title: e.title,
     date: e.date,
     color: 'transparent',
     textColor: 'transparent',
     extendedProps: { type: e.type, resource_id: e.resource_id, resource_type: e.resource_type, statusColor: e.color },
-  })),
+    })),
+  ],
   eventContent: (arg: EventContentArg) => {
+    const holidayEl = renderHolidayContent(arg)
+    if (holidayEl) return holidayEl
     const { type, statusColor } = arg.event.extendedProps as { type: string; statusColor: string; resource_id: number; resource_type: string }
     let barBg = '#f8fafc'
     let barText = '#64748b'
@@ -505,6 +518,7 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     return { domNodes: [wrapper] }
   },
   eventClick: (info) => {
+    if (info.event.extendedProps?.isHoliday) return
     const { type, resource_id } = info.event.extendedProps
     if (type?.startsWith('meeting')) router.push(`/meetings/${resource_id}`)
     else if (type?.startsWith('event')) router.push(`/events/${resource_id}`)
@@ -1225,5 +1239,28 @@ function formatTime(dt: string) {
   .content-tabs {
     flex-wrap: wrap;
   }
+}
+
+.holiday-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+.hlr-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+.hlr-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 </style>

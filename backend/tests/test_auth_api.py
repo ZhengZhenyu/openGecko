@@ -5,6 +5,7 @@ Endpoints tested:
 - POST /api/auth/login
 - POST /api/auth/register
 - GET /api/auth/me
+- PATCH /api/auth/me
 """
 
 from fastapi.testclient import TestClient
@@ -239,3 +240,154 @@ class TestGetCurrentUser:
         community_names = [c["name"] for c in data["communities"]]
         assert "Test Community" in community_names
         assert "Another Community" in community_names
+
+
+class TestUpdateMyProfile:
+    """Tests for PATCH /api/auth/me - 用户自助修改个人资料"""
+
+    def test_update_full_name(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """普通用户可以修改自己的 full_name。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"full_name": "Updated Name"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["full_name"] == "Updated Name"
+        assert data["username"] == "testuser"  # 用户名不变
+
+    def test_update_email(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """普通用户可以修改自己的邮箱。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"email": "newemail@example.com"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "newemail@example.com"
+
+    def test_update_password_success(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """提供正确的当前密码后可以成功修改密码。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={
+                "current_password": "testpass123",
+                "new_password": "newsecurepass!",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 200
+        # 修改后能用新密码登录
+        login_resp = client.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": "newsecurepass!"},
+        )
+        assert login_resp.status_code == 200
+
+    def test_update_password_wrong_current_password(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """当前密码错误时拒绝修改密码。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={
+                "current_password": "wrongpassword",
+                "new_password": "newsecurepass!",
+            },
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 400
+        assert "当前密码不正确" in response.json()["detail"]
+
+    def test_update_password_missing_current_password(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """没有提供 current_password 时拒绝修改密码。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"new_password": "newsecurepass!"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 400
+        assert "修改密码时必须提供当前密码" in response.json()["detail"]
+
+    def test_update_email_duplicate(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_user: User,
+        test_superuser: User,
+        user_token: str,
+    ):
+        """邮箱已被其他用户使用时拒绝修改。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"email": "admin@example.com"},  # test_superuser 的邮箱
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 400
+        assert "该邮箱已被其他用户使用" in response.json()["detail"]
+
+    def test_update_email_same_value(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """修改邮箱为当前已有邮箱时应成功（不触发唯一性冲突）。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"email": "testuser@example.com"},  # 同一邮箱
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["email"] == "testuser@example.com"
+
+    def test_update_invalid_email_format(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """非法邮箱格式应被 Pydantic 拒绝（422）。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"email": "not-an-email"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 422
+
+    def test_update_new_password_too_short(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """新密码过短应被 Pydantic 拒绝（422）。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"current_password": "testpass123", "new_password": "123"},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert response.status_code == 422
+
+    def test_update_profile_unauthenticated(self, client: TestClient):
+        """未认证请求应被拒绝（401）。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"full_name": "Should Fail"},
+        )
+        assert response.status_code == 401
+
+    def test_cannot_escalate_privilege(
+        self, client: TestClient, test_user: User, user_token: str
+    ):
+        """PATCH /me 不接受 is_superuser 字段，不能自行提权。"""
+        response = client.patch(
+            "/api/auth/me",
+            json={"full_name": "Hacker", "is_superuser": True},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        # 字段会被忽略，但请求本身成功（Pydantic 过滤 extra fields）
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_superuser"] is False  # 权限未被提升

@@ -330,6 +330,11 @@ onMounted(loadUsers)
   margin-bottom: 28px;
 }
 
+.page-title {
+  display: flex;
+  flex-direction: column;
+}
+
 .page-title h2 {
   margin: 0 0 6px;
   font-size: 28px;
