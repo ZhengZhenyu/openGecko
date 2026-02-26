@@ -322,6 +322,11 @@ onMounted(() => {
   padding: 32px 0 24px;
 }
 
+.page-title {
+  display: flex;
+  flex-direction: column;
+}
+
 .page-title h2 {
   margin: 0 0 6px;
   font-size: 28px;

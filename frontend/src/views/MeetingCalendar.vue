@@ -45,6 +45,15 @@
       <!-- Calendar View (FullCalendar) -->
       <div v-if="viewMode === 'month'" v-loading="loading" class="section-card calendar-card">
         <FullCalendar ref="calendarRef" :options="calendarOptions" class="fc-wrapper" />
+        <!-- 节假日图例 -->
+        <div class="holiday-legend">
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#ef4444"></span>法定节假日
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#f59e0b"></span>传统节日
+          </span>
+        </div>
       </div>
 
       <!-- List View -->
@@ -217,6 +226,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventClickArg } from '@fullcalendar/core'
+import { loadHolidayEvents, renderHolidayContent, type HolidayEvent } from '@/utils/chineseHolidays'
 import {
   listCommittees,
   listMeetings,
@@ -243,6 +253,7 @@ const isAdmin = computed(() => userStore.isCommunityAdmin)
 
 const loading = ref(false)
 const submitting = ref(false)
+const holidayEvents = ref<HolidayEvent[]>([])
 const viewMode = ref<'month' | 'list'>('list')
 const selectedCommittee = ref<number | undefined>()
 const calendarRef = ref()
@@ -315,19 +326,32 @@ const calendarOptions = computed<CalendarOptions>(() => ({
     right: '',
   },
   buttonText: { today: '今天' },
-  dayMaxEvents: 3,
-  events: meetings.value.map(m => ({
-    id: String(m.id),
-    title: `${formatTime(m.scheduled_at)} ${m.title}`,
-    start: m.scheduled_at,
-    color: statusColorMap[m.status] || '#94a3b8',
-  })),
+  dayMaxEvents: 4,
+  events: [
+    // 中国节假日（置于最前，作为全天背景标签）
+    ...holidayEvents.value,
+    // 会议事件
+    ...meetings.value.map(m => ({
+      id: String(m.id),
+      title: `${formatTime(m.scheduled_at)} ${m.title}`,
+      start: m.scheduled_at,
+      color: statusColorMap[m.status] || '#94a3b8',
+      extendedProps: { isHoliday: false },
+    })),
+  ],
   eventClick: (info: EventClickArg) => {
+    // 点击节假日标签不跳转
+    if (info.event.extendedProps?.isHoliday) return
     router.push(`/meetings/${info.event.id}`)
   },
+  eventContent: (arg) => renderHolidayContent(arg) ?? undefined,
+  eventOrder: 'start,-duration,allDay,title',
 }))
 
-onMounted(() => {
+onMounted(async () => {
+  // 异步加载节假日（当前年份 + 后一年），24h localStorage 缓存，失败时降级到内置数据
+  holidayEvents.value = await loadHolidayEvents()
+
   if (communityStore.currentCommunityId) {
     loadCommittees()
     loadMeetings()
@@ -534,6 +558,11 @@ function getCommitteeName(committeeId: number) {
   margin-bottom: 28px;
 }
 
+.page-title {
+  display: flex;
+  flex-direction: column;
+}
+
 .page-title h2 {
   margin: 0 0 6px;
   font-size: 28px;
@@ -682,6 +711,32 @@ function getCommitteeName(committeeId: number) {
 :deep(.fc td),
 :deep(.fc th) {
   border-color: #f1f5f9;
+}
+
+/* ── 节假日图例 ── */
+.holiday-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 /* ── List View ── */

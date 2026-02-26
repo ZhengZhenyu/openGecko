@@ -117,6 +117,11 @@
     <!-- Calendar View -->
     <div v-if="viewMode === 'calendar'" class="calendar-container">
       <FullCalendar ref="calendarRef" :options="calendarOptions" class="events-calendar" />
+      <!-- 节假日图例 -->
+      <div class="holiday-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>法定节假日</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>传统节日</span>
+      </div>
     </div>
 
     <!-- Pagination -->
@@ -199,10 +204,11 @@ import { Flag, Plus, Calendar, Location, Search, List } from '@element-plus/icon
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core'
+import type { CalendarOptions, EventClickArg, EventContentArg, EventDropArg, EventMountArg } from '@fullcalendar/core'
 import { listEvents, createEvent, updateEvent, deleteEvent, listTemplates } from '../api/event'
 import type { EventListItem, EventTemplateListItem } from '../api/event'
 import { useAuthStore } from '../stores/auth'
+import { loadHolidayEvents, renderHolidayContent, type HolidayEvent } from '../utils/chineseHolidays'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -218,6 +224,7 @@ const filterStatus = ref<string>('')
 const filterType = ref<string>('')
 const filterCommunity = ref<number | null>(null)
 const filterKeyword = ref<string>('')
+const holidayEvents = ref<HolidayEvent[]>([])
 const showCreateDialog = ref(false)
 const viewMode = ref<'list' | 'calendar'>('list')
 const calendarRef = ref()
@@ -289,7 +296,7 @@ const calendarOptions = computed(() => ({
   },
   buttonText: { today: '今天' },
   height: 500,
-  events: events.value.map(e => ({
+  events: [...holidayEvents.value, ...events.value.map(e => ({
     id: String(e.id),
     title: e.title,
     date: e.planned_at ? new Date(e.planned_at) : undefined,
@@ -298,12 +305,14 @@ const calendarOptions = computed(() => ({
             statusTagMap[e.status] === 'warning' ? '#f59e0b' :
             statusTagMap[e.status] === 'danger' ? '#ef4444' : '#94a3b8',
     extendedProps: { type: 'event', resource_id: e.id },
-  })),
+  }))],
   editable: true,
   eventClick: (info: EventClickArg) => {
+    if (info.event.extendedProps?.isHoliday) return
     router.push(`/events/${info.event.id}`)
   },
   eventDrop: async (info: EventDropArg) => {
+    if (info.event.extendedProps?.isHoliday) { info.revert(); return }
     const id = Number(info.event.id)
     const newStart = info.event.start
     if (!newStart) { info.revert(); return }
@@ -331,6 +340,21 @@ const calendarOptions = computed(() => ({
       info.revert()
       ElMessage.error('更新失败，已还原')
     }
+  },
+  eventContent: (arg: EventContentArg) => renderHolidayContent(arg) ?? undefined,
+  eventDidMount: (info: EventMountArg) => {
+    if (!info.event.extendedProps?.isHoliday) return
+    // 强制清除 FullCalendar 注入的所有内联背景/边框样式
+    const el = info.el as HTMLElement
+    el.style.setProperty('background-color', 'transparent', 'important')
+    el.style.setProperty('background', 'transparent', 'important')
+    el.style.setProperty('border', 'none', 'important')
+    el.style.setProperty('border-color', 'transparent', 'important')
+    el.style.setProperty('box-shadow', 'none', 'important')
+    // 隐藏 FullCalendar 渲染的缩放手柄
+    el.querySelectorAll<HTMLElement>('.fc-event-resizer').forEach(r => {
+      r.style.setProperty('display', 'none', 'important')
+    })
   },
   dayMaxEvents: 3,
 }))
@@ -404,7 +428,10 @@ async function handleDeleteEvent(row: EventListItem) {
   }
 }
 
-onMounted(loadEvents)
+onMounted(async () => {
+  loadEvents()
+  holidayEvents.value = await loadHolidayEvents()
+})
 </script>
 
 <style scoped>
@@ -709,5 +736,28 @@ onMounted(loadEvents)
 
 :deep(.events-calendar .fc-daygrid-day-events) {
   min-height: 1.2em;
+}
+
+.holiday-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 </style>

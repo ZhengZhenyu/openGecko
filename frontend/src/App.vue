@@ -293,6 +293,56 @@ body {
   color: #1e293b;
 }
 
+/* 全局：节假日事件条带 — 完全由 renderHolidayContent 提供视觉，清除 FullCalendar 所有默认样式 */
+.fc-event.holiday-publicHoliday,
+.fc-event.holiday-traditional,
+.fc-h-event.holiday-publicHoliday,
+.fc-h-event.holiday-traditional,
+.fc-daygrid-event.holiday-publicHoliday,
+.fc-daygrid-event.holiday-traditional,
+.fc-daygrid-block-event.holiday-publicHoliday,
+.fc-daygrid-block-event.holiday-traditional {
+  --fc-event-bg-color: transparent;
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: transparent;
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+.fc-event.holiday-publicHoliday::before,
+.fc-event.holiday-publicHoliday::after,
+.fc-event.holiday-traditional::before,
+.fc-event.holiday-traditional::after {
+  display: none !important;
+  content: none !important;
+}
+.fc-event.holiday-publicHoliday .fc-event-main,
+.fc-event.holiday-traditional .fc-event-main {
+  padding: 0 !important;
+  height: 100% !important;
+}
+/* 隐藏节假日事件的 FullCalendar 拖拽/缩放手柄（含 hover 态，提高优先级压过 FC 自身规则） */
+.fc .fc-event.holiday-publicHoliday .fc-event-resizer,
+.fc .fc-event.holiday-traditional .fc-event-resizer,
+.fc .fc-event.holiday-publicHoliday:hover .fc-event-resizer,
+.fc .fc-event.holiday-traditional:hover .fc-event-resizer,
+.fc .fc-event-selected.holiday-publicHoliday .fc-event-resizer,
+.fc .fc-event-selected.holiday-traditional .fc-event-resizer {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  pointer-events: none !important;
+}
+.fc .fc-event.holiday-publicHoliday:hover,
+.fc .fc-event.holiday-traditional:hover {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 .fullscreen-container {
   width: 100%;
   height: 100vh;
