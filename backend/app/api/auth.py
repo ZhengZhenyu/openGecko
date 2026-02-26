@@ -18,6 +18,7 @@ from app.schemas import (
     LoginRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
+    SelfProfileUpdate,
     SystemStatusResponse,
     Token,
     UserCreate,
@@ -243,6 +244,53 @@ def get_current_user_info(
         user=current_user,
         communities=communities_with_roles
     )
+
+
+@router.patch("/me", response_model=UserOut)
+def update_current_user_profile(
+    profile_update: SelfProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    允许当前登录用户自助修改个人资料。
+    可修改：显示名称（full_name）、邮箱（email）、密码（需验证旧密码）。
+    """
+    # 修改密码时需要验证当前密码
+    if profile_update.new_password is not None:
+        if not profile_update.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="修改密码时必须提供当前密码",
+            )
+        if not verify_password(profile_update.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="当前密码不正确",
+            )
+
+    # 检查邮箱唯一性
+    if profile_update.email is not None and profile_update.email != current_user.email:
+        existing = db.query(User).filter(
+            User.email == profile_update.email, User.id != current_user.id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该邮箱已被其他用户使用",
+            )
+        current_user.email = profile_update.email
+
+    if profile_update.full_name is not None:
+        current_user.full_name = profile_update.full_name
+
+    if profile_update.new_password is not None:
+        current_user.hashed_password = get_password_hash(profile_update.new_password)
+
+    db.commit()
+    db.refresh(current_user)
+    logger.info("用户 %s 更新了个人资料", current_user.username)
+    return current_user
 
 
 @router.get("/users", response_model=list[UserOut])

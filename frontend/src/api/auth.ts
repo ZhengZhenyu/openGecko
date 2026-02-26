@@ -97,3 +97,15 @@ export async function updateUser(userId: number, userData: {
 export async function deleteUser(userId: number): Promise<void> {
   await apiClient.delete(`/auth/users/${userId}`)
 }
+
+export interface SelfProfileUpdateRequest {
+  full_name?: string
+  email?: string
+  current_password?: string
+  new_password?: string
+}
+
+export async function updateMyProfile(data: SelfProfileUpdateRequest): Promise<User> {
+  const res = await apiClient.patch<User>('/auth/me', data)
+  return res.data
+}

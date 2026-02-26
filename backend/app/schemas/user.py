@@ -22,6 +22,14 @@ class UserUpdate(BaseModel):
     is_superuser: bool | None = None
 
 
+class SelfProfileUpdate(BaseModel):
+    """用户自助修改个人资料（只允许修改非权限字段）"""
+    full_name: str | None = Field(None, max_length=200)
+    email: EmailStr | None = None
+    current_password: str | None = Field(None, description="修改密码时必须提供当前密码")
+    new_password: str | None = Field(None, min_length=6, max_length=100, description="新密码")
+
+
 class UserOut(UserBase):
     id: int
     is_active: bool

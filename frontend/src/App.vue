@@ -26,11 +26,21 @@
           <span>社区工作台</span>
         </el-menu-item>
 
-        <!-- 个人工作看板 -->
-        <el-menu-item index="/my-work">
-          <el-icon><Checked /></el-icon>
-          <span>个人工作看板</span>
-        </el-menu-item>
+        <!-- 个人中心 -->
+        <el-sub-menu index="personal">
+          <template #title>
+            <el-icon><UserFilled /></el-icon>
+            <span>个人中心</span>
+          </template>
+          <el-menu-item index="/my-work">
+            <el-icon><Checked /></el-icon>
+            <span>工作看板</span>
+          </el-menu-item>
+          <el-menu-item index="/profile">
+            <el-icon><Setting /></el-icon>
+            <span>个人设置</span>
+          </el-menu-item>
+        </el-sub-menu>
 
         <el-divider style="margin: 8px 0" />
 
@@ -171,6 +181,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item disabled>{{ user?.email }}</el-dropdown-item>
+                <el-dropdown-item command="profile">个人设置</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -267,6 +278,8 @@ function handleCommand(command: string) {
   if (command === 'logout') {
     authStore.clearAuth()
     router.push('/login')
+  } else if (command === 'profile') {
+    router.push('/profile')
   }
 }
 </script>

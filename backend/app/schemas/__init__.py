@@ -20,7 +20,7 @@ from app.schemas.community import (
 )
 from app.schemas.content import ContentCreate, ContentOut, ContentUpdate
 from app.schemas.publish import PublishRecordOut, PublishRequest
-from app.schemas.user import UserBase, UserCreate, UserOut, UserUpdate
+from app.schemas.user import SelfProfileUpdate, UserBase, UserCreate, UserOut, UserUpdate
 
 # Rebuild models with forward references now that all types are imported
 UserInfoResponse.model_rebuild()
@@ -37,6 +37,7 @@ __all__ = [
     "UserInfoResponse",
     "UserCreate",
     "UserUpdate",
+    "SelfProfileUpdate",
     "UserOut",
     "UserBase",
     "CommunityCreate",

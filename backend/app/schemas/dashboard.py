@@ -26,6 +26,7 @@ class WorkStatusStats(BaseModel):
     planning: int = 0
     in_progress: int = 0
     completed: int = 0
+    overdue: int = 0  # 未完成且截止日已过
 
 
 class DashboardResponse(BaseModel):

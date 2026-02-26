@@ -337,18 +337,30 @@ async def get_workload_overview(
 
 
 def _calculate_work_status_stats(items) -> WorkStatusStats:
-    """计算工作状态统计"""
-    stats = {"planning": 0, "in_progress": 0, "completed": 0}
+    """计算工作状态统计（含逾期：未完成且截止日已过）"""
+    from app.core.timezone import utc_now
+    now = utc_now()
+    stats = {"planning": 0, "in_progress": 0, "completed": 0, "overdue": 0}
 
     for item in items:
         # For Meeting objects, map status to work_status
         if isinstance(item, Meeting):
             work_status = _map_meeting_status_to_work_status(item.status)
+            deadline = getattr(item, "scheduled_at", None)
         else:
             work_status = getattr(item, "work_status", "planning")
+            deadline = getattr(item, "scheduled_publish_at", None)
 
         if work_status in stats:
             stats[work_status] += 1
+
+        # 逾期：未完成 且 有截止日 且 已过截止日
+        if work_status != "completed" and deadline is not None:
+            # deadline 可能是 naive datetime，统一做比较
+            dl = deadline.replace(tzinfo=None) if deadline.tzinfo else deadline
+            nw = now.replace(tzinfo=None) if now.tzinfo else now
+            if dl < nw:
+                stats["overdue"] += 1
 
     return WorkStatusStats(**stats)
 
