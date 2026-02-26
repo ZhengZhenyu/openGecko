@@ -598,7 +598,8 @@ When coverage falls below 80%, prioritize adding tests for:
 - Do NOT add `Co-Authored-By:` in commit messages
 - Make atomic commits (one logical change per commit)
 - Run tests before committing
-- Run linting before committing
+- **Run linting before committing** — execute `cd backend && ruff check app/` and fix all errors before creating a commit. CI enforces ruff with `--output-format=github`; any violation will fail the workflow.
+  - **I001 (import-sort)**: the most common CI failure. Whenever you add a new symbol to an import line, keep all names alphabetically sorted within that line. For example, in `__init__.py`, `SelfProfileUpdate` (starts with `S`) must appear **before** `UserBase` (starts with `U`). After editing any `import` statement, re-sort all names on that line manually or run `ruff check --fix app/` to auto-fix.
 - **Ask before running `git push`**: confirm whether to push now or wait for more changes to batch; `git commit` can be executed without asking
 
 ### Pull Request Process

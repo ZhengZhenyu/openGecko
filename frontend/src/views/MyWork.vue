@@ -24,6 +24,43 @@
         <div class="metric-value">{{ totalCompleted }}</div>
         <div class="metric-label">已完成</div>
       </div>
+      <div class="metric-card" :class="totalOverdue > 0 ? 'highlight-danger' : ''">
+        <div class="metric-value">{{ totalOverdue }}</div>
+        <div class="metric-label">已逾期</div>
+      </div>
+    </div>
+
+    <!-- 即将到期 / 逾期提醒 -->
+    <div v-if="urgentItems.length > 0" class="section-card urgent-card">
+      <div class="section-header">
+        <div class="urgent-title">
+          <el-icon class="urgent-icon"><Warning /></el-icon>
+          <h3>待关注提醒</h3>
+        </div>
+        <span class="section-desc">{{ urgentItems.length }} 项需要关注，包含逾期或 72 小时内截止的未完成任务</span>
+      </div>
+      <div class="urgent-list">
+        <div
+          v-for="item in urgentItems"
+          :key="`urgent-${item.type}-${item.id}`"
+          class="urgent-item"
+          :class="deadlineUrgency(item)"
+          @click="goToDetail(item)"
+        >
+          <div class="urgent-item-left">
+            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : 'meeting-badge'">
+              {{ item.type === 'content' ? '内容' : '会议' }}
+            </span>
+            <span class="urgent-item-title">{{ item.title }}</span>
+          </div>
+          <div class="urgent-item-right">
+            <span class="deadline-badge" :class="deadlineBadgeClass(item)">
+              {{ deadlineLabel(item) }}
+            </span>
+            <span class="deadline-date">{{ formatScheduledAt(item.scheduled_at) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 筛选栏 -->
@@ -39,6 +76,13 @@
         <el-radio-button value="content">内容</el-radio-button>
         <el-radio-button value="meeting">会议</el-radio-button>
       </el-radio-group>
+      <div class="filter-sort">
+        <el-switch
+          v-model="sortByDeadline"
+          active-text="按截止日排序"
+          style="--el-switch-on-color: #0095ff"
+        />
+      </div>
     </div>
 
     <!-- 任务列表 -->
@@ -70,6 +114,14 @@
                 <span>{{ item.creator_name || '未知' }}</span>
                 <span>{{ item.assignee_count }} 人参与</span>
                 <span>{{ formatDate(item.updated_at) }}</span>
+                <span v-if="item.scheduled_at" class="meta-deadline">
+                  截止 {{ formatScheduledAt(item.scheduled_at) }}
+                </span>
+                <span
+                  v-if="deadlineLabel(item)"
+                  class="deadline-badge"
+                  :class="deadlineBadgeClass(item)"
+                >{{ deadlineLabel(item) }}</span>
               </div>
             </div>
           </div>
@@ -94,6 +146,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Warning, Bell } from '@element-plus/icons-vue'
 import axios from '../api'
 
 const router = useRouter()
@@ -106,12 +159,14 @@ interface Item {
   creator_name?: string
   assignee_count: number
   updated_at: string
+  scheduled_at?: string
 }
 
 const loading = ref(false)
 const data = ref<any>(null)
 const filterStatus = ref('all')
 const filterType = ref('all')
+const sortByDeadline = ref(false)
 
 const allItems = computed(() => {
   if (!data.value) return []
@@ -122,7 +177,29 @@ const filteredItems = computed(() => {
   let items = allItems.value
   if (filterStatus.value !== 'all') items = items.filter((i: Item) => i.work_status === filterStatus.value)
   if (filterType.value !== 'all') items = items.filter((i: Item) => i.type === filterType.value)
+  if (sortByDeadline.value) {
+    items = [...items].sort((a: Item, b: Item) => {
+      if (!a.scheduled_at && !b.scheduled_at) return 0
+      if (!a.scheduled_at) return 1
+      if (!b.scheduled_at) return -1
+      return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+    })
+  }
   return items
+})
+
+// 即将到期 / 逾期的任务（未完成且截止日期在 72 小时内或已过期）
+const urgentItems = computed(() => {
+  const now = Date.now()
+  const h72 = 72 * 60 * 60 * 1000
+  return allItems.value.filter((i: Item) => {
+    if (i.work_status === 'completed') return false
+    if (!i.scheduled_at) return false
+    const diff = new Date(i.scheduled_at).getTime() - now
+    return diff < h72
+  }).sort((a: Item, b: Item) => {
+    return new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime()
+  })
 })
 
 const totalPlanning = computed(() =>
@@ -134,8 +211,50 @@ const totalInProgress = computed(() =>
 const totalCompleted = computed(() =>
   data.value ? (data.value.content_stats.completed + data.value.meeting_stats.completed) : 0
 )
+const totalOverdue = computed(() => {
+  const now = Date.now()
+  return allItems.value.filter((i: Item) =>
+    i.work_status !== 'completed' && i.scheduled_at && new Date(i.scheduled_at).getTime() < now
+  ).length
+})
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('zh-CN')
+
+function formatScheduledAt(dateStr?: string): string {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+}
+
+function deadlineUrgency(item: Item): 'overdue' | 'today' | 'tomorrow' | 'soon' | null {
+  if (!item.scheduled_at || item.work_status === 'completed') return null
+  const now = Date.now()
+  const ts = new Date(item.scheduled_at).getTime()
+  const diff = ts - now
+  if (diff < 0) return 'overdue'
+  if (diff < 24 * 3600 * 1000) return 'today'
+  if (diff < 48 * 3600 * 1000) return 'tomorrow'
+  if (diff < 72 * 3600 * 1000) return 'soon'
+  return null
+}
+
+function deadlineLabel(item: Item): string {
+  const urgency = deadlineUrgency(item)
+  if (!urgency) return ''
+  const map: Record<string, string> = { overdue: '已逾期', today: '今日截止', tomorrow: '明日截止', soon: '即将截止' }
+  return map[urgency]
+}
+
+function deadlineBadgeClass(item: Item): string {
+  const urgency = deadlineUrgency(item)
+  if (!urgency) return ''
+  const map: Record<string, string> = {
+    overdue: 'deadline-overdue',
+    today: 'deadline-today',
+    tomorrow: 'deadline-tomorrow',
+    soon: 'deadline-soon',
+  }
+  return map[urgency]
+}
 
 function statusDotClass(status: string) {
   const map: Record<string, string> = { planning: 'planning', in_progress: 'in-progress', completed: 'completed' }
@@ -403,39 +522,106 @@ onMounted(() => loadData())
   font-size: 14px;
 }
 
-/* Element Plus overrides */
-:deep(.el-button) {
+/* Deadline badges */
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.deadline-overdue  { background: #fef2f2; color: #dc2626; }
+.deadline-today    { background: #fff7ed; color: #c2410c; }
+.deadline-tomorrow { background: #fffbeb; color: #b45309; }
+.deadline-soon     { background: #eff6ff; color: #1d4ed8; }
+
+.meta-deadline {
+  color: var(--text-muted);
+}
+
+/* Highlight danger metric */
+.metric-card.highlight-danger .metric-value {
+  color: #ef4444;
+}
+
+/* Filter bar sort toggle */
+.filter-sort {
+  margin-left: auto;
+}
+
+/* Urgent card */
+.urgent-card {
+  border-left: 4px solid #ef4444;
+}
+.urgent-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.urgent-title h3 {
+  color: #dc2626;
+}
+.urgent-icon {
+  color: #ef4444;
+  font-size: 18px;
+}
+.urgent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.urgent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
   border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: background 0.15s;
 }
-
-:deep(.el-button--primary) {
-  background: var(--blue);
-  border-color: var(--blue);
-}
-
-:deep(.el-button--primary:hover) {
-  background: #0080e6;
-  border-color: #0080e6;
-}
-
-:deep(.el-button--default) {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-}
-
-:deep(.el-button--default:hover) {
-  border-color: #cbd5e1;
+.urgent-item:hover {
   background: #f8fafc;
 }
-
-:deep(.el-button--text) {
-  color: var(--blue);
+.urgent-item.overdue  { background: #fff5f5; }
+.urgent-item.today    { background: #fff7f0; }
+.urgent-item.tomorrow { background: #fffef0; }
+.urgent-item.soon     { background: #f0f7ff; }
+.urgent-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.urgent-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.urgent-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.deadline-date {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
-:deep(.el-button--text:hover) {
-  background: #f0f9ff;
+/* Responsive */
+@media (max-width: 1200px) {
+  .my-work { padding: 28px 24px; }
+  .metric-cards { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 734px) {
+  .my-work { padding: 20px 16px; }
+  .metric-cards { grid-template-columns: repeat(2, 1fr); }
+  .filter-section { flex-wrap: wrap; gap: 12px; }
+  .page-title h2 { font-size: 22px; }
 }
 </style>
