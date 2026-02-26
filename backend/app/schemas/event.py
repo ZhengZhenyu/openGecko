@@ -335,6 +335,7 @@ class EventTaskCreate(BaseModel):
     progress: int = 0
     status: str = "not_started"
     depends_on: list[int] = []
+    assignee_ids: list[int] = []
     parent_task_id: int | None = None
     order: int = 0
 
@@ -348,6 +349,7 @@ class EventTaskUpdate(BaseModel):
     progress: int | None = None
     status: str | None = None
     depends_on: list[int] | None = None
+    assignee_ids: list[int] | None = None
     parent_task_id: int | None = None
     order: int | None = None
 
@@ -363,6 +365,7 @@ class EventTaskOut(BaseModel):
     progress: int
     status: str
     depends_on: list[int]
+    assignee_ids: list[int] = []
     parent_task_id: int | None
     order: int
     children: list["EventTaskOut"] = []

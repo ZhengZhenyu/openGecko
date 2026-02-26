@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session, subqueryload
 
 from app.core.dependencies import get_current_active_superuser, get_current_user, get_db
 from app.models.content import Content, content_assignees
+from app.models.event import Event, EventTask
 from app.models.meeting import Meeting, meeting_assignees
 from app.models.user import User
 from app.schemas.dashboard import (
+    AssignedEventTask,
     AssignedItem,
     ContentByTypeStats,
     DashboardResponse,
@@ -62,6 +64,43 @@ async def get_user_dashboard(
     content_stats = _calculate_work_status_stats(assigned_contents)
     meeting_stats = _calculate_work_status_stats(assigned_meetings)
 
+    # 获取我负责的活动任务（Python 层过滤 JSON 数组）
+    all_event_tasks = (
+        db.query(EventTask)
+        .join(Event, EventTask.event_id == Event.id)
+        .filter(EventTask.assignee_ids.isnot(None))
+        .order_by(EventTask.end_date.asc().nullslast())
+        .limit(200)
+        .all()
+    )
+    # 过滤出包含当前用户 ID 的任务
+    my_event_tasks = [
+        t for t in all_event_tasks
+        if current_user.id in (t.assignee_ids or [])
+    ]
+    # 预查询 event 标题
+    event_ids = list({t.event_id for t in my_event_tasks})
+    event_titles: dict[int, str] = {}
+    if event_ids:
+        events = db.query(Event).filter(Event.id.in_(event_ids)).all()
+        event_titles = {e.id: e.title for e in events}
+
+    event_task_items = [
+        AssignedEventTask(
+            id=t.id,
+            title=t.title,
+            task_type=t.task_type,
+            phase=t.phase,
+            status=t.status,
+            start_date=t.start_date,
+            end_date=t.end_date,
+            progress=t.progress,
+            event_id=t.event_id,
+            event_title=event_titles.get(t.event_id),
+        )
+        for t in my_event_tasks
+    ]
+
     # 格式化响应数据
     content_items = [
         AssignedItem(
@@ -98,9 +137,10 @@ async def get_user_dashboard(
     return DashboardResponse(
         contents=content_items,
         meetings=meeting_items,
+        event_tasks=event_task_items,
         content_stats=content_stats,
         meeting_stats=meeting_stats,
-        total_assigned_items=len(assigned_contents) + len(assigned_meetings),
+        total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks),
     )
 
 

@@ -1,7 +1,7 @@
 """
 Dashboard (个人工作台) Schemas
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -21,6 +21,21 @@ class AssignedItem(BaseModel):
     creator_name: str | None = None
 
 
+class AssignedEventTask(BaseModel):
+    """分配给用户的活动任务"""
+    id: int
+    type: Literal["event_task"] = "event_task"
+    title: str
+    task_type: str        # task / milestone
+    phase: str            # pre / during / post
+    status: str           # not_started / in_progress / completed / blocked
+    start_date: date | None = None
+    end_date: date | None = None
+    progress: int = 0
+    event_id: int
+    event_title: str | None = None
+
+
 class WorkStatusStats(BaseModel):
     """工作状态统计"""
     planning: int = 0
@@ -33,6 +48,7 @@ class DashboardResponse(BaseModel):
     """个人工作台响应"""
     contents: list[AssignedItem]
     meetings: list[AssignedItem]
+    event_tasks: list[AssignedEventTask] = []
     content_stats: WorkStatusStats
     meeting_stats: WorkStatusStats
     total_assigned_items: int
