@@ -270,6 +270,7 @@ class EventTask(Base):
         default="not_started",
     )
     depends_on = Column(JSON, default=list)   # list[int] task IDs
+    assignee_ids = Column(JSON, default=list)  # list[int] user IDs（责任人）
     parent_task_id = Column(
         Integer, ForeignKey("event_tasks.id", ondelete="SET NULL"), nullable=True
     )

@@ -177,6 +177,7 @@ export interface EventTask {
   progress: number
   status: string
   depends_on: number[]
+  assignee_ids: number[]
   parent_task_id: number | null
   order: number
   children: EventTask[]
@@ -190,6 +191,7 @@ export interface EventTaskCreate {
   end_date?: string | null
   progress?: number
   status?: string
+  assignee_ids?: number[]
   parent_task_id?: number | null
   order?: number
 }

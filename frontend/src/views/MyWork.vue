@@ -48,8 +48,8 @@
           @click="goToDetail(item)"
         >
           <div class="urgent-item-left">
-            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : 'meeting-badge'">
-              {{ item.type === 'content' ? '内容' : '会议' }}
+            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : 'event-task-badge'">
+              {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : '活动任务' }}
             </span>
             <span class="urgent-item-title">{{ item.title }}</span>
           </div>
@@ -75,6 +75,7 @@
         <el-radio-button value="all">全部类型</el-radio-button>
         <el-radio-button value="content">内容</el-radio-button>
         <el-radio-button value="meeting">会议</el-radio-button>
+        <el-radio-button value="event_task">活动任务</el-radio-button>
       </el-radio-group>
       <div class="filter-sort">
         <el-switch
@@ -105,8 +106,8 @@
             <span class="stat-dot" :class="statusDotClass(item.work_status)"></span>
             <div class="item-content">
               <div class="item-title-row">
-                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : 'meeting-badge'">
-                  {{ item.type === 'content' ? '内容' : '会议' }}
+                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : 'event-task-badge'">
+                  {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : '活动任务' }}
                 </span>
                 <span class="item-title">{{ item.title }}</span>
               </div>
@@ -126,6 +127,7 @@
             </div>
           </div>
           <el-select
+            v-if="item.type !== 'event_task'"
             v-model="item.work_status"
             @change="updateStatus(item)"
             @click.stop
@@ -136,6 +138,11 @@
             <el-option label="进行中" value="in_progress" />
             <el-option label="已完成" value="completed" />
           </el-select>
+          <span
+            v-else
+            class="event-task-status"
+            @click.stop
+          >{{ item.work_status === 'completed' ? '已完成' : item.work_status === 'in_progress' ? '进行中' : '计划中' }}</span>
         </div>
       </div>
     </div>
@@ -160,6 +167,7 @@ interface Item {
   assignee_count: number
   updated_at: string
   scheduled_at?: string
+  event_id?: number
 }
 
 const loading = ref(false)
@@ -170,7 +178,18 @@ const sortByDeadline = ref(false)
 
 const allItems = computed(() => {
   if (!data.value) return []
-  return [...data.value.contents, ...data.value.meetings]
+  const eventTasks: Item[] = (data.value.event_tasks || []).map((t: any) => ({
+    id: t.id,
+    type: 'event_task',
+    title: t.title,
+    work_status: t.status === 'completed' ? 'completed' : t.status === 'in_progress' ? 'in_progress' : 'planning',
+    creator_name: t.event_title || '',
+    assignee_count: 0,
+    updated_at: t.end_date || new Date().toISOString(),
+    scheduled_at: t.end_date,
+    event_id: t.event_id,
+  }))
+  return [...data.value.contents, ...data.value.meetings, ...eventTasks]
 })
 
 const filteredItems = computed(() => {
@@ -290,6 +309,8 @@ const goToDetail = (item: Item) => {
     router.push(`/contents/${item.id}/edit`)
   } else if (item.type === 'meeting') {
     router.push(`/meetings/${item.id}`)
+  } else if (item.type === 'event_task') {
+    router.push(`/events/${item.event_id}`)
   }
 }
 
@@ -512,6 +533,22 @@ onMounted(() => loadData())
 .meeting-badge {
   background: #f0fdf4;
   color: #15803d;
+}
+
+.event-task-badge {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.event-task-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Empty */

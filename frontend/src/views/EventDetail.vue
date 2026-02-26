@@ -197,50 +197,18 @@
           </div>
         </el-tab-pane>
 
-        <!-- 人员 Tab -->
-        <el-tab-pane label="人员分工" name="personnel">
-          <div v-loading="personnelLoading" class="tab-content">
-            <div class="tab-actions">
-              <el-button size="small" type="primary" @click="showAddPersonnelDialog = true">
-                <el-icon><Plus /></el-icon>添加人员
-              </el-button>
-            </div>
-            <el-table :data="personnel" style="width: 100%">
-              <el-table-column label="角色" prop="role" width="120" />
-              <el-table-column label="角色说明" prop="role_label" width="140" />
-              <el-table-column label="时间段" prop="time_slot" />
-              <el-table-column label="确认状态" width="120">
-                <template #default="{ row }">
-                  <el-tag :type="confirmTagMap[row.confirmed] ?? 'info'" size="small">
-                    {{ confirmLabel[row.confirmed] ?? row.confirmed }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="备注" prop="notes" />
-              <el-table-column label="操作" width="140">
-                <template #default="{ row }">
-                  <template v-if="row.confirmed === 'pending'">
-                    <el-button link type="primary" size="small" @click="handleConfirmPersonnel(row.id, 'confirmed')">确认</el-button>
-                    <el-button link type="danger" size="small" @click="handleConfirmPersonnel(row.id, 'declined')">拒绝</el-button>
-                  </template>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </el-tab-pane>
-
         <!-- 任务规划 Tab (甘特图) -->
         <el-tab-pane label="任务规划" name="tasks">
           <div v-loading="tasksLoading" class="tab-content">
             <div class="tab-actions">
-              <el-button size="small" type="primary" @click="showAddTaskDialog = true">
+              <el-button size="small" type="primary" @click="handleOpenAddTask">
                 <el-icon><Plus /></el-icon>添加任务
               </el-button>
             </div>
 
             <!-- Task list table -->
             <el-table :data="flatTasks" row-key="id" style="width: 100%; margin-bottom: 24px">
-              <el-table-column label="任务名称" prop="title" min-width="180">
+              <el-table-column label="任务名称" prop="title" min-width="160">
                 <template #default="{ row }">
                   <span :style="{ paddingLeft: row.parent_task_id ? '20px' : '0' }">
                     {{ row.title }}
@@ -259,6 +227,19 @@
               </el-table-column>
               <el-table-column label="开始" prop="start_date" width="110" />
               <el-table-column label="结束" prop="end_date" width="110" />
+              <el-table-column label="责任人" min-width="130">
+                <template #default="{ row }">
+                  <span v-if="row.assignee_ids && row.assignee_ids.length">
+                    <el-tag
+                      v-for="uid in row.assignee_ids"
+                      :key="uid"
+                      size="small"
+                      style="margin-right:4px;margin-bottom:2px"
+                    >{{ getUserName(uid) }}</el-tag>
+                  </span>
+                  <span v-else class="text-muted">-</span>
+                </template>
+              </el-table-column>
               <el-table-column label="进度" width="120">
                 <template #default="{ row }">
                   <el-progress :percentage="row.progress" :stroke-width="6" />
@@ -271,8 +252,9 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80">
+              <el-table-column label="操作" width="110">
                 <template #default="{ row }">
+                  <el-button link type="primary" size="small" @click="handleEditTask(row)">编辑</el-button>
                   <el-button link type="danger" size="small" @click="handleDeleteTask(row.id)">删除</el-button>
                 </template>
               </el-table-column>
@@ -322,9 +304,9 @@
       </el-tabs>
     </template>
 
-    <!-- Add Task Dialog -->
-    <el-dialog v-model="showAddTaskDialog" title="添加任务" width="460px" destroy-on-close>
-      <el-form :model="taskForm" label-width="80px">
+    <!-- Add/Edit Task Dialog -->
+    <el-dialog v-model="showTaskDialog" :title="editingTask ? '编辑任务' : '添加任务'" width="500px" destroy-on-close>
+      <el-form :model="taskForm" label-width="90px">
         <el-form-item label="任务名称" required>
           <el-input v-model="taskForm.title" />
         </el-form-item>
@@ -347,38 +329,36 @@
         <el-form-item label="结束日期">
           <el-date-picker v-model="taskForm.end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddTaskDialog = false">取消</el-button>
-        <el-button type="primary" :loading="savingTask" @click="handleAddTask">添加</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- Add Personnel Dialog -->
-    <el-dialog v-model="showAddPersonnelDialog" title="添加人员" width="420px" destroy-on-close>
-      <el-form :model="personnelForm" label-width="90px">
-        <el-form-item label="角色" required>
-          <el-input v-model="personnelForm.role" placeholder="如：主持人、演讲嘉宾" />
+        <el-form-item label="进度 (%)">
+          <el-input-number v-model="taskForm.progress" :min="0" :max="100" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="角色备注">
-          <el-input v-model="personnelForm.role_label" />
-        </el-form-item>
-        <el-form-item label="来源">
-          <el-select v-model="personnelForm.assignee_type" style="width: 100%">
-            <el-option label="内部成员" value="internal" />
-            <el-option label="外部嘉宾" value="external" />
+        <el-form-item label="状态">
+          <el-select v-model="taskForm.status" style="width: 100%">
+            <el-option label="未开始" value="not_started" />
+            <el-option label="进行中" value="in_progress" />
+            <el-option label="已完成" value="completed" />
+            <el-option label="阻塞中" value="blocked" />
           </el-select>
         </el-form-item>
-        <el-form-item label="时间段">
-          <el-input v-model="personnelForm.time_slot" placeholder="如：14:00-14:30" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="personnelForm.notes" type="textarea" :rows="2" />
+        <el-form-item label="责任人">
+          <el-select
+            v-model="taskForm.assignee_ids"
+            multiple
+            style="width: 100%"
+            placeholder="选择责任人（可多选）"
+          >
+            <el-option
+              v-for="u in communityUsers"
+              :key="u.id"
+              :label="(u.full_name || u.username) + (u.full_name ? ` (@${u.username})` : '')"
+              :value="u.id"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showAddPersonnelDialog = false">取消</el-button>
-        <el-button type="primary" :loading="savingPersonnel" @click="handleAddPersonnel">添加</el-button>
+        <el-button @click="showTaskDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingTask" @click="handleSaveTask">{{ editingTask ? '保存' : '添加' }}</el-button>
       </template>
     </el-dialog>
 
@@ -508,6 +488,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Calendar, Location, Link, Plus, Connection, ArrowRight } from '@element-plus/icons-vue'
 import { useCommunityStore } from '../stores/community'
 import { useAuthStore } from '../stores/auth'
+import { getCommunityUsers } from '../api/community'
+import type { CommunityUser } from '../api/community'
 import {
   getEvent,
   createEvent,
@@ -515,14 +497,12 @@ import {
   updateChecklistItem,
   createChecklistItem,
   deleteChecklistItem,
-  listPersonnel,
-  addPersonnel,
-  confirmPersonnel,
   listFeedback,
   createFeedback,
   updateFeedback,
   listTasks,
   createTask,
+  updateTask,
   deleteTask,
   deleteEvent,
   updateEventStatus,
@@ -530,7 +510,7 @@ import {
   listTemplates,
   getTemplate,
 } from '../api/event'
-import type { EventDetail, ChecklistItem, Personnel, FeedbackItem, EventTask, EventTemplateListItem, EventTemplate } from '../api/event'
+import type { EventDetail, ChecklistItem, FeedbackItem, EventTask, EventTemplateListItem, EventTemplate } from '../api/event'
 
 const route = useRoute()
 const router = useRouter()
@@ -548,21 +528,20 @@ const activeTab = ref('checklist')
 const checklistLoading = ref(false)
 const checklist = ref<ChecklistItem[]>([])
 
-const personnelLoading = ref(false)
-const personnel = ref<Personnel[]>([])
-
 const tasksLoading = ref(false)
 const tasks = ref<EventTask[]>([])
 
 const feedbackLoading = ref(false)
 const feedback = ref<FeedbackItem[]>([])
 
+// Community users for assignee selector
+const communityUsers = ref<CommunityUser[]>([])
+
 // Dialog states
-const showAddTaskDialog = ref(false)
-const showAddPersonnelDialog = ref(false)
+const showTaskDialog = ref(false)
+const editingTask = ref<EventTask | null>(null)
 const showAddFeedbackDialog = ref(false)
 const savingTask = ref(false)
-const savingPersonnel = ref(false)
 const savingFeedback = ref(false)
 
 // Checklist item dialog
@@ -639,8 +618,16 @@ async function onTemplateChange(val: number | null) {
 
 const ganttEl = ref<HTMLElement | null>(null)
 
-const taskForm = ref({ title: '', task_type: 'task', phase: 'pre', start_date: null as string | null, end_date: null as string | null })
-const personnelForm = ref({ role: '', role_label: '', assignee_type: 'internal', time_slot: '', notes: '' })
+const taskForm = ref({
+  title: '',
+  task_type: 'task' as string,
+  phase: 'pre' as string,
+  start_date: null as string | null,
+  end_date: null as string | null,
+  progress: 0,
+  status: 'not_started' as string,
+  assignee_ids: [] as number[],
+})
 const feedbackForm = ref({ category: 'question', raised_by: '', content: '' })
 
 // ─── Labels & Maps ────────────────────────────────────────────────────────────
@@ -649,10 +636,8 @@ const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'dan
 const typeLabel: Record<string, string> = { offline: '线下', online: '线上', hybrid: '混合' }
 const typeTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { offline: '', online: 'success', hybrid: 'warning' }
 const phaseLabel: Record<string, string> = { pre: '会前', during: '会中', post: '会后' }
-const taskStatusLabel: Record<string, string> = { not_started: '未开始', in_progress: '进行中', done: '已完成', blocked: '阻塞中' }
-const taskStatusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { not_started: 'info', in_progress: 'primary', done: 'success', blocked: 'danger' }
-const confirmLabel: Record<string, string> = { pending: '待确认', confirmed: '已确认', declined: '已拒绝' }
-const confirmTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { pending: 'warning', confirmed: 'success', declined: 'danger' }
+const taskStatusLabel: Record<string, string> = { not_started: '未开始', in_progress: '进行中', completed: '已完成', blocked: '阻塞中' }
+const taskStatusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { not_started: 'info', in_progress: 'primary', completed: 'success', blocked: 'danger' }
 const feedbackCategoryLabel: Record<string, string> = { question: '问题', suggestion: '建议', praise: '表扬', bug: '缺陷' }
 const feedbackTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = { question: 'info', suggestion: 'primary', praise: 'success', bug: 'danger' }
 const feedbackStatusLabel: Record<string, string> = { open: '待处理', in_progress: '处理中', closed: '已关闭' }
@@ -732,12 +717,6 @@ async function loadChecklist() {
   try { checklist.value = await getChecklist(eventId.value!) } catch {} finally { checklistLoading.value = false }
 }
 
-async function loadPersonnel() {
-  if (isNewEvent.value || !eventId.value) return
-  personnelLoading.value = true
-  try { personnel.value = await listPersonnel(eventId.value!) } catch {} finally { personnelLoading.value = false }
-}
-
 async function loadTasks() {
   if (isNewEvent.value || !eventId.value) return
   tasksLoading.value = true
@@ -748,6 +727,21 @@ async function loadFeedback() {
   if (isNewEvent.value || !eventId.value) return
   feedbackLoading.value = true
   try { feedback.value = await listFeedback(eventId.value!) } catch {} finally { feedbackLoading.value = false }
+}
+
+async function loadCommunityUsers() {
+  const cid = communityStore.currentCommunityId
+  if (!cid) return
+  try {
+    communityUsers.value = await getCommunityUsers(cid)
+  } catch {
+    communityUsers.value = []
+  }
+}
+
+function getUserName(userId: number): string {
+  const u = communityUsers.value.find(u => u.id === userId)
+  return u ? (u.full_name || u.username) : String(userId)
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -845,24 +839,65 @@ async function toggleChecklist(item: ChecklistItem, checked: boolean) {
   }
 }
 
-async function handleAddTask() {
+function handleOpenAddTask() {
+  editingTask.value = null
+  taskForm.value = {
+    title: '',
+    task_type: 'task',
+    phase: 'pre',
+    start_date: null,
+    end_date: null,
+    progress: 0,
+    status: 'not_started',
+    assignee_ids: [],
+  }
+  showTaskDialog.value = true
+}
+
+function handleEditTask(task: EventTask) {
+  editingTask.value = task
+  taskForm.value = {
+    title: task.title,
+    task_type: task.task_type,
+    phase: task.phase,
+    start_date: task.start_date,
+    end_date: task.end_date,
+    progress: task.progress,
+    status: task.status,
+    assignee_ids: [...(task.assignee_ids || [])],
+  }
+  showTaskDialog.value = true
+}
+
+async function handleSaveTask() {
   if (!eventId.value) return
   if (!taskForm.value.title.trim()) { ElMessage.warning('请输入任务名称'); return }
   savingTask.value = true
   try {
-    await createTask(eventId.value!, {
+    const payload = {
       title: taskForm.value.title,
       task_type: taskForm.value.task_type,
       phase: taskForm.value.phase,
       start_date: taskForm.value.start_date || null,
       end_date: taskForm.value.end_date || null,
-    })
-    showAddTaskDialog.value = false
+      progress: taskForm.value.progress,
+      status: taskForm.value.status,
+      assignee_ids: taskForm.value.assignee_ids,
+    }
+    if (editingTask.value) {
+      await updateTask(eventId.value!, editingTask.value.id, payload)
+      ElMessage.success('任务已更新')
+    } else {
+      await createTask(eventId.value!, payload)
+      ElMessage.success('任务已添加')
+    }
+    showTaskDialog.value = false
     await loadTasks()
   } catch {
-    ElMessage.error('添加任务失败')
+    ElMessage.error(editingTask.value ? '更新任务失败' : '添加任务失败')
   } finally {
-    savingTask.value = false }
+    savingTask.value = false
+  }
 }
 
 async function handleDeleteTask(tid: number) {
@@ -891,38 +926,6 @@ async function handleDeleteEvent() {
     router.push('/events')
   } catch {
     ElMessage.error('删除失败，请重试')
-  }
-}
-
-async function handleConfirmPersonnel(pid: number, confirmed: string) {
-  if (!eventId.value) return
-  try {
-    await confirmPersonnel(eventId.value!, pid, confirmed)
-    await loadPersonnel()
-    ElMessage.success(confirmed === 'confirmed' ? '已确认' : '已拒绝')
-  } catch {
-    ElMessage.error('操作失败')
-  }
-}
-
-async function handleAddPersonnel() {
-  if (!eventId.value) return
-  if (!personnelForm.value.role.trim()) { ElMessage.warning('请填写角色'); return }
-  savingPersonnel.value = true
-  try {
-    await addPersonnel(eventId.value, {
-      role: personnelForm.value.role,
-      role_label: personnelForm.value.role_label || null,
-      assignee_type: personnelForm.value.assignee_type,
-      time_slot: personnelForm.value.time_slot || null,
-      notes: personnelForm.value.notes || null,
-    })
-    showAddPersonnelDialog.value = false
-    await loadPersonnel()
-  } catch {
-    ElMessage.error('添加失败')
-  } finally {
-    savingPersonnel.value = false
   }
 }
 
@@ -1134,8 +1137,9 @@ onMounted(async () => {
     templateList.value = []
   }
   await loadEvent()
+  await loadCommunityUsers()
   // Load all tabs data in parallel
-  await Promise.all([loadChecklist(), loadPersonnel(), loadTasks(), loadFeedback()])
+  await Promise.all([loadChecklist(), loadTasks(), loadFeedback()])
 })
 </script>
 
