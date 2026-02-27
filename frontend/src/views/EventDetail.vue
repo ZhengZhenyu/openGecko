@@ -173,6 +173,15 @@
                     />
                     <span class="checklist-title">{{ item.title }}</span>
                     <span v-if="item.responsible_role" class="role-badge">{{ item.responsible_role }}</span>
+                    <span v-if="item.assignee_ids && item.assignee_ids.length" class="checklist-assignees">
+                      <el-tag
+                        v-for="uid in item.assignee_ids"
+                        :key="uid"
+                        size="small"
+                        type="info"
+                        style="margin-left:4px;flex-shrink:0"
+                      >{{ getUserName(uid) }}</el-tag>
+                    </span>
                     <el-tag v-if="item.is_mandatory" type="danger" size="small" style="margin-left:4px;flex-shrink:0">必须</el-tag>
                     <el-tag v-if="item.status === 'done'" type="success" size="small" style="margin-left:4px;flex-shrink:0">已完成</el-tag>
                     <el-icon
@@ -443,6 +452,21 @@
         <el-form-item label="备注">
           <el-input v-model="checklistItemForm.notes" type="textarea" :rows="2" />
         </el-form-item>
+        <el-form-item label="责任人">
+          <el-select
+            v-model="checklistItemForm.assignee_ids"
+            multiple
+            style="width: 100%"
+            placeholder="选择责任人（可多选）"
+          >
+            <el-option
+              v-for="u in communityUsers"
+              :key="u.id"
+              :label="(u.full_name || u.username) + (u.full_name ? ` (@${u.username})` : '')"
+              :value="u.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="必须完成">
           <el-switch v-model="checklistItemForm.is_mandatory" />
         </el-form-item>
@@ -556,6 +580,7 @@ const checklistItemForm = ref({
   reference_url: '',
   due_date: null as string | null,
   notes: '',
+  assignee_ids: [] as number[],
 })
 const savingChecklistItem = ref(false)
 
@@ -972,6 +997,7 @@ function handleAddChecklistItem(phase: string) {
     reference_url: '',
     due_date: null,
     notes: '',
+    assignee_ids: [],
   }
   showChecklistItemDialog.value = true
 }
@@ -987,6 +1013,7 @@ function handleEditChecklistItem(item: ChecklistItem) {
     reference_url: item.reference_url || '',
     due_date: item.due_date || null,
     notes: item.notes || '',
+    assignee_ids: [...(item.assignee_ids || [])],
   }
   showChecklistItemDialog.value = true
 }
@@ -1019,6 +1046,7 @@ async function handleSaveChecklistItem() {
         reference_url: checklistItemForm.value.reference_url || null,
         due_date: checklistItemForm.value.due_date || null,
         notes: checklistItemForm.value.notes || null,
+        assignee_ids: checklistItemForm.value.assignee_ids,
       })
       const idx = checklist.value.findIndex(i => i.id === editingChecklistItem.value!.id)
       if (idx !== -1) checklist.value[idx] = updated
@@ -1033,6 +1061,7 @@ async function handleSaveChecklistItem() {
         reference_url: checklistItemForm.value.reference_url || null,
         due_date: checklistItemForm.value.due_date || null,
         notes: checklistItemForm.value.notes || null,
+        assignee_ids: checklistItemForm.value.assignee_ids,
       })
       checklist.value.push(created)
       ElMessage.success('已添加')

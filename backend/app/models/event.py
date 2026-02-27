@@ -139,7 +139,7 @@ class ChecklistItem(Base):
     status = Column(
         SAEnum("pending", "done", "skipped", name="checklist_status_enum"), default="pending"
     )
-    assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assignee_ids = Column(JSON, default=list)  # list[int] user IDs（责任人，支持多人）
     due_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)

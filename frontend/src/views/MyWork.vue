@@ -48,8 +48,8 @@
           @click="goToDetail(item)"
         >
           <div class="urgent-item-left">
-            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : 'event-task-badge'">
-              {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : '活动任务' }}
+            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : 'event-task-badge'">
+              {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : '活动任务' }}
             </span>
             <span class="urgent-item-title">{{ item.title }}</span>
           </div>
@@ -76,6 +76,7 @@
         <el-radio-button value="content">内容</el-radio-button>
         <el-radio-button value="meeting">会议</el-radio-button>
         <el-radio-button value="event_task">活动任务</el-radio-button>
+        <el-radio-button value="checklist_item">清单项</el-radio-button>
       </el-radio-group>
       <div class="filter-sort">
         <el-switch
@@ -106,8 +107,8 @@
             <span class="stat-dot" :class="statusDotClass(item.work_status)"></span>
             <div class="item-content">
               <div class="item-title-row">
-                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : 'event-task-badge'">
-                  {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : '活动任务' }}
+                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : 'event-task-badge'">
+                  {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : '活动任务' }}
                 </span>
                 <span class="item-title">{{ item.title }}</span>
               </div>
@@ -127,7 +128,7 @@
             </div>
           </div>
           <el-select
-            v-if="item.type !== 'event_task'"
+            v-if="item.type !== 'event_task' && item.type !== 'checklist_item'"
             v-model="item.work_status"
             @change="updateStatus(item)"
             @click.stop
@@ -189,7 +190,18 @@ const allItems = computed(() => {
     scheduled_at: t.end_date,
     event_id: t.event_id,
   }))
-  return [...data.value.contents, ...data.value.meetings, ...eventTasks]
+  const checklistItems: Item[] = (data.value.checklist_items || []).map((c: any) => ({
+    id: c.id,
+    type: 'checklist_item',
+    title: c.title,
+    work_status: c.status === 'done' ? 'completed' : 'planning',
+    creator_name: c.event_title || '',
+    assignee_count: 0,
+    updated_at: c.due_date || new Date().toISOString(),
+    scheduled_at: c.due_date,
+    event_id: c.event_id,
+  }))
+  return [...data.value.contents, ...data.value.meetings, ...eventTasks, ...checklistItems]
 })
 
 const filteredItems = computed(() => {
@@ -221,15 +233,27 @@ const urgentItems = computed(() => {
   })
 })
 
-const totalPlanning = computed(() =>
-  data.value ? (data.value.content_stats.planning + data.value.meeting_stats.planning) : 0
-)
-const totalInProgress = computed(() =>
-  data.value ? (data.value.content_stats.in_progress + data.value.meeting_stats.in_progress) : 0
-)
-const totalCompleted = computed(() =>
-  data.value ? (data.value.content_stats.completed + data.value.meeting_stats.completed) : 0
-)
+const totalPlanning = computed(() => {
+  if (!data.value) return 0
+  return data.value.content_stats.planning
+    + data.value.meeting_stats.planning
+    + (data.value.event_task_stats?.planning ?? 0)
+    + (data.value.checklist_item_stats?.planning ?? 0)
+})
+const totalInProgress = computed(() => {
+  if (!data.value) return 0
+  return data.value.content_stats.in_progress
+    + data.value.meeting_stats.in_progress
+    + (data.value.event_task_stats?.in_progress ?? 0)
+    + (data.value.checklist_item_stats?.in_progress ?? 0)
+})
+const totalCompleted = computed(() => {
+  if (!data.value) return 0
+  return data.value.content_stats.completed
+    + data.value.meeting_stats.completed
+    + (data.value.event_task_stats?.completed ?? 0)
+    + (data.value.checklist_item_stats?.completed ?? 0)
+})
 const totalOverdue = computed(() => {
   const now = Date.now()
   return allItems.value.filter((i: Item) =>
@@ -309,7 +333,7 @@ const goToDetail = (item: Item) => {
     router.push(`/contents/${item.id}/edit`)
   } else if (item.type === 'meeting') {
     router.push(`/meetings/${item.id}`)
-  } else if (item.type === 'event_task') {
+  } else if (item.type === 'event_task' || item.type === 'checklist_item') {
     router.push(`/events/${item.event_id}`)
   }
 }
@@ -538,6 +562,11 @@ onMounted(() => loadData())
 .event-task-badge {
   background: #fffbeb;
   color: #b45309;
+}
+
+.checklist-item-badge {
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .event-task-status {

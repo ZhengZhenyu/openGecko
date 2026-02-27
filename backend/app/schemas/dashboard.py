@@ -36,6 +36,18 @@ class AssignedEventTask(BaseModel):
     event_title: str | None = None
 
 
+class AssignedChecklistItem(BaseModel):
+    """分配给用户的活动清单项"""
+    id: int
+    type: Literal["checklist_item"] = "checklist_item"
+    title: str
+    phase: str            # pre / during / post
+    status: str           # pending / done / skipped
+    due_date: date | None = None
+    event_id: int
+    event_title: str | None = None
+
+
 class WorkStatusStats(BaseModel):
     """工作状态统计"""
     planning: int = 0
@@ -49,8 +61,11 @@ class DashboardResponse(BaseModel):
     contents: list[AssignedItem]
     meetings: list[AssignedItem]
     event_tasks: list[AssignedEventTask] = []
+    checklist_items: list[AssignedChecklistItem] = []
     content_stats: WorkStatusStats
     meeting_stats: WorkStatusStats
+    event_task_stats: WorkStatusStats = WorkStatusStats()
+    checklist_item_stats: WorkStatusStats = WorkStatusStats()
     total_assigned_items: int
 
 
@@ -87,6 +102,8 @@ class UserWorkloadItem(BaseModel):
     full_name: str | None = None
     content_stats: WorkStatusStats
     meeting_stats: WorkStatusStats
+    event_task_stats: WorkStatusStats = WorkStatusStats()
+    checklist_item_stats: WorkStatusStats = WorkStatusStats()
     content_by_type: ContentByTypeStats
     total: int
 

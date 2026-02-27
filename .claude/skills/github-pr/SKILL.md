@@ -146,16 +146,29 @@ echo "Fork user: $FORK_USER"
 echo "Branch: $BRANCH"
 ```
 
-### Step 2 — Create the issue on upstream
+### Step 2 — Check for duplicate issues, then create
 
-Determine the commit prefix from the changes (see table above), then create the issue using the matching body structure.
+**Always check for an existing open issue with the same title before creating a new one.** This prevents duplicates when a previous attempt appeared to fail but actually succeeded (common with long CLI commands that time out or display garbled output).
 
 ```bash
-ISSUE_URL=$(gh issue create \
+ISSUE_TITLE="[Feature]: <concise title>"
+
+# Check for existing open issue with identical title
+EXISTING=$(GH_PAGER=cat gh issue list \
   --repo "$UPSTREAM_SLUG" \
-  --title "[Feature]: <concise title>" \
-  --body "$(cat <<'BODY'
-## Problem Statement
+  --state open \
+  --search "$ISSUE_TITLE" \
+  --json number,title 2>/dev/null \
+  | python3 -c "import json,sys; items=json.load(sys.stdin); matches=[i for i in items if i['title']==\"$ISSUE_TITLE\"]; print(matches[0]['number'] if matches else '')")
+
+if [ -n "$EXISTING" ]; then
+  echo "Reusing existing issue #$EXISTING"
+  ISSUE_NUM=$EXISTING
+else
+  # Write body to a temp file via Python to avoid terminal encoding issues with
+  # Chinese/Unicode characters (inline --body with heredoc is unreliable in zsh).
+  python3 -c "
+body='''## Problem Statement
 ...
 
 ## Proposed Solution
@@ -166,15 +179,20 @@ ISSUE_URL=$(gh issue create \
 
 ## Acceptance Criteria
 - [ ] ...
+'''
+open('/tmp/gh_issue_body.txt','w').write(body)
+"
 
-## Design Considerations
-...
-BODY
-)")
-echo "Issue: $ISSUE_URL"
-# Extract issue number
-ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+  ISSUE_URL=$(GH_PAGER=cat gh issue create \
+    --repo "$UPSTREAM_SLUG" \
+    --title "$ISSUE_TITLE" \
+    --body-file /tmp/gh_issue_body.txt 2>&1)
+  echo "Issue: $ISSUE_URL"
+  ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+fi
 ```
+
+> **Why `--body-file`?** Passing multi-line bodies with Chinese characters directly on the CLI via `--body "..."` or heredoc is unreliable in zsh — the terminal may display garbled output or silently re-submit. Writing the body to a temp file with Python first, then using `--body-file`, is always safe.
 
 ### Step 3 — Push the branch to fork
 
@@ -291,19 +309,21 @@ Install: `brew install hub` (macOS) or `apt install hub` (Ubuntu).
 
 1. **Never hardcode a GitHub username** — always derive from `git remote get-url origin`.
 2. **Issue first, then PR** — the issue number must be known before creating the PR body so `Closes #N` links correctly.
-3. **Push before PR** — `gh pr create` will fail if the branch does not exist on the fork remote.
-4. **Rebase, don't merge** — if `origin` is ahead, use `git pull --rebase` to keep a clean linear history.
-5. **Branch matters** — always use `--head "${FORK_USER}:${BRANCH}"` so the PR targets the correct branch of the fork.
-6. **Match commit prefix to template** — `feat:` → Feature Request, `fix:` → Bug Report, `docs:` → Documentation, `[Governance]:` → Governance Task.
-7. **PR body language** — section headers and user-facing text in Chinese; code, variable names, and CLI output in English (matches project language conventions).
-8. **YAML templates can't be used with `--template`** — compose body manually to mirror template sections, or use the web UI.
-9. **Single commit per PR (no `needs-squash`)** — the upstream CI bot adds a `needs-squash` label that **blocks merging** when a PR contains more than one commit. Always squash all commits into one before pushing:
-   ```bash
-   # Squash all commits since upstream/main into one (no interactive editor needed)
-   git reset --soft upstream/main
-   git commit -m 'type: concise commit message'
-   git push origin "$BRANCH" --force-with-lease
-   ```
+3. **Check for duplicate issues before creating** — always run `GH_PAGER=cat gh issue list --repo ... --state open --search "<title>"` first. If an identical open issue already exists, reuse its number instead of creating a new one. CLI commands can appear to fail while actually succeeding (especially with long/Unicode output), causing silent duplicates.
+4. **Use `--body-file` for issue and PR bodies** — never pass multi-line bodies with Chinese/Unicode characters via `--body "..."` or heredoc on the CLI. Write the body to a temp file first using Python (`open('/tmp/gh_body.txt','w').write(body)`) then pass `--body-file /tmp/gh_body.txt`. This avoids garbled output, duplicate submissions, and zsh quoting bugs.
+5. **Push before PR** — `gh pr create` will fail if the branch does not exist on the fork remote.
+6. **Rebase, don't merge** — if `origin` is ahead, use `git pull --rebase` to keep a clean linear history.
+7. **Branch matters** — always use `--head "${FORK_USER}:${BRANCH}"` so the PR targets the correct branch of the fork.
+8. **Match commit prefix to template** — `feat:` → Feature Request, `fix:` → Bug Report, `docs:` → Documentation, `[Governance]:` → Governance Task.
+9. **PR body language** — section headers and user-facing text in Chinese; code, variable names, and CLI output in English (matches project language conventions).
+10. **YAML templates can't be used with `--template`** — compose body manually to mirror template sections, or use the web UI.
+11. **Single commit per PR (no `needs-squash`)** — the upstream CI bot adds a `needs-squash` label that **blocks merging** when a PR contains more than one commit. Always squash all commits into one before pushing:
+    ```bash
+    # Squash all commits since upstream/main into one (no interactive editor needed)
+    git reset --soft upstream/main
+    git commit -m 'type: concise commit message'
+    git push origin "$BRANCH" --force-with-lease
+    ```
 
 ---
 
@@ -318,6 +338,8 @@ Install: `brew install hub` (macOS) or `apt install hub` (Ubuntu).
 | `upstream` remote not configured | Inform the user: `git remote add upstream https://github.com/opensourceways/openGecko.git` |
 | `gh` not installed | Use Option B (web UI) or Option A (`curl` + PAT) from the Alternatives section above |
 | PR has `needs-squash` label | Run `git reset --soft upstream/main && git commit -m 'type: message' && git push origin "$BRANCH" --force-with-lease` to squash all commits into one |
+| **Duplicate issue created** | Happens when a `gh issue create` command appears to fail (garbled terminal output) but actually succeeded silently. Always check `GH_PAGER=cat gh issue list --state open --search "<title>"` before creating. If a duplicate was created, close it with `gh issue close <number> --comment "Duplicate of #<new>"` |
+| **`--body` with Chinese/Unicode fails** | zsh heredoc and inline `--body "..."` are unreliable with multi-byte characters. Use `python3 -c "open('/tmp/body.txt','w').write('...')"` then `--body-file /tmp/body.txt` instead |
 
 ---
 
