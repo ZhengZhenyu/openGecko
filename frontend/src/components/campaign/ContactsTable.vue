@@ -1,0 +1,140 @@
+<template>
+  <div class="contacts-table-wrap">
+    <!-- 工具栏 -->
+    <div class="table-toolbar">
+      <el-select
+        v-model="localStatus"
+        placeholder="状态筛选"
+        clearable
+        size="small"
+        style="width: 110px"
+        @change="onStatusChange"
+      >
+        <el-option v-for="(lbl, val) in statusLabel" :key="val" :label="lbl" :value="val" />
+      </el-select>
+      <slot name="toolbar-extra" />
+    </div>
+
+    <el-table v-loading="loading" :data="contacts" style="width: 100%">
+      <el-table-column label="姓名" min-width="130">
+        <template #default="{ row }">{{ row.person?.display_name ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column label="公司/组织" min-width="130">
+        <template #default="{ row }">{{ row.person?.company ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column label="邮箱" min-width="160">
+        <template #default="{ row }">{{ row.person?.email ?? '-' }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="110">
+        <template #default="{ row }">
+          <el-tag :type="statusTagMap[row.status] ?? 'info'" size="small">
+            {{ statusLabel[row.status] ?? row.status }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="来源" width="100">
+        <template #default="{ row }">
+          <el-tag type="info" size="small">{{ sourceLabel[row.added_by] ?? row.added_by }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="最近跟进" width="120">
+        <template #default="{ row }">
+          {{ row.last_contacted_at ? fmtDate(row.last_contacted_at) : '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" fixed="right">
+        <template #default="{ row }">
+          <el-button link size="small" @click="$emit('follow-up', row)">跟进</el-button>
+          <el-select
+            :model-value="row.status"
+            size="small"
+            style="width: 76px"
+            @change="(v: string) => $emit('status-change', row, v)"
+          >
+            <el-option v-for="(lbl, val) in statusLabel" :key="val" :label="lbl" :value="val" />
+          </el-select>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-if="total > pageSize"
+      v-model:current-page="localPage"
+      :page-size="pageSize"
+      :total="total"
+      layout="prev, pager, next"
+      style="margin-top: 12px; display: flex; justify-content: flex-end"
+      @current-change="$emit('page-change', $event)"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import type { ContactOut } from '../../api/campaign'
+
+const props = defineProps<{
+  contacts: ContactOut[]
+  total: number
+  page: number
+  pageSize: number
+  loading: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'follow-up', contact: ContactOut): void
+  (e: 'status-change', contact: ContactOut, status: string): void
+  (e: 'page-change', page: number): void
+  (e: 'status-filter', status: string): void
+}>()
+
+const localPage = ref(props.page)
+const localStatus = ref('')
+
+watch(() => props.page, (v) => { localPage.value = v })
+
+function onStatusChange(v: string) {
+  emit('status-filter', v)
+}
+
+function fmtDate(dt: string) {
+  return new Date(dt).toLocaleDateString('zh-CN')
+}
+
+const statusLabel: Record<string, string> = {
+  pending: '待联系',
+  contacted: '已联系',
+  responded: '已回复',
+  converted: '已转化',
+  declined: '已拒绝',
+}
+const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
+  pending: 'info',
+  contacted: 'primary',
+  responded: 'warning',
+  converted: 'success',
+  declined: 'danger',
+}
+const sourceLabel: Record<string, string> = {
+  manual: '手动',
+  event_import: '活动导入',
+  ecosystem_import: '委员会',
+  csv_import: 'CSV',
+}
+</script>
+
+<style scoped>
+.contacts-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+</style>
