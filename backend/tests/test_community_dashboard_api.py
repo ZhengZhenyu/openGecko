@@ -12,11 +12,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.models.campaign import Campaign
 from app.models.channel import ChannelConfig
 from app.models.committee import Committee
 from app.models.community import Community
 from app.models.content import Content
+from app.models.event import Event
 from app.models.meeting import Meeting
+from app.models.publish_record import PublishRecord
 from app.models.user import User, community_users
 
 
@@ -319,3 +322,225 @@ class TestSuperuserOverviewStats:
         for community_item in communities:
             for field in required:
                 assert field in community_item, f"字段 '{field}' 缺失"
+
+
+# ─── 覆盖率补充测试 ────────────────────────────────────────────────────────────
+
+class TestCommunityDashboardCoverage:
+    """补充覆盖各未覆盖代码路径。"""
+
+    def test_community_not_found_as_superuser(
+        self,
+        client: TestClient,
+        superuser_auth_headers: dict,
+    ):
+        """超管访问不存在的社区 → 404（覆盖 community_dashboard.py line 78）"""
+        response = client.get(
+            "/api/communities/99999/dashboard",
+            headers=superuser_auth_headers,
+        )
+        assert response.status_code == 404
+
+    def test_monthly_trend_with_publish_records(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """有发布记录时月度趋势数据有值（覆盖 lines 178-180）"""
+        # 创建内容与对应的发布记录
+        content = Content(
+            title="已发布文章",
+            community_id=test_community.id,
+            owner_id=test_user.id,
+            created_by_user_id=test_user.id,
+            status="published",
+        )
+        db_session.add(content)
+        db_session.commit()
+        db_session.refresh(content)
+
+        pr = PublishRecord(
+            content_id=content.id,
+            community_id=test_community.id,
+            channel="wechat",
+            status="published",
+            published_at=datetime.utcnow(),
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "monthly_trend" in data
+        # 当月应有至少 1 条发布记录
+        assert sum(m["count"] for m in data["monthly_trend"]) >= 1
+
+    def test_recent_campaigns_active_in_response(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """存在 active 活动时 recent_campaigns 中有数据（覆盖 lines 251-255, 402-419）"""
+        camp = Campaign(
+            community_id=test_community.id,
+            owner_id=test_user.id,
+            name="推广活动",
+            type="promotion",
+            status="active",
+        )
+        db_session.add(camp)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "recent_campaigns" in data
+        names = [c["name"] for c in data["recent_campaigns"]]
+        assert "推广活动" in names
+
+    def test_recent_campaigns_owner_name_populated(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """活动有 owner_id 时 owner_name 应填充（覆盖 lines 251-255 owner 分支）"""
+        camp = Campaign(
+            community_id=test_community.id,
+            owner_id=test_user.id,
+            name="有Owner的活动",
+            type="community_care",
+            status="draft",
+        )
+        db_session.add(camp)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        campaigns = data.get("recent_campaigns", [])
+        targeted = next((c for c in campaigns if c["name"] == "有Owner的活动"), None)
+        assert targeted is not None
+        assert targeted["owner_name"] is not None
+
+    def test_calendar_events_with_publish_record(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """日历中有发布事件（覆盖 lines 359-363）"""
+        content = Content(
+            title="日历发布文章",
+            community_id=test_community.id,
+            owner_id=test_user.id,
+            created_by_user_id=test_user.id,
+            status="published",
+        )
+        db_session.add(content)
+        db_session.commit()
+        db_session.refresh(content)
+
+        pr = PublishRecord(
+            content_id=content.id,
+            community_id=test_community.id,
+            channel="wechat",
+            status="published",
+            published_at=datetime.utcnow(),
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        publish_events = [
+            e for e in data["calendar_events"] if e["type"] == "publish"
+        ]
+        assert len(publish_events) >= 1
+
+    def test_calendar_events_scheduled_content(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """排期内容出现在日历中（覆盖 line 388）"""
+        content = Content(
+            title="排期待发文章",
+            community_id=test_community.id,
+            owner_id=test_user.id,
+            created_by_user_id=test_user.id,
+            status="draft",
+            scheduled_publish_at=datetime.utcnow() + timedelta(days=7),
+        )
+        db_session.add(content)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        scheduled_events = [
+            e for e in data["calendar_events"] if e["type"] == "scheduled"
+        ]
+        assert len(scheduled_events) >= 1
+
+    def test_calendar_multi_day_event(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """跨天活动在日历中生成多条记录（覆盖 lines 402-419）"""
+        evt = Event(
+            community_id=test_community.id,
+            title="两日活动",
+            event_type="offline",
+            status="planning",
+            planned_at=datetime.utcnow(),
+            duration_hours=48.0,
+        )
+        db_session.add(evt)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/communities/{test_community.id}/dashboard",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        event_entries = [
+            e for e in data["calendar_events"] if e["resource_type"] == "event"
+        ]
+        # 48 小时活动应产生 2 个日历条目
+        assert len(event_entries) >= 2

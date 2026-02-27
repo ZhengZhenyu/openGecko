@@ -128,6 +128,15 @@
               <div class="metric-label">活跃渠道</div>
             </div>
           </div>
+          <div class="metric-card highlight-purple" @click="$router.push('/campaigns')">
+            <div class="metric-icon-wrap campaign-icon">
+              <el-icon><Promotion /></el-icon>
+            </div>
+            <div class="metric-body">
+              <div class="metric-value">{{ dashboardData.metrics.active_campaigns }}</div>
+              <div class="metric-label">运营活动</div>
+            </div>
+          </div>
         </div>
 
         <!-- 第三层：内容动态（按状态分组） -->
@@ -261,6 +270,48 @@
             </el-table>
           </div>
         </div>
+
+        <!-- 第六层：近期运营活动 -->
+        <div v-if="dashboardData.recent_campaigns.length > 0" class="section-card campaign-section">
+          <div class="card-header">
+            <h3>近期运营活动</h3>
+            <router-link to="/campaigns" class="view-all">查看全部 →</router-link>
+          </div>
+          <el-table
+            :data="dashboardData.recent_campaigns"
+            style="width: 100%"
+            size="small"
+            @row-click="(row: any) => $router.push(`/campaigns/${row.id}`)"
+            class="dashboard-table"
+          >
+            <el-table-column label="活动名称" prop="name" min-width="180" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span class="table-link">{{ row.name }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="110">
+              <template #default="{ row }">
+                <span class="type-badge">{{ CAMPAIGN_TYPE_LABELS[row.type] ?? row.type }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <span class="status-badge" :class="campaignStatusClass(row.status)">
+                  {{ CAMPAIGN_STATUS_LABELS[row.status] ?? row.status }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="负责人" prop="owner_name" width="100" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.owner_name ?? '—' }}</template>
+            </el-table-column>
+            <el-table-column label="开始日期" width="110">
+              <template #default="{ row }">{{ row.start_date ?? '—' }}</template>
+            </el-table-column>
+            <el-table-column label="截止日期" width="110">
+              <template #default="{ row }">{{ row.end_date ?? '—' }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
       </template>
     </div>
   </div>
@@ -284,7 +335,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventContentArg } from '@fullcalendar/core'
 import {
-  Stamp, Calendar, Connection, Plus, Setting,
+  Stamp, Calendar, Connection, Plus, Setting, Promotion,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
@@ -569,6 +620,28 @@ function eventStatusClass(s: string) {
   return m[s] || 'badge-gray'
 }
 
+const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
+  default: '默认活动',
+  community_care: '社区成员关怀',
+  developer_care: '开发者关怀',
+  promotion: '推广宣传',
+  care: '关怀回访',
+  invitation: '邀请加入',
+  survey: '问卷调研',
+}
+const CAMPAIGN_STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  active: '进行中',
+  completed: '已完成',
+  archived: '已归档',
+}
+function campaignStatusClass(s: string) {
+  const m: Record<string, string> = {
+    draft: 'badge-gray', active: 'badge-blue', completed: 'badge-green', archived: 'badge-gray',
+  }
+  return m[s] || 'badge-gray'
+}
+
 function formatDate(dt: string) {
   return new Date(dt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
@@ -770,6 +843,26 @@ function formatTime(dt: string) {
 .metric-card.highlight-green .metric-value { color: var(--green); }
 .metric-card.highlight-orange .metric-value { color: var(--orange); }
 .metric-card.highlight-blue .metric-value { color: var(--blue); }
+.metric-card.highlight-purple .metric-value { color: #8b5cf6; }
+
+.campaign-icon {
+  background: #f5f3ff;
+  color: #8b5cf6;
+}
+
+.campaign-section {
+  margin-bottom: 24px;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 500;
+}
 
 /* ===== 图表行 ===== */
 .charts-row {
