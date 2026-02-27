@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 # ─── Event Template ───────────────────────────────────────────────────────────
 
@@ -205,11 +205,16 @@ class ChecklistItemOut(BaseModel):
     responsible_role: str | None
     reference_url: str | None
     status: str
-    assignee_id: int | None
+    assignee_ids: list[int] = []
     due_date: date | None
     notes: str | None
     completed_at: datetime | None
     order: int
+
+    @field_validator('assignee_ids', mode='before')
+    @classmethod
+    def coerce_assignee_ids(cls, v):
+        return v if v is not None else []
 
     model_config = {"from_attributes": True}
 
@@ -221,6 +226,7 @@ class ChecklistItemCreate(BaseModel):
     is_mandatory: bool = False
     responsible_role: str | None = None
     reference_url: str | None = None
+    assignee_ids: list[int] = []
     due_date: date | None = None
     notes: str | None = None
     order: int = 0
@@ -234,7 +240,7 @@ class ChecklistItemUpdate(BaseModel):
     responsible_role: str | None = None
     reference_url: str | None = None
     status: str | None = None
-    assignee_id: int | None = None
+    assignee_ids: list[int] | None = None
     due_date: date | None = None
     notes: str | None = None
     order: int | None = None
@@ -369,6 +375,11 @@ class EventTaskOut(BaseModel):
     parent_task_id: int | None
     order: int
     children: list["EventTaskOut"] = []
+
+    @field_validator('depends_on', 'assignee_ids', mode='before')
+    @classmethod
+    def coerce_list_fields(cls, v):
+        return v if v is not None else []
 
     model_config = {"from_attributes": True}
 

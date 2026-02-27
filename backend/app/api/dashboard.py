@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session, subqueryload
 
 from app.core.dependencies import get_current_active_superuser, get_current_user, get_db
 from app.models.content import Content, content_assignees
-from app.models.event import Event, EventTask
+from app.models.event import ChecklistItem, Event, EventTask
 from app.models.meeting import Meeting, meeting_assignees
 from app.models.user import User
 from app.schemas.dashboard import (
+    AssignedChecklistItem,
     AssignedEventTask,
     AssignedItem,
     ContentByTypeStats,
@@ -101,6 +102,38 @@ async def get_user_dashboard(
         for t in my_event_tasks
     ]
 
+    # 获取我负责的活动清单项（Python 层过滤 JSON 数组）
+    all_checklist_items = (
+        db.query(ChecklistItem)
+        .join(Event, ChecklistItem.event_id == Event.id)
+        .filter(ChecklistItem.assignee_ids.isnot(None))
+        .order_by(ChecklistItem.due_date.asc().nullslast())
+        .limit(200)
+        .all()
+    )
+    my_checklist_items = [
+        c for c in all_checklist_items
+        if current_user.id in (c.assignee_ids or [])
+    ]
+    # 预查询清单项所属的 event 标题（合并 event_ids）
+    checklist_event_ids = list({c.event_id for c in my_checklist_items} - set(event_ids))
+    if checklist_event_ids:
+        extra_events = db.query(Event).filter(Event.id.in_(checklist_event_ids)).all()
+        event_titles.update({e.id: e.title for e in extra_events})
+
+    checklist_items_out = [
+        AssignedChecklistItem(
+            id=c.id,
+            title=c.title,
+            phase=c.phase,
+            status=c.status,
+            due_date=c.due_date,
+            event_id=c.event_id,
+            event_title=event_titles.get(c.event_id),
+        )
+        for c in my_checklist_items
+    ]
+
     # 格式化响应数据
     content_items = [
         AssignedItem(
@@ -138,9 +171,12 @@ async def get_user_dashboard(
         contents=content_items,
         meetings=meeting_items,
         event_tasks=event_task_items,
+        checklist_items=checklist_items_out,
         content_stats=content_stats,
         meeting_stats=meeting_stats,
-        total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks),
+        event_task_stats=_calculate_work_status_stats(my_event_tasks),
+        checklist_item_stats=_calculate_work_status_stats(my_checklist_items),
+        total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks) + len(my_checklist_items),
     )
 
 
@@ -349,13 +385,41 @@ async def get_workload_overview(
     for meeting, uid in meeting_rows:
         user_meetings[uid].append(meeting)
 
+    # 一次性加载所有活动任务（JSON 过滤在 Python 层做）
+    all_event_tasks = (
+        db.query(EventTask)
+        .filter(EventTask.assignee_ids.isnot(None))
+        .all()
+    )
+    user_event_tasks: dict[int, list] = defaultdict(list)
+    for t in all_event_tasks:
+        for uid in (t.assignee_ids or []):
+            if uid in set(user_ids):
+                user_event_tasks[uid].append(t)
+
+    # 一次性加载所有清单项（JSON 过滤在 Python 层做）
+    all_checklist_items_wl = (
+        db.query(ChecklistItem)
+        .filter(ChecklistItem.assignee_ids.isnot(None))
+        .all()
+    )
+    user_checklist_items: dict[int, list] = defaultdict(list)
+    for c in all_checklist_items_wl:
+        for uid in (c.assignee_ids or []):
+            if uid in set(user_ids):
+                user_checklist_items[uid].append(c)
+
     result = []
     for user in users:
         assigned_contents = user_contents.get(user.id, [])
         assigned_meetings = user_meetings.get(user.id, [])
+        assigned_event_tasks = user_event_tasks.get(user.id, [])
+        assigned_checklist = user_checklist_items.get(user.id, [])
 
         content_stats = _calculate_work_status_stats(assigned_contents)
         meeting_stats = _calculate_work_status_stats(assigned_meetings)
+        event_task_stats = _calculate_work_status_stats(assigned_event_tasks)
+        checklist_item_stats = _calculate_work_status_stats(assigned_checklist)
 
         type_stats = {"contribution": 0, "release_note": 0, "event_summary": 0}
         for content in assigned_contents:
@@ -363,28 +427,52 @@ async def get_workload_overview(
             if st in type_stats:
                 type_stats[st] += 1
 
+        event_tasks_count = len(assigned_event_tasks)
+        checklist_count = len(assigned_checklist)
+
         result.append(UserWorkloadItem(
             user_id=user.id,
             username=user.username,
             full_name=user.full_name,
             content_stats=content_stats,
             meeting_stats=meeting_stats,
+            event_task_stats=event_task_stats,
+            checklist_item_stats=checklist_item_stats,
             content_by_type=ContentByTypeStats(**type_stats),
-            total=len(assigned_contents) + len(assigned_meetings),
+            total=len(assigned_contents) + len(assigned_meetings) + event_tasks_count + checklist_count,
         ))
 
     return WorkloadOverviewResponse(users=result)
 
 
 def _calculate_work_status_stats(items) -> WorkStatusStats:
-    """计算工作状态统计（含逾期：未完成且截止日已过）"""
+    """计算工作状态统计（含逾期：未完成且截止日已过）
+    支持 Content / Meeting / EventTask / ChecklistItem 对象。
+    """
+    from datetime import date as date_type
+    from datetime import datetime as datetime_type
+
     from app.core.timezone import utc_now
     now = utc_now()
+    today = now.date()
     stats = {"planning": 0, "in_progress": 0, "completed": 0, "overdue": 0}
 
     for item in items:
-        # For Meeting objects, map status to work_status
-        if isinstance(item, Meeting):
+        if isinstance(item, ChecklistItem):
+            # pending → planning；done / skipped → completed
+            status = item.status
+            work_status = "completed" if status in ("done", "skipped") else "planning"
+            deadline = item.due_date  # date | None
+        elif isinstance(item, EventTask):
+            _et_map = {
+                "not_started": "planning",
+                "in_progress": "in_progress",
+                "completed": "completed",
+                "blocked": "in_progress",
+            }
+            work_status = _et_map.get(item.status, "planning")
+            deadline = item.end_date  # date | None
+        elif isinstance(item, Meeting):
             work_status = _map_meeting_status_to_work_status(item.status)
             deadline = getattr(item, "scheduled_at", None)
         else:
@@ -396,11 +484,16 @@ def _calculate_work_status_stats(items) -> WorkStatusStats:
 
         # 逾期：未完成 且 有截止日 且 已过截止日
         if work_status != "completed" and deadline is not None:
-            # deadline 可能是 naive datetime，统一做比较
-            dl = deadline.replace(tzinfo=None) if deadline.tzinfo else deadline
-            nw = now.replace(tzinfo=None) if now.tzinfo else now
-            if dl < nw:
-                stats["overdue"] += 1
+            if isinstance(deadline, date_type) and not isinstance(deadline, datetime_type):
+                # date 对象（ChecklistItem.due_date / EventTask.end_date）
+                if deadline < today:
+                    stats["overdue"] += 1
+            else:
+                # datetime 对象（Content / Meeting）
+                dl = deadline.replace(tzinfo=None) if deadline.tzinfo else deadline
+                nw = now.replace(tzinfo=None) if now.tzinfo else now
+                if dl < nw:
+                    stats["overdue"] += 1
 
     return WorkStatusStats(**stats)
 

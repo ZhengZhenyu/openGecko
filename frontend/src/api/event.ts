@@ -78,7 +78,7 @@ export interface ChecklistItem {
   responsible_role: string | null
   reference_url: string | null
   status: string
-  assignee_id: number | null
+  assignee_ids: number[]
   due_date: string | null
   notes: string | null
   completed_at: string | null
@@ -242,6 +242,7 @@ export async function updateChecklistItem(eventId: number, itemId: number, data:
   responsible_role: string | null
   reference_url: string | null
   status: string
+  assignee_ids: number[]
   due_date: string | null
   notes: string | null
   order: number
@@ -257,6 +258,7 @@ export async function createChecklistItem(eventId: number, data: {
   is_mandatory?: boolean
   responsible_role?: string | null
   reference_url?: string | null
+  assignee_ids?: number[]
   due_date?: string | null
   notes?: string | null
   order?: number
