@@ -14,6 +14,7 @@
           <p class="subtitle">管理和组织社区内容</p>
         </div>
         <div class="actions">
+          <el-button :icon="Download" @click="exportToExcel">导出 Excel</el-button>
           <el-upload
             :show-file-list="false"
             :before-upload="handleUpload"
@@ -137,7 +138,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Upload } from '@element-plus/icons-vue'
+import { Plus, Upload, Download } from '@element-plus/icons-vue'
+import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import { fetchContents, deleteContent, uploadFile, type ContentListItem } from '../api/content'
 import { useRouter } from 'vue-router'
@@ -232,6 +234,29 @@ function workStatusType(s: string) {
 
 function formatDate(d: string) {
   return new Date(d).toLocaleString('zh-CN')
+}
+
+function exportToExcel() {
+  if (!contents.value.length) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+  const header = ['ID', '标题', '状态', '工作状态', '来源类型', '创建人', '创建时间', '更新时间']
+  const rows = contents.value.map(c => [
+    c.id,
+    c.title,
+    statusLabel(c.status),
+    workStatusLabel(c.work_status),
+    sourceLabel(c.source_type),
+    c.author ?? '',
+    c.created_at ? formatDate(c.created_at) : '',
+    c.updated_at ? formatDate(c.updated_at) : '',
+  ])
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
+  XLSX.utils.book_append_sheet(wb, ws, '内容列表')
+  const filename = `内容列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`
+  XLSX.writeFile(wb, filename)
 }
 
 onMounted(() => {

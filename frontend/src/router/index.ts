@@ -235,6 +235,19 @@ const router = createRouter({
       component: () => import('../views/EcosystemDetail.vue'),
       meta: { requiresAuth: true },
     },
+    // Phase 5 数据分析 & 审计日志
+    {
+      path: '/analytics',
+      name: 'Analytics',
+      component: () => import('../views/Analytics.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/audit-logs',
+      name: 'AuditLogs',
+      component: () => import('../views/AuditLogs.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

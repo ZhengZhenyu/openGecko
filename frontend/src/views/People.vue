@@ -10,6 +10,9 @@
         <el-button @click="downloadTemplate">
           <el-icon><Download /></el-icon>下载模板
         </el-button>
+        <el-button @click="exportPeople">
+          <el-icon><Download /></el-icon>导出当前结果
+        </el-button>
         <el-button @click="openImportDialog">
           <el-icon><Upload /></el-icon>导入 Excel
         </el-button>
@@ -411,7 +414,28 @@ async function handleCreate() {
     saving.value = false
   }
 }
-
+// ─── Excel Export ──────────────────────────────────────────────────────
+function exportPeople() {
+  if (!people.value.length) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+  const header = ['ID', '姓名', 'GitHub', '邮筱', '公司/组织', '来源', '创建时间']
+  const rows = people.value.map(p => [
+    p.id,
+    p.display_name,
+    p.github_handle ?? '',
+    p.email ?? '',
+    p.company ?? '',
+    sourceLabel[p.source] ?? p.source,
+    new Date(p.created_at).toLocaleDateString('zh-CN'),
+  ])
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
+  XLSX.utils.book_append_sheet(wb, ws, '人脉列表')
+  const filename = `人脉列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`
+  XLSX.writeFile(wb, filename)
+}
 // ─── Excel Import ─────────────────────────────────────────────────────────────
 const TEMPLATE_COLS = [
   '姓名*', 'GitHub账号', 'GitCode账号', '邮箱', '手机',

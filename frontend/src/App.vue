@@ -90,6 +90,10 @@
             <el-icon><TrendCharts /></el-icon>
             <span>微信阅读统计</span>
           </el-menu-item>
+          <el-menu-item index="/analytics">
+            <el-icon><DataLine /></el-icon>
+            <span>内容分析</span>
+          </el-menu-item>
         </el-sub-menu>
 
         <!-- 活动管理 -->
@@ -152,6 +156,10 @@
               <el-menu-item index="/workload">
                 <el-icon><TrendCharts /></el-icon>
                 <span>工作量总览</span>
+              </el-menu-item>
+              <el-menu-item index="/audit-logs">
+                <el-icon><List /></el-icon>
+                <span>审计日志</span>
               </el-menu-item>
             </template>
           </el-sub-menu>
