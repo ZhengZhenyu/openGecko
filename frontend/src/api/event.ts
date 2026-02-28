@@ -305,6 +305,17 @@ export async function updateFeedback(eventId: number, fid: number, data: { statu
   return res.data
 }
 
+export async function linkIssue(eventId: number, fid: number, data: {
+  platform: string
+  repo: string
+  issue_number: number
+  issue_url?: string
+  issue_type?: string
+}) {
+  const res = await apiClient.post<IssueLink>(`/events/${eventId}/feedback/${fid}/links`, data)
+  return res.data
+}
+
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function listTasks(eventId: number) {

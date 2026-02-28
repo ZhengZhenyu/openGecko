@@ -203,6 +203,12 @@ const router = createRouter({
       component: () => import('../views/People.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/people/:id',
+      name: 'PeopleDetail',
+      component: () => import('../views/PeopleDetail.vue'),
+      meta: { requiresAuth: true },
+    },
     // Phase 4c 运营活动路由
     {
       path: '/campaigns',
