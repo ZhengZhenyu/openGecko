@@ -46,6 +46,17 @@ async function saveBasicInfo() {
     await updateCommunityBasic(communityId.value, basicForm.value)
     ElMessage.success('基本信息已保存')
     await loadCommunity()
+    // 同步更新 authStore.communities，使社区沙盘等页面立即反映最新数据
+    const idx = authStore.communities.findIndex(c => c.id === communityId.value)
+    if (idx !== -1) {
+      authStore.communities[idx] = {
+        ...authStore.communities[idx],
+        name: basicForm.value.name,
+        description: basicForm.value.description,
+        url: basicForm.value.url,
+        logo_url: basicForm.value.logo_url,
+      }
+    }
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || '保存失败')
   } finally {
