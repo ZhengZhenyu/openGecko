@@ -19,6 +19,7 @@ from app.schemas.campaign import (
     BulkImportFromCommittees,
     BulkImportFromEvent,
     BulkImportFromPeople,
+    BulkStatusUpdate,
     CampaignCreate,
     CampaignFunnel,
     CampaignListOut,
@@ -41,8 +42,8 @@ VALID_TYPES = {
     "default", "community_care", "developer_care",  # 新版三类
     "promotion", "care", "invitation", "survey",   # 旧版兼容
 }
-VALID_STATUSES = {"draft", "active", "completed", "archived"}
-VALID_CONTACT_STATUSES = {"pending", "contacted", "responded", "converted", "declined"}
+VALID_STATUSES = {"active", "completed"}
+VALID_CONTACT_STATUSES = {"pending", "contacted", "blocked"}
 
 
 # ─── Campaign CRUD ─────────────────────────────────────────────────────────────
@@ -71,9 +72,9 @@ def create_campaign(
     if data.type not in VALID_TYPES:
         raise HTTPException(400, f"type 必须为 {VALID_TYPES}")
     dump = data.model_dump()
-    # owner_id 优先使用请求中指定的值，若未指定则默认为当前登录用户
-    if not dump.get("owner_id"):
-        dump["owner_id"] = current_user.id
+    # owner_ids 未指定时默认为当前登录用户
+    if not dump.get("owner_ids"):
+        dump["owner_ids"] = [current_user.id]
     campaign = Campaign(**dump)
     db.add(campaign)
     db.commit()
@@ -117,6 +118,20 @@ def update_campaign(
     return campaign
 
 
+@router.delete("/{cid}", status_code=204)
+def delete_campaign(
+    cid: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """删除运营活动（含所有联系人、任务、活动记录，不可逆）"""
+    campaign = db.query(Campaign).filter(Campaign.id == cid).first()
+    if not campaign:
+        raise HTTPException(404, "运营活动不存在")
+    db.delete(campaign)
+    db.commit()
+
+
 # ─── Funnel Stats ──────────────────────────────────────────────────────────────
 
 @router.get("/{cid}/funnel", response_model=CampaignFunnel)
@@ -138,16 +153,10 @@ def campaign_funnel(
     )
     counts = dict(rows)
     total = sum(counts.values())
-    # 将所有已接触过的状态（contacted / responded / converted / declined）合并为「已联系」
-    contacted = (
-        counts.get("contacted", 0)
-        + counts.get("responded", 0)
-        + counts.get("converted", 0)
-        + counts.get("declined", 0)
-    )
     return CampaignFunnel(
         pending=counts.get("pending", 0),
-        contacted=contacted,
+        contacted=counts.get("contacted", 0),
+        blocked=counts.get("blocked", 0),
         total=total,
     )
 
@@ -517,6 +526,37 @@ async def import_from_csv(
 
     db.commit()
     return result
+
+
+# ─── Bulk Status Update ──────────────────────────────────────────────────────
+
+@router.patch("/{cid}/contacts/bulk-status")
+def bulk_update_contact_status(
+    cid: int,
+    data: BulkStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """批量更新多个联系人状态"""
+    if data.status not in VALID_CONTACT_STATUSES:
+        raise HTTPException(400, f"status 必须为 {VALID_CONTACT_STATUSES}")
+    campaign = db.query(Campaign).filter(Campaign.id == cid).first()
+    if not campaign:
+        raise HTTPException(404, "运营活动不存在")
+    contacts = (
+        db.query(CampaignContact)
+        .filter(
+            CampaignContact.id.in_(data.contact_ids),
+            CampaignContact.campaign_id == cid,
+        )
+        .all()
+    )
+    for contact in contacts:
+        contact.status = data.status
+        if data.notes is not None:
+            contact.notes = data.notes
+    db.commit()
+    return {"updated": len(contacts)}
 
 
 # ─── Activities ───────────────────────────────────────────────────────────────

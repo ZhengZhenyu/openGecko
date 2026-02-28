@@ -17,7 +17,7 @@ class CampaignCreate(BaseModel):
     type: str  # default / community_care / developer_care / promotion / care / invitation / survey
     community_id: int | None = None
     description: str | None = None
-    owner_id: int | None = None
+    owner_ids: list[int] = []
     start_date: date | None = None
     end_date: date | None = None
 
@@ -26,8 +26,8 @@ class CampaignUpdate(BaseModel):
     name: str | None = None
     type: str | None = None
     description: str | None = None
-    status: str | None = None   # draft / active / completed / archived
-    owner_id: int | None = None
+    status: str | None = None   # active / completed
+    owner_ids: list[int] | None = None
     start_date: date | None = None
     end_date: date | None = None
 
@@ -47,7 +47,7 @@ class CampaignListOut(BaseModel):
 
 class CampaignOut(CampaignListOut):
     description: str | None
-    owner_id: int | None
+    owner_ids: list[int]
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -63,7 +63,7 @@ class ContactCreate(BaseModel):
 
 
 class ContactStatusUpdate(BaseModel):
-    status: str          # pending/contacted/responded/converted/declined
+    status: str          # pending / contacted / blocked
     channel: str | None = None
     notes: str | None = None
     assigned_to_id: int | None = None
@@ -127,7 +127,17 @@ class ActivityOut(BaseModel):
 class CampaignFunnel(BaseModel):
     pending: int = 0
     contacted: int = 0
+    blocked: int = 0
     total: int = 0
+
+
+# ─── Bulk Status Update ────────────────────────────────────────────────────────
+
+class BulkStatusUpdate(BaseModel):
+    """批量更新联系人状态"""
+    contact_ids: list[int]
+    status: str           # pending / contacted / blocked
+    notes: str | None = None
 
 
 # ─── Bulk Import ──────────────────────────────────────────────────────────────

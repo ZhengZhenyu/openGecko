@@ -80,6 +80,7 @@ class DashboardResponse(BaseModel):
     event_task_stats: WorkStatusStats = WorkStatusStats()
     checklist_item_stats: WorkStatusStats = WorkStatusStats()
     campaign_task_stats: WorkStatusStats = WorkStatusStats()
+    care_contact_stats: WorkStatusStats = WorkStatusStats()
     total_assigned_items: int
 
 
@@ -119,6 +120,7 @@ class UserWorkloadItem(BaseModel):
     event_task_stats: WorkStatusStats = WorkStatusStats()
     checklist_item_stats: WorkStatusStats = WorkStatusStats()
     campaign_task_stats: WorkStatusStats = WorkStatusStats()
+    care_contact_stats: WorkStatusStats = WorkStatusStats()
     content_by_type: ContentByTypeStats
     total: int
 

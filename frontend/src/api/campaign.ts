@@ -25,7 +25,7 @@ export interface CampaignListItem {
 
 export interface CampaignDetail extends CampaignListItem {
   description: string | null
-  owner_id: number | null
+  owner_ids: number[]
   updated_at: string
 }
 
@@ -34,7 +34,7 @@ export interface CampaignCreate {
   type: CampaignType
   community_id?: number | null
   description?: string | null
-  owner_id?: number | null
+  owner_ids?: number[]
   start_date?: string | null
   end_date?: string | null
 }
@@ -85,7 +85,14 @@ export interface ActivityOut {
 export interface CampaignFunnel {
   pending: number
   contacted: number
+  blocked: number
   total: number
+}
+
+export interface BulkStatusUpdate {
+  contact_ids: number[]
+  status: string
+  notes?: string | null
 }
 
 export interface CommitteeSimple {
@@ -123,6 +130,10 @@ export async function updateCampaign(id: number, data: CampaignUpdate) {
   return res.data
 }
 
+export async function deleteCampaign(id: number) {
+  await apiClient.delete(`/campaigns/${id}`)
+}
+
 export async function getCampaignFunnel(id: number) {
   const res = await apiClient.get<CampaignFunnel>(`/campaigns/${id}/funnel`)
   return res.data
@@ -156,6 +167,17 @@ export async function updateContactStatus(
 ) {
   const res = await apiClient.patch<ContactOut>(
     `/campaigns/${campaignId}/contacts/${contactId}/status`,
+    data,
+  )
+  return res.data
+}
+
+export async function bulkUpdateContactStatus(
+  campaignId: number,
+  data: BulkStatusUpdate,
+) {
+  const res = await apiClient.patch<{ updated: number }>(
+    `/campaigns/${campaignId}/contacts/bulk-status`,
     data,
   )
   return res.data

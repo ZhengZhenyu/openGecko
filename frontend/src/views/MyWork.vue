@@ -48,8 +48,8 @@
           @click="goToDetail(item)"
         >
           <div class="urgent-item-left">
-            <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : 'event-task-badge'">
-              {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : '活动任务' }}
+                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : item.type === 'campaign_task' ? 'campaign-task-badge' : 'event-task-badge'">
+              {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : item.type === 'campaign_task' ? '关怀任务' : '活动任务' }}
             </span>
             <span class="urgent-item-title">{{ item.title }}</span>
           </div>
@@ -77,6 +77,7 @@
         <el-radio-button value="meeting">会议</el-radio-button>
         <el-radio-button value="event_task">活动任务</el-radio-button>
         <el-radio-button value="checklist_item">清单项</el-radio-button>
+        <el-radio-button value="campaign_task">关怀任务</el-radio-button>
       </el-radio-group>
       <div class="filter-sort">
         <el-switch
@@ -107,8 +108,8 @@
             <span class="stat-dot" :class="statusDotClass(item.work_status)"></span>
             <div class="item-content">
               <div class="item-title-row">
-                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : 'event-task-badge'">
-                  {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : '活动任务' }}
+                <span class="count-badge" :class="item.type === 'content' ? 'content-badge' : item.type === 'meeting' ? 'meeting-badge' : item.type === 'checklist_item' ? 'checklist-item-badge' : item.type === 'campaign_task' ? 'campaign-task-badge' : 'event-task-badge'">
+                  {{ item.type === 'content' ? '内容' : item.type === 'meeting' ? '会议' : item.type === 'checklist_item' ? '清单项' : item.type === 'campaign_task' ? '关怀任务' : '活动任务' }}
                 </span>
                 <span class="item-title">{{ item.title }}</span>
               </div>
@@ -201,7 +202,17 @@ const allItems = computed(() => {
     scheduled_at: c.due_date,
     event_id: c.event_id,
   }))
-  return [...data.value.contents, ...data.value.meetings, ...eventTasks, ...checklistItems]
+  const campaignTaskItems: Item[] = (data.value.campaign_tasks || []).map((t: any) => ({
+    id: t.id,
+    type: 'campaign_task',
+    title: t.title,
+    work_status: t.status === 'completed' ? 'completed' : t.status === 'in_progress' ? 'in_progress' : 'planning',
+    creator_name: t.campaign_name || '',
+    assignee_count: 0,
+    updated_at: t.deadline || new Date().toISOString(),
+    scheduled_at: t.deadline,
+  }))
+  return [...data.value.contents, ...data.value.meetings, ...eventTasks, ...checklistItems, ...campaignTaskItems]
 })
 
 const filteredItems = computed(() => {
@@ -239,6 +250,7 @@ const totalPlanning = computed(() => {
     + data.value.meeting_stats.planning
     + (data.value.event_task_stats?.planning ?? 0)
     + (data.value.checklist_item_stats?.planning ?? 0)
+    + (data.value.care_contact_stats?.planning ?? 0)
 })
 const totalInProgress = computed(() => {
   if (!data.value) return 0
@@ -246,6 +258,7 @@ const totalInProgress = computed(() => {
     + data.value.meeting_stats.in_progress
     + (data.value.event_task_stats?.in_progress ?? 0)
     + (data.value.checklist_item_stats?.in_progress ?? 0)
+    + (data.value.care_contact_stats?.in_progress ?? 0)
 })
 const totalCompleted = computed(() => {
   if (!data.value) return 0
@@ -253,6 +266,7 @@ const totalCompleted = computed(() => {
     + data.value.meeting_stats.completed
     + (data.value.event_task_stats?.completed ?? 0)
     + (data.value.checklist_item_stats?.completed ?? 0)
+    + (data.value.care_contact_stats?.completed ?? 0)
 })
 const totalOverdue = computed(() => {
   const now = Date.now()
@@ -335,6 +349,8 @@ const goToDetail = (item: Item) => {
     router.push(`/meetings/${item.id}`)
   } else if (item.type === 'event_task' || item.type === 'checklist_item') {
     router.push(`/events/${item.event_id}`)
+  } else if (item.type === 'campaign_task') {
+    router.push('/campaigns')
   }
 }
 
@@ -567,6 +583,11 @@ onMounted(() => loadData())
 .checklist-item-badge {
   background: #f5f3ff;
   color: #6d28d9;
+}
+
+.campaign-task-badge {
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .event-task-status {

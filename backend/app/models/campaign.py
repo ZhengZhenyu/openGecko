@@ -13,9 +13,9 @@ class Campaign(Base):
     name = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
     type = Column(String(50), nullable=False)          # promotion / care / invitation / survey
-    status = Column(String(50), nullable=False, default="draft")  # draft / active / completed / archived
+    status = Column(String(50), nullable=False, default="active")  # active / completed
     target_count = Column(Integer, nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    owner_ids = Column(JSON, nullable=True, default=list)   # list[int] — 多责任人
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)

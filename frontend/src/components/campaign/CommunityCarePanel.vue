@@ -27,7 +27,9 @@
           </el-button>
         </div>
       </div>
-      <p class="import-hint">关怀对象总数：<strong>{{ total }}</strong> 人</p>
+      <div class="import-meta">
+        <p class="import-hint">关怀对象总数：<strong>{{ total }}</strong> 人</p>
+      </div>
     </div>
 
     <!-- 联系人列表 -->
@@ -44,6 +46,7 @@
         :loading="loading"
         @follow-up="openFollowUp"
         @status-change="handleStatusChange"
+        @batch-status-change="handleBatchStatus"
         @page-change="onPageChange"
         @status-filter="onStatusFilter"
       />
@@ -123,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download, Document, Upload, Plus } from '@element-plus/icons-vue'
 import {
@@ -133,6 +136,8 @@ import {
   listAvailableCommittees,
   importFromCommittees,
   importFromCsv,
+  updateCampaign,
+  bulkUpdateContactStatus,
 } from '../../api/campaign'
 import type { CampaignDetail, CampaignFunnel, ContactOut, CommitteeSimple } from '../../api/campaign'
 import ContactsTable from './ContactsTable.vue'
@@ -149,6 +154,15 @@ const page = ref(1)
 const pageSize = 20
 const statusFilter = ref('')
 const localFunnel = ref<CampaignFunnel | null>(null)
+
+// 批量状态更新
+async function handleBatchStatus(contactIds: number[], status: string) {
+  try {
+    const r = await bulkUpdateContactStatus(props.campaign.id, { contact_ids: contactIds, status })
+    ElMessage.success(`已批量更新 ${r.updated} 条记录`)
+    loadContacts()
+  } catch { ElMessage.error('批量更新失败') }
+}
 
 // 委员会导入
 const showCommitteeImport = ref(false)
@@ -289,7 +303,7 @@ function downloadTemplate() {
 
 onMounted(() => {
   loadContacts()
-  // 预加载委员会列表
+  // 预加载委员会列表 + 社区成员
   if (props.campaign.community_id) {
     listAvailableCommittees(props.campaign.id)
       .then((list) => { availableCommittees.value = list })
@@ -336,10 +350,32 @@ onMounted(() => {
   align-items: center;
 }
 
+.import-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .import-hint {
   margin: 0;
   font-size: 13px;
   color: #64748b;
+}
+
+.owner-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.owner-label {
+  color: #94a3b8;
+}
+
+.owner-name {
+  color: #1e293b;
+  font-weight: 500;
 }
 
 .warn-text {

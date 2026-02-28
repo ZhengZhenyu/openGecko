@@ -712,7 +712,7 @@ class TestCampaignTasksInDashboard:
 
         camp = Campaign(
             community_id=test_community.id,
-            owner_id=test_user.id,
+            owner_ids=[test_user.id],
             name="工作台测试活动",
             type="promotion",
             status="active",
@@ -859,7 +859,7 @@ class TestCampaignTasksInDashboard:
         # 创建 CampaignTask 分配给 test_user
         camp = Campaign(
             community_id=test_community.id,
-            owner_id=test_user.id,
+            owner_ids=[test_user.id],
             name="工作负载活动",
             type="promotion",
             status="active",

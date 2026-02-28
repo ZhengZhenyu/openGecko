@@ -240,7 +240,7 @@ def get_community_dashboard(
         db.query(Campaign)
         .filter(
             Campaign.community_id == community_id,
-            Campaign.status.in_(["active", "draft"]),
+            Campaign.status.in_(["active"]),
         )
         .order_by(Campaign.created_at.desc())
         .limit(5)
@@ -248,10 +248,11 @@ def get_community_dashboard(
     )
     recent_campaigns: list[RecentCampaignItem] = []
     for camp in recent_campaigns_raw:
-        owner_name = None
-        if camp.owner_id:
-            owner = db.query(User).filter(User.id == camp.owner_id).first()
-            owner_name = owner.full_name or owner.username if owner else None
+        owner_names: list[str] = []
+        for oid in (camp.owner_ids or []):
+            owner = db.query(User).filter(User.id == oid).first()
+            if owner:
+                owner_names.append(owner.full_name or owner.username)
         recent_campaigns.append(
             RecentCampaignItem(
                 id=camp.id,
@@ -260,7 +261,7 @@ def get_community_dashboard(
                 status=camp.status,
                 start_date=camp.start_date.isoformat() if camp.start_date else None,
                 end_date=camp.end_date.isoformat() if camp.end_date else None,
-                owner_name=owner_name,
+                owner_name=", ".join(owner_names) if owner_names else None,
             )
         )
 

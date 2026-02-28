@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, subqueryload
 
 from app.core.dependencies import get_current_active_superuser, get_current_user, get_db
-from app.models.campaign import Campaign, CampaignTask
+from app.models.campaign import Campaign, CampaignContact, CampaignTask
 from app.models.content import Content, content_assignees
 from app.models.event import ChecklistItem, Event, EventTask
 from app.models.meeting import Meeting, meeting_assignees
@@ -212,6 +212,11 @@ async def get_user_dashboard(
         event_task_stats=_calculate_work_status_stats(my_event_tasks),
         checklist_item_stats=_calculate_work_status_stats(my_checklist_items),
         campaign_task_stats=_calculate_work_status_stats(my_campaign_tasks),
+        care_contact_stats=_calculate_care_contact_stats(
+            db.query(CampaignContact)
+            .filter(CampaignContact.assigned_to_id == current_user.id)
+            .all()
+        ),
         total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks) + len(my_checklist_items) + len(my_campaign_tasks),
     )
 
@@ -457,6 +462,18 @@ async def get_workload_overview(
             if uid in set(user_ids):
                 user_campaign_tasks[uid].append(t)
 
+    # 一次性加载关怀联系人（按 assigned_to_id 分组）
+    all_care_contacts_wl = (
+        db.query(CampaignContact)
+        .filter(CampaignContact.assigned_to_id.isnot(None))
+        .all()
+    )
+    user_care_contacts: dict[int, list] = defaultdict(list)
+    user_id_set = set(user_ids)
+    for c in all_care_contacts_wl:
+        if c.assigned_to_id in user_id_set:
+            user_care_contacts[c.assigned_to_id].append(c)
+
     result = []
     for user in users:
         assigned_contents = user_contents.get(user.id, [])
@@ -464,12 +481,14 @@ async def get_workload_overview(
         assigned_event_tasks = user_event_tasks.get(user.id, [])
         assigned_checklist = user_checklist_items.get(user.id, [])
         assigned_campaign_tasks = user_campaign_tasks.get(user.id, [])
+        assigned_care_contacts = user_care_contacts.get(user.id, [])
 
         content_stats = _calculate_work_status_stats(assigned_contents)
         meeting_stats = _calculate_work_status_stats(assigned_meetings)
         event_task_stats = _calculate_work_status_stats(assigned_event_tasks)
         checklist_item_stats = _calculate_work_status_stats(assigned_checklist)
         campaign_task_stats = _calculate_work_status_stats(assigned_campaign_tasks)
+        care_contact_stats = _calculate_care_contact_stats(assigned_care_contacts)
 
         type_stats = {"contribution": 0, "release_note": 0, "event_summary": 0}
         for content in assigned_contents:
@@ -490,8 +509,9 @@ async def get_workload_overview(
             event_task_stats=event_task_stats,
             checklist_item_stats=checklist_item_stats,
             campaign_task_stats=campaign_task_stats,
+            care_contact_stats=care_contact_stats,
             content_by_type=ContentByTypeStats(**type_stats),
-            total=len(assigned_contents) + len(assigned_meetings) + event_tasks_count + checklist_count + campaign_task_count,
+            total=len(assigned_contents) + len(assigned_meetings) + event_tasks_count + checklist_count + campaign_task_count + len(assigned_care_contacts),
         ))
 
     return WorkloadOverviewResponse(users=result)
@@ -568,3 +588,18 @@ def _map_meeting_status_to_work_status(status: str) -> str:
         'cancelled': 'completed'  # 已取消的会议也算作已完成
     }
     return mapping.get(status, 'planning')
+
+
+def _calculate_care_contact_stats(contacts) -> WorkStatusStats:
+    """统计关怀联系人的工作状态（按 assigned_to_id 分配的联系人）:
+    pending   → planning（待联系）
+    contacted → in_progress（已联系）
+    blocked   → in_progress（阻塞中，仍属于进行中）
+    """
+    stats = WorkStatusStats()
+    for c in contacts:
+        if c.status == "pending":
+            stats.planning += 1
+        elif c.status in ("contacted", "blocked"):
+            stats.in_progress += 1
+    return stats

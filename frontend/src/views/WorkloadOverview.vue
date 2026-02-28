@@ -240,6 +240,26 @@
                 <span class="stat-value overdue-value">{{ user.checklist_item_stats?.overdue ?? 0 }}</span>
               </div>
             </div>
+            <div v-if="careContactTotal(user) > 0" class="stat-group">
+              <div class="stat-group-title">
+                <el-icon :size="14"><User /></el-icon> 关怀跟进
+              </div>
+              <div class="stat-row">
+                <span class="stat-dot planning" />
+                <span class="stat-label">待联系</span>
+                <span class="stat-value">{{ user.care_contact_stats?.planning ?? 0 }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-dot in-progress" />
+                <span class="stat-label">已联系未响应</span>
+                <span class="stat-value">{{ user.care_contact_stats?.in_progress ?? 0 }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-dot completed" />
+                <span class="stat-label">已完成</span>
+                <span class="stat-value">{{ user.care_contact_stats?.completed ?? 0 }}</span>
+              </div>
+            </div>
             <div class="stat-group">
               <div class="stat-group-title">内容类型分布</div>
               <div class="type-tags">
@@ -297,6 +317,7 @@ interface UserWorkloadItem {
   meeting_stats: WorkStatusStats
   event_task_stats: WorkStatusStats
   checklist_item_stats: WorkStatusStats
+  care_contact_stats?: WorkStatusStats
   content_by_type: ContentByTypeStats
   total: number
 }
@@ -342,6 +363,7 @@ const meetingCompleted = (u: UserWorkloadItem) => u.meeting_stats.completed
 const meetingTotal = (u: UserWorkloadItem) => u.meeting_stats.planning + u.meeting_stats.in_progress + u.meeting_stats.completed
 const eventTaskTotal = (u: UserWorkloadItem) => (u.event_task_stats?.planning ?? 0) + (u.event_task_stats?.in_progress ?? 0) + (u.event_task_stats?.completed ?? 0)
 const checklistTotal = (u: UserWorkloadItem) => (u.checklist_item_stats?.planning ?? 0) + (u.checklist_item_stats?.in_progress ?? 0) + (u.checklist_item_stats?.completed ?? 0)
+const careContactTotal = (u: UserWorkloadItem) => (u.care_contact_stats?.planning ?? 0) + (u.care_contact_stats?.in_progress ?? 0) + (u.care_contact_stats?.completed ?? 0)
 const overdueTotal = (u: UserWorkloadItem) => (u.content_stats.overdue || 0) + (u.meeting_stats.overdue || 0) + (u.event_task_stats?.overdue ?? 0) + (u.checklist_item_stats?.overdue ?? 0)
 
 function barWidth(user: UserWorkloadItem, status: string) {

@@ -28,10 +28,8 @@
         </el-option-group>
       </el-select>
       <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 120px" @change="loadCampaigns">
-        <el-option label="草稿" value="draft" />
         <el-option label="进行中" value="active" />
         <el-option label="已完成" value="completed" />
-        <el-option label="已归档" value="archived" />
       </el-select>
     </div>
 
@@ -51,6 +49,13 @@
         <div class="card-header">
           <el-tag :type="typeTagMap[c.type] ?? 'info'" size="small">{{ typeLabel[c.type] ?? c.type }}</el-tag>
           <el-tag :type="statusTagMap[c.status] ?? 'info'" size="small">{{ statusLabel[c.status] ?? c.status }}</el-tag>
+          <el-button
+            link
+            size="small"
+            type="danger"
+            style="margin-left: auto"
+            @click.stop="confirmDelete(c)"
+          >删除</el-button>
         </div>
         <h3 class="campaign-name">{{ c.name }}</h3>
         <p v-if="typeDesc[c.type]" class="campaign-type-desc">{{ typeDesc[c.type] }}</p>
@@ -126,9 +131,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { MagicStick, Plus, User, Calendar } from '@element-plus/icons-vue'
-import { listCampaigns, createCampaign } from '../api/campaign'
+import { listCampaigns, createCampaign, deleteCampaign } from '../api/campaign'
 import type { CampaignListItem, CampaignType } from '../api/campaign'
 import { useAuthStore } from '../stores/auth'
 
@@ -206,9 +211,9 @@ const typeDesc: Record<string, string> = {
   survey: '问卷调研',
 }
 
-const statusLabel: Record<string, string> = { draft: '草稿', active: '进行中', completed: '已完成', archived: '已归档' }
+const statusLabel: Record<string, string> = { active: '进行中', completed: '已完成' }
 const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
-  draft: 'info', active: 'primary', completed: 'success', archived: '',
+  active: 'primary', completed: 'success',
 }
 
 // ─── 数据加载 ──────────────────────────────────────────────────────────────────
@@ -268,6 +273,21 @@ async function handleCreate() {
 }
 
 onMounted(loadCampaigns)
+
+async function confirmDelete(c: CampaignListItem) {
+  try {
+    await ElMessageBox.confirm(
+      `将彺久删除运营活动「${c.name}」及其所有联系人、任务和跟进记录。此操作不可撤销！`,
+      '危险操作 — 删除运营活动',
+      { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'error', confirmButtonClass: 'el-button--danger' },
+    )
+    await deleteCampaign(c.id)
+    ElMessage.success('已删除')
+    loadCampaigns()
+  } catch {
+    // 用户取消或删除失败
+  }
+}
 </script>
 
 <style scoped>
