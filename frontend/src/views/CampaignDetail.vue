@@ -18,6 +18,9 @@
                 <el-button link size="small" @click="startEditInfo">
                   <el-icon><Edit /></el-icon>
                 </el-button>
+                <el-button link size="small" type="danger" @click="confirmDeleteCampaign">
+                  <el-icon><Delete /></el-icon> 删除
+                </el-button>
               </template>
               <template v-else>
                 <el-input v-model="editForm.name" style="width: 300px" />
@@ -85,6 +88,20 @@
                 />
                 <span v-else class="meta-value">{{ campaign.end_date ?? '—' }}</span>
               </div>
+              <div v-if="campaign.community_id" class="meta-item">
+                <span class="meta-label">责任人</span>
+                <template v-if="!editingOwner">
+                  <span class="meta-value">{{ ownerName }}</span>
+                  <el-button link size="small" style="margin-left:4px" @click="startEditOwner">编辑</el-button>
+                </template>
+                <template v-else>
+                  <el-select v-model="pendingOwnerIds" multiple placeholder="选择责任人" size="small" style="width:180px" collapse-tags collapse-tags-tooltip>
+                    <el-option v-for="u in communityUsers" :key="u.id" :label="u.full_name || u.username" :value="u.id" />
+                  </el-select>
+                  <el-button type="primary" size="small" :loading="savingOwner" @click="saveOwner">保存</el-button>
+                  <el-button size="small" @click="editingOwner = false">取消</el-button>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -121,11 +138,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, Edit } from '@element-plus/icons-vue'
-import { getCampaign, getCampaignFunnel, updateCampaign } from '../api/campaign'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, Edit, Delete } from '@element-plus/icons-vue'
+import { getCampaign, getCampaignFunnel, updateCampaign, deleteCampaign } from '../api/campaign'
 import type { CampaignDetail, CampaignFunnel } from '../api/campaign'
+import { getCommunityUsers } from '../api/community'
+import type { CommunityUser } from '../api/community'
 import { useAuthStore } from '../stores/auth'
 import DefaultCampaignPanel from '../components/campaign/DefaultCampaignPanel.vue'
 import CommunityCarePanel from '../components/campaign/CommunityCarePanel.vue'
@@ -133,6 +152,7 @@ import DeveloperCarePanel from '../components/campaign/DeveloperCarePanel.vue'
 import LegacyCampaignPanel from '../components/campaign/LegacyCampaignPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const campaignId = computed(() => Number(route.params.id))
 
@@ -148,6 +168,35 @@ const communityName = computed(() => {
 const loading = ref(false)
 const campaign = ref<CampaignDetail | null>(null)
 const funnel = ref<CampaignFunnel | null>(null)
+
+// ─── 责任人编辑 ────────────────────────────────────────────────────────────────
+const communityUsers = ref<CommunityUser[]>([])
+const editingOwner = ref(false)
+const pendingOwnerIds = ref<number[]>([])
+const savingOwner = ref(false)
+const ownerName = computed(() => {
+  if (!campaign.value?.owner_ids?.length) return '未设置'
+  return campaign.value.owner_ids
+    .map((id) => {
+      const u = communityUsers.value.find((u) => u.id === id)
+      return u ? (u.full_name || u.username) : `用户#${id}`
+    })
+    .join('、')
+})
+function startEditOwner() {
+  pendingOwnerIds.value = [...(campaign.value?.owner_ids ?? [])]
+  editingOwner.value = true
+}
+async function saveOwner() {
+  if (!campaign.value) return
+  savingOwner.value = true
+  try {
+    const updated = await updateCampaign(campaignId.value, { owner_ids: pendingOwnerIds.value })
+    campaign.value = updated
+    editingOwner.value = false
+    ElMessage.success('责任人已更新')
+  } catch { ElMessage.error('保存失败') } finally { savingOwner.value = false }
+}
 
 // ─── 编辑信息 ──────────────────────────────────────────────────────────────────
 const editingInfo = ref(false)
@@ -219,16 +268,28 @@ const typeTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'dange
   survey: 'info',
 }
 const statusLabel: Record<string, string> = {
-  draft: '草稿',
   active: '进行中',
   completed: '已完成',
-  archived: '已归档',
 }
 const statusTagMap: Record<string, '' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
-  draft: 'info',
   active: 'primary',
   completed: 'success',
-  archived: '',
+}
+
+async function confirmDeleteCampaign() {
+  if (!campaign.value) return
+  try {
+    await ElMessageBox.confirm(
+      `将彻底删除运营活动「${campaign.value.name}」及其所有联系人、任务和跟进记录。此操作不可撤销！`,
+      '危险操作 — 删除运营活动',
+      { type: 'error', confirmButtonText: '确认删除', cancelButtonText: '取消' },
+    )
+    await deleteCampaign(campaign.value.id)
+    ElMessage.success('活动已删除')
+    router.push('/campaigns')
+  } catch {
+    /* 用户取消 */
+  }
 }
 
 // ─── 数据加载 ──────────────────────────────────────────────────────────────────
@@ -245,6 +306,11 @@ onMounted(async () => {
     ])
     campaign.value = c
     funnel.value = f
+    if (c.community_id) {
+      getCommunityUsers(c.community_id)
+        .then((users) => { communityUsers.value = users })
+        .catch(() => {})
+    }
   } catch {
     ElMessage.error('加载运营活动失败')
   } finally {

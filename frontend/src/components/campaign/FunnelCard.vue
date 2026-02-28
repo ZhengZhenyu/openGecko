@@ -1,6 +1,6 @@
 <template>
   <div class="funnel-card">
-    <h3 class="funnel-title">转化漏斗</h3>
+    <h3 class="funnel-title">联系进展</h3>
     <div v-if="funnel" class="funnel-list">
       <div v-for="step in steps" :key="step.key" class="funnel-item">
         <div class="funnel-label">
@@ -32,6 +32,7 @@ defineProps<{ funnel: CampaignFunnel | null }>()
 const steps: { key: keyof CampaignFunnel; label: string; color: string }[] = [
   { key: 'pending', label: '待联系', color: '#94a3b8' },
   { key: 'contacted', label: '已联系', color: '#0095ff' },
+  { key: 'blocked', label: '阻塞中', color: '#f59e0b' },
 ]
 </script>
 
@@ -65,7 +66,7 @@ const steps: { key: keyof CampaignFunnel; label: string; color: string }[] = [
   display: flex;
   align-items: center;
   gap: 5px;
-  width: 64px;
+  width: 88px;
   font-size: 12px;
   color: #475569;
   flex-shrink: 0;

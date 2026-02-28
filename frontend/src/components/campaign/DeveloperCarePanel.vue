@@ -11,6 +11,10 @@
         <span class="stat-label">已联系</span>
       </div>
       <div class="stat-item" v-if="localFunnel">
+        <span class="stat-value text-orange">{{ localFunnel.blocked }}</span>
+        <span class="stat-label">阻塞中</span>
+      </div>
+      <div class="stat-item" v-if="localFunnel">
         <span class="stat-value">{{ localFunnel.pending }}</span>
         <span class="stat-label">待联系</span>
       </div>
@@ -93,6 +97,7 @@
         :loading="loading"
         @follow-up="openFollowUp"
         @status-change="handleStatusChange"
+        @batch-status-change="handleBatchStatus"
         @page-change="onPageChange"
         @status-filter="onStatusFilter"
       />
@@ -109,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download, UploadFilled } from '@element-plus/icons-vue'
 import {
@@ -117,6 +122,8 @@ import {
   updateContactStatus,
   getCampaignFunnel,
   importFromCsv,
+  updateCampaign,
+  bulkUpdateContactStatus,
 } from '../../api/campaign'
 import type { CampaignDetail, CampaignFunnel, ContactOut, CsvImportResult } from '../../api/campaign'
 import ContactsTable from './ContactsTable.vue'
@@ -136,6 +143,15 @@ const localFunnel = ref<CampaignFunnel | null>(null)
 const lastImportResult = ref<CsvImportResult | null>(null)
 const showFollowUp = ref(false)
 const activeContact = ref<ContactOut | null>(null)
+
+// 批量状态更新
+async function handleBatchStatus(contactIds: number[], status: string) {
+  try {
+    const r = await bulkUpdateContactStatus(props.campaign.id, { contact_ids: contactIds, status })
+    ElMessage.success(`已批量更新 ${r.updated} 条记录`)
+    loadContacts()
+  } catch { ElMessage.error('批量更新失败') }
+}
 
 // ─── 加载 ─────────────────────────────────────────────────────────────────────
 async function loadContacts() {
@@ -203,7 +219,9 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-onMounted(loadContacts)
+onMounted(() => {
+  loadContacts()
+})
 </script>
 
 <style scoped>
@@ -226,12 +244,26 @@ onMounted(loadContacts)
   display: flex;
   gap: 32px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.owner-stat {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.owner-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
 }
 
 .stat-value {

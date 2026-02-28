@@ -28,11 +28,11 @@ def test_person(db_session: Session, test_community):
 def test_campaign(db_session: Session, test_community, test_user):
     campaign = Campaign(
         community_id=test_community.id,
-        owner_id=test_user.id,
+        owner_ids=[test_user.id],
         name="测试运营活动",
         type="promotion",
         description="测试描述",
-        status="draft",
+        status="active",
     )
     db_session.add(campaign)
     db_session.commit()
@@ -79,11 +79,11 @@ class TestListCampaigns:
         assert resp2.json() == []
 
     def test_list_campaigns_filter_by_status(self, client: TestClient, auth_headers, test_campaign):
-        resp = client.get("/api/campaigns?status=draft", headers=auth_headers)
+        resp = client.get("/api/campaigns?status=active", headers=auth_headers)
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
-        resp2 = client.get("/api/campaigns?status=active", headers=auth_headers)
+        resp2 = client.get("/api/campaigns?status=completed", headers=auth_headers)
         assert resp2.status_code == 200
         assert resp2.json() == []
 
@@ -99,7 +99,7 @@ class TestCreateCampaign:
         data = resp.json()
         assert data["name"] == "新活动"
         assert data["type"] == "care"
-        assert data["status"] == "draft"
+        assert data["status"] == "active"
 
     def test_create_campaign_invalid_type(self, client: TestClient, auth_headers):
         resp = client.post("/api/campaigns", headers=auth_headers, json={
@@ -199,7 +199,7 @@ class TestListContacts:
         assert resp.status_code == 200
         assert resp.json()["total"] == 1
 
-        resp2 = client.get(f"/api/campaigns/{test_campaign.id}/contacts?status=converted", headers=auth_headers)
+        resp2 = client.get(f"/api/campaigns/{test_campaign.id}/contacts?status=blocked", headers=auth_headers)
         assert resp2.status_code == 200
         assert resp2.json()["total"] == 0
 
@@ -365,11 +365,11 @@ class TestNewCampaignTypes:
         assert all(c["type"] == campaign_type for c in data)
 
     def test_create_default_with_owner(self, client: TestClient, auth_headers):
-        """指定 owner_id 应被接受（后端以请求值为准）。"""
+        """指定 owner_ids 应被接受（后端以请求值为准）。"""
         resp = client.post("/api/campaigns", headers=auth_headers, json={
             "name": "指定owner活动",
             "type": "default",
-            "owner_id": 1,
+            "owner_ids": [1],
         })
         assert resp.status_code == 201
 
@@ -394,10 +394,10 @@ def test_committee(db_session: Session, test_community):
 def test_community_care_campaign(db_session: Session, test_community, test_user):
     campaign = Campaign(
         community_id=test_community.id,
-        owner_id=test_user.id,
+        owner_ids=[test_user.id],
         name="社区成员关怀活动",
         type="community_care",
-        status="draft",
+        status="active",
     )
     db_session.add(campaign)
     db_session.commit()
@@ -409,10 +409,10 @@ def test_community_care_campaign(db_session: Session, test_community, test_user)
 def test_campaign_no_community(db_session: Session, test_user):
     campaign = Campaign(
         community_id=None,
-        owner_id=test_user.id,
+        owner_ids=[test_user.id],
         name="无社区活动",
         type="default",
-        status="draft",
+        status="active",
     )
     db_session.add(campaign)
     db_session.commit()
@@ -871,4 +871,83 @@ class TestCampaignTasks:
             f"/api/campaigns/{test_campaign.id}/tasks/99999",
             headers=auth_headers,
         )
+        assert resp.status_code == 404
+
+
+# ─── Bulk Status Update ──────────────────────────────────────────────────────────────────
+
+class TestBulkUpdateContactStatus:
+    def test_bulk_update_success(
+        self, client: TestClient, auth_headers, test_campaign, test_contact
+    ):
+        """PATCH /{cid}/contacts/bulk-status 成功批量更新"""
+        resp = client.patch(
+            f"/api/campaigns/{test_campaign.id}/contacts/bulk-status",
+            headers=auth_headers,
+            json={"contact_ids": [test_contact.id], "status": "contacted"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["updated"] == 1
+        # 验证状态确实已变更
+        check = client.get(
+            f"/api/campaigns/{test_campaign.id}/contacts/{test_contact.id}",
+            headers=auth_headers,
+        )
+        if check.status_code == 200:
+            assert check.json()["status"] == "contacted"
+
+    def test_bulk_update_invalid_status(
+        self, client: TestClient, auth_headers, test_campaign, test_contact
+    ):
+        """PATCH /{cid}/contacts/bulk-status 无效状态返回 400"""
+        resp = client.patch(
+            f"/api/campaigns/{test_campaign.id}/contacts/bulk-status",
+            headers=auth_headers,
+            json={"contact_ids": [test_contact.id], "status": "invalid_status"},
+        )
+        assert resp.status_code == 400
+
+    def test_bulk_update_campaign_not_found(
+        self, client: TestClient, auth_headers, test_contact
+    ):
+        """PATCH /{cid}/contacts/bulk-status 当活动不存在时返回 404"""
+        resp = client.patch(
+            "/api/campaigns/99999/contacts/bulk-status",
+            headers=auth_headers,
+            json={"contact_ids": [test_contact.id], "status": "blocked"},
+        )
+        assert resp.status_code == 404
+
+    def test_bulk_update_empty_ids(
+        self, client: TestClient, auth_headers, test_campaign
+    ):
+        """空列表返回 updated=0"""
+        resp = client.patch(
+            f"/api/campaigns/{test_campaign.id}/contacts/bulk-status",
+            headers=auth_headers,
+            json={"contact_ids": [], "status": "pending"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["updated"] == 0
+
+
+# ─── Delete Campaign ──────────────────────────────────────────────────────────────────────────────
+
+class TestDeleteCampaign:
+    def test_delete_campaign_success(
+        self, client: TestClient, auth_headers, test_campaign
+    ):
+        """删除活动成功返回 204"""
+        resp = client.delete(f"/api/campaigns/{test_campaign.id}", headers=auth_headers)
+        assert resp.status_code == 204
+        # 确认已删除
+        get_resp = client.get(f"/api/campaigns/{test_campaign.id}", headers=auth_headers)
+        assert get_resp.status_code == 404
+
+    def test_delete_campaign_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """删除不存在的活动返回 404"""
+        resp = client.delete("/api/campaigns/99999", headers=auth_headers)
         assert resp.status_code == 404

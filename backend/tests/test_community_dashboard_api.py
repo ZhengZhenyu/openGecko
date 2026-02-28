@@ -393,7 +393,7 @@ class TestCommunityDashboardCoverage:
         """存在 active 活动时 recent_campaigns 中有数据（覆盖 lines 251-255, 402-419）"""
         camp = Campaign(
             community_id=test_community.id,
-            owner_id=test_user.id,
+            owner_ids=[test_user.id],
             name="推广活动",
             type="promotion",
             status="active",
@@ -419,13 +419,13 @@ class TestCommunityDashboardCoverage:
         test_user: User,
         db_session: Session,
     ):
-        """活动有 owner_id 时 owner_name 应填充（覆盖 lines 251-255 owner 分支）"""
+        """活动有 owner_ids 时 owner_name 应填充（覆盖 lines 251-255 owner 分支）"""
         camp = Campaign(
             community_id=test_community.id,
-            owner_id=test_user.id,
+            owner_ids=[test_user.id],
             name="有Owner的活动",
             type="community_care",
-            status="draft",
+            status="active",
         )
         db_session.add(camp)
         db_session.commit()
