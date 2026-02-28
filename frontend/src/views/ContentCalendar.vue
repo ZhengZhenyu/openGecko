@@ -12,20 +12,6 @@
         </el-tag>
       </div>
       <div class="header-actions">
-        <el-select
-          v-model="statusFilter"
-          placeholder="筛选状态"
-          clearable
-          size="default"
-          style="width: 140px; margin-right: 12px"
-          @change="refetchEvents"
-        >
-          <el-option label="全部状态" value="" />
-          <el-option label="草稿" value="draft" />
-          <el-option label="审核中" value="reviewing" />
-          <el-option label="已通过" value="approved" />
-          <el-option label="已发布" value="published" />
-        </el-select>
         <el-button type="primary" :icon="Plus" @click="handleCreateContent()">
           新建内容
         </el-button>
@@ -101,7 +87,6 @@ const calendarRef = ref()
 const unscheduledPanelRef = ref<any>()
 const isDraggingOverPanel = ref(false)
 let draggableInstance: InstanceType<typeof Draggable> | null = null
-const statusFilter = ref('')
 const panelCollapsed = ref(false)
 const loading = ref(false)
 const detailDialogVisible = ref(false)
@@ -239,7 +224,6 @@ async function loadEvents(start: string, end: string) {
     const items = await fetchCalendarEvents({
       start: start.slice(0, 10),
       end: end.slice(0, 10),
-      status: statusFilter.value || undefined,
     })
     // 只取已排期的内容显示在日历上；未排期内容由 loadUnscheduledContent 单独加载
     calendarEvents.value = items.filter((i) => i.scheduled_publish_at)
@@ -258,7 +242,6 @@ async function loadUnscheduledContent() {
       community_id: communityStore.currentCommunityId,
       unscheduled: true,
       page_size: 100,
-      ...(statusFilter.value ? { status: statusFilter.value } : {}),
     })
     unscheduledEvents.value = res.items.map((item) => ({
       id: item.id,
