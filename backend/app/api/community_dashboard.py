@@ -18,6 +18,7 @@ from app.core.logging import get_logger
 from app.core.timezone import utc_now
 from app.database import get_db
 from app.models import Community, User
+from app.models.campaign import Campaign
 from app.models.channel import ChannelConfig
 from app.models.committee import Committee
 from app.models.content import Content
@@ -32,6 +33,7 @@ from app.schemas.community_dashboard import (
     CommunityMetrics,
     CommunityOverviewItem,
     MonthlyTrend,
+    RecentCampaignItem,
     RecentContentItem,
     SuperuserOverviewResponse,
     UpcomingMeetingItem,
@@ -132,6 +134,15 @@ def get_community_dashboard(
         .count()
     )
 
+    active_campaigns_count = (
+        db.query(Campaign)
+        .filter(
+            Campaign.community_id == community_id,
+            Campaign.status == "active",
+        )
+        .count()
+    )
+
     metrics = CommunityMetrics(
         total_contents=total_contents,
         published_contents=published_contents,
@@ -141,6 +152,7 @@ def get_community_dashboard(
         total_members=members_count,
         upcoming_meetings=upcoming_meetings_count,
         active_channels=active_channels_count,
+        active_campaigns=active_campaigns_count,
     )
 
     # ── 2. 发布趋势（近 6 个月）──────────────────────────────────────────
@@ -219,6 +231,37 @@ def get_community_dashboard(
                 work_status=c.work_status or "planning",
                 created_at=c.created_at,
                 owner_name=owner_name,
+            )
+        )
+
+    # ── 4b. 近期运营活动（最近 5 条 active/draft 活动）────────────────
+
+    recent_campaigns_raw = (
+        db.query(Campaign)
+        .filter(
+            Campaign.community_id == community_id,
+            Campaign.status.in_(["active"]),
+        )
+        .order_by(Campaign.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_campaigns: list[RecentCampaignItem] = []
+    for camp in recent_campaigns_raw:
+        owner_names: list[str] = []
+        for oid in (camp.owner_ids or []):
+            owner = db.query(User).filter(User.id == oid).first()
+            if owner:
+                owner_names.append(owner.full_name or owner.username)
+        recent_campaigns.append(
+            RecentCampaignItem(
+                id=camp.id,
+                name=camp.name,
+                type=camp.type,
+                status=camp.status,
+                start_date=camp.start_date.isoformat() if camp.start_date else None,
+                end_date=camp.end_date.isoformat() if camp.end_date else None,
+                owner_name=", ".join(owner_names) if owner_names else None,
             )
         )
 
@@ -408,6 +451,7 @@ def get_community_dashboard(
         channel_stats=channel_stats,
         recent_contents=recent_contents,
         upcoming_meetings=upcoming_meetings,
+        recent_campaigns=recent_campaigns,
         calendar_events=calendar_events,
     )
 

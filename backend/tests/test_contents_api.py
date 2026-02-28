@@ -8,6 +8,7 @@ Endpoints tested:
 - PUT /api/contents/{content_id}
 - DELETE /api/contents/{content_id}
 - PATCH /api/contents/{content_id}/status
+- PATCH /api/contents/{content_id}/schedule
 """
 
 from fastapi.testclient import TestClient
@@ -547,3 +548,255 @@ class TestUpdateContentStatus:
         )
         assert response.status_code == 200
         assert response.json()["status"] == "published"
+
+
+class TestContentSchedule:
+    """Tests for PATCH /api/contents/{content_id}/schedule
+
+    Covers the inline scheduling feature in ContentEdit.vue that allows
+    users to set/clear a scheduled_publish_at directly from the editor,
+    and syncs with the ContentCalendar FullCalendar view.
+    """
+
+    def _make_content(self, db_session: Session, community: Community, owner: User | None = None) -> Content:
+        content = Content(
+            title="Schedule Test Content",
+            content_markdown="# Test",
+            content_html="<h1>Test</h1>",
+            author="Author",
+            community_id=community.id,
+            source_type="contribution",
+        )
+        if owner:
+            content.owner_id = owner.id
+        db_session.add(content)
+        db_session.commit()
+        db_session.refresh(content)
+        return content
+
+    def test_set_schedule_success(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """设置有效排期时间，返回 200 并包含 scheduled_publish_at。"""
+        content = self._make_content(db_session, test_community, owner=test_user)
+        response = client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers=auth_headers,
+            json={"scheduled_publish_at": "2026-06-01T10:00:00"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == content.id
+        assert data["scheduled_publish_at"] is not None
+        assert "2026-06-01" in data["scheduled_publish_at"]
+
+    def test_clear_schedule_success(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """将排期设为 null 可以清除已有排期。"""
+        from datetime import datetime
+        content = self._make_content(db_session, test_community, owner=test_user)
+        content.scheduled_publish_at = datetime(2026, 6, 1, 10, 0, 0)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers=auth_headers,
+            json={"scheduled_publish_at": None},
+        )
+        assert response.status_code == 200
+        assert response.json()["scheduled_publish_at"] is None
+
+    def test_schedule_reflected_in_get(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """排期设置后，GET /contents/{id} 返回一致的 scheduled_publish_at。"""
+        content = self._make_content(db_session, test_community, owner=test_user)
+
+        client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers=auth_headers,
+            json={"scheduled_publish_at": "2026-09-15T09:30:00"},
+        )
+
+        get_resp = client.get(f"/api/contents/{content.id}", headers=auth_headers)
+        assert get_resp.status_code == 200
+        assert "2026-09-15" in (get_resp.json()["scheduled_publish_at"] or "")
+
+    def test_schedule_not_found(
+        self,
+        client: TestClient,
+        test_community: Community,
+        auth_headers: dict,
+    ):
+        """内容不存在时返回 404。"""
+        response = client.patch(
+            "/api/contents/999999/schedule",
+            headers=auth_headers,
+            json={"scheduled_publish_at": "2026-06-01T10:00:00"},
+        )
+        assert response.status_code == 404
+
+    def test_schedule_unauthenticated(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+    ):
+        """未认证请求返回 401。"""
+        content = self._make_content(db_session, test_community)
+        response = client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers={"X-Community-Id": str(test_community.id)},
+            json={"scheduled_publish_at": "2026-06-01T10:00:00"},
+        )
+        assert response.status_code == 401
+
+    def test_schedule_no_permission(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        test_another_community: Community,
+        another_user_auth_headers: dict,
+    ):
+        """无权限用户（非所有者/协作者/管理员）返回 403。"""
+        content = self._make_content(db_session, test_community, owner=test_user)
+        response = client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers=another_user_auth_headers,
+            json={"scheduled_publish_at": "2026-06-01T10:00:00"},
+        )
+        assert response.status_code == 403
+
+    def test_create_content_with_schedule(
+        self,
+        client: TestClient,
+        test_community: Community,
+        auth_headers: dict,
+    ):
+        """POST /contents 支持在创建时包含 scheduled_publish_at（ContentEdit 保存路径）。"""
+        response = client.post(
+            "/api/contents",
+            headers=auth_headers,
+            json={
+                "title": "Scheduled New Content",
+                "content_markdown": "# Hello",
+                "content_html": "",
+                "source_type": "contribution",
+                "author": "Writer",
+                "tags": [],
+                "category": "",
+                "work_status": "planning",
+                "assignee_ids": [],
+                "community_ids": [test_community.id],
+                "scheduled_publish_at": "2026-07-20T08:00:00",
+            },
+        )
+        assert response.status_code in (200, 201)
+        data = response.json()
+        assert data["scheduled_publish_at"] is not None
+        assert "2026-07-20" in data["scheduled_publish_at"]
+
+    def test_update_content_with_schedule(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """PUT /contents/{id} 更新时同样可以修改 scheduled_publish_at（ContentEdit 保存路径）。"""
+        content = self._make_content(db_session, test_community, owner=test_user)
+
+        response = client.put(
+            f"/api/contents/{content.id}",
+            headers=auth_headers,
+            json={
+                "title": "Updated Title",
+                "content_markdown": "# Updated",
+                "content_html": "",
+                "source_type": "contribution",
+                "author": "Writer",
+                "tags": [],
+                "category": "",
+                "work_status": "in_progress",
+                "assignee_ids": [],
+                "community_ids": [test_community.id],
+                "scheduled_publish_at": "2026-08-10T14:00:00",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == "Updated Title"
+        assert data["scheduled_publish_at"] is not None
+        assert "2026-08-10" in data["scheduled_publish_at"]
+
+    def test_update_clears_schedule_when_null(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """PUT /contents/{id} 传 scheduled_publish_at=null 时清除排期。"""
+        from datetime import datetime
+        content = self._make_content(db_session, test_community, owner=test_user)
+        content.scheduled_publish_at = datetime(2026, 8, 10, 14, 0, 0)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/contents/{content.id}",
+            headers=auth_headers,
+            json={
+                "title": "Clear Schedule",
+                "content_markdown": "# Test",
+                "content_html": "",
+                "source_type": "contribution",
+                "author": "Writer",
+                "tags": [],
+                "category": "",
+                "work_status": "planning",
+                "assignee_ids": [],
+                "community_ids": [test_community.id],
+                "scheduled_publish_at": None,
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["scheduled_publish_at"] is None
+
+    def test_schedule_superuser_can_schedule_any(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_community: Community,
+        test_user: User,
+        superuser_auth_headers: dict,
+    ):
+        """超级管理员可以为任意内容设置排期。"""
+        content = self._make_content(db_session, test_community, owner=test_user)
+        response = client.patch(
+            f"/api/contents/{content.id}/schedule",
+            headers=superuser_auth_headers,
+            json={"scheduled_publish_at": "2026-12-31T23:59:00"},
+        )
+        assert response.status_code == 200
+        assert "2026-12-31" in response.json()["scheduled_publish_at"]
+

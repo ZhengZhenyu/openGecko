@@ -131,6 +131,30 @@
           </div>
         </div>
 
+        <!-- 排期 -->
+        <div class="meta-section schedule-section">
+          <div class="meta-section-title">排期</div>
+          <div class="schedule-picker-row">
+            <el-date-picker
+              v-model="scheduledPublishAt"
+              type="datetime"
+              placeholder="选择发布日期和时间"
+              format="YYYY年M月D日 HH:mm"
+              value-format="YYYY-MM-DDTHH:mm:ss"
+              :disabled-date="disabledPastDate"
+              size="small"
+              style="width: 100%"
+              clearable
+              @change="handleScheduleChange"
+            />
+          </div>
+          <div v-if="scheduledPublishAt" class="schedule-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            已排期：{{ formatScheduleDisplay(scheduledPublishAt) }}
+          </div>
+          <div v-else class="schedule-empty">未设置排期</div>
+        </div>
+
         <!-- 工作流 -->
         <div class="meta-section">
           <div class="meta-section-title">工作流</div>
@@ -185,6 +209,7 @@ import {
   fetchContent,
   createContent,
   updateContent,
+  updateContentSchedule,
   uploadCoverImage,
   listCollaborators,
   addCollaborator,
@@ -239,6 +264,7 @@ const assigneeIds = ref<number[]>([])
 const communityIds = ref<number[]>([])
 // 编辑器模式：markdown（默认）或 html（135 等富文本粘贴）
 const editorMode = ref<'markdown' | 'html'>('markdown')
+const scheduledPublishAt = ref<string | null>(null)
 
 onMounted(async () => {
   // Load community members first
@@ -271,6 +297,9 @@ onMounted(async () => {
     coverImageUrl.value = data.cover_image || null
     contentOwnerId.value = data.owner_id
     assigneeIds.value = data.assignee_ids || []
+    scheduledPublishAt.value = data.scheduled_publish_at
+      ? data.scheduled_publish_at.slice(0, 19)
+      : null
     communityIds.value = data.community_ids?.length ? data.community_ids : (data.community_id ? [data.community_id] : [])
 
     // Load collaborators
@@ -342,6 +371,9 @@ async function handleSave() {
       // HTML 模式下清空 markdown，避免发布时走 markdown 转换路径
       content_markdown: editorMode.value === 'html' ? '' : form.value.content_markdown,
       content_html: editorMode.value === 'markdown' ? '' : form.value.content_html,
+      scheduled_publish_at: scheduledPublishAt.value
+        ? new Date(scheduledPublishAt.value).toISOString()
+        : null,
     }
     if (isNew.value) {
       const created = await createContent(payload)
@@ -393,6 +425,28 @@ async function handleTransferOwnership() {
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || '转让所有权失败')
   }
+}
+
+// ─── 排期处理 ───
+async function handleScheduleChange(val: string | null) {
+  if (!contentId.value) return // 新建内容先保存再排期
+  try {
+    const iso = val ? new Date(val).toISOString() : null
+    await updateContentSchedule(contentId.value, iso)
+    ElMessage.success(iso ? '排期已更新，日历已同步' : '排期已清除')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || '排期更新失败')
+  }
+}
+
+function disabledPastDate(date: Date): boolean {
+  return date < new Date(new Date().setHours(0, 0, 0, 0))
+}
+
+function formatScheduleDisplay(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 </script>
 
@@ -703,6 +757,32 @@ async function handleTransferOwnership() {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+/* ── 排期区块 ── */
+.schedule-picker-row {
+  margin-bottom: 8px;
+}
+
+.schedule-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0080e6;
+  background: #eff6ff;
+  border-radius: 6px;
+  padding: 5px 9px;
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.schedule-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
 }
 
 /* ── Element Plus 覆写 ── */
