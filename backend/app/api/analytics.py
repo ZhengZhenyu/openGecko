@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -166,6 +168,42 @@ def update_channel_settings(
         config=masked_config,
         enabled=cfg.enabled,
     )
+
+
+# ── Publish trend ──────────────────────────────────────────────────────
+# 注意：所有具名路由必须在通配路由 /{content_id} 之前注册
+
+@router.get("/trend/daily")
+def get_publish_trend(
+    days: int = 30,
+    community_id: int = Depends(get_current_community),
+    db: Session = Depends(get_db),
+):
+    """
+    获取最近 N 天内每天的发布数量（仅统计 published 状态），用于趋势折线图。
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+    rows = (
+        db.query(
+            func.date(PublishRecord.published_at).label("date"),
+            func.count(PublishRecord.id).label("count"),
+        )
+        .filter(
+            PublishRecord.community_id == community_id,
+            PublishRecord.status == "published",
+            PublishRecord.published_at >= since,
+        )
+        .group_by(func.date(PublishRecord.published_at))
+        .order_by(func.date(PublishRecord.published_at))
+        .all()
+    )
+    # 补齐所有日期（没有发布的天为 0）
+    date_map: dict[str, int] = {str(r.date): r.count for r in rows}
+    result = []
+    for i in range(days):
+        day = (since + timedelta(days=i + 1)).date()
+        result.append({"date": str(day), "count": date_map.get(str(day), 0)})
+    return {"items": result, "days": days}
 
 
 # ── Content analytics ─────────────────────────────────────────────────

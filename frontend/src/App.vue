@@ -90,6 +90,10 @@
             <el-icon><TrendCharts /></el-icon>
             <span>微信阅读统计</span>
           </el-menu-item>
+          <el-menu-item index="/analytics">
+            <el-icon><DataLine /></el-icon>
+            <span>内容分析</span>
+          </el-menu-item>
         </el-sub-menu>
 
         <!-- 活动管理 -->
@@ -100,11 +104,15 @@
           </template>
           <el-menu-item index="/events">
             <el-icon><List /></el-icon>
-            <span>活动列表</span>
+            <span>社区活动</span>
           </el-menu-item>
           <el-menu-item index="/event-templates">
             <el-icon><Document /></el-icon>
             <span>SOP 模板</span>
+          </el-menu-item>
+          <el-menu-item index="/campaigns">
+            <el-icon><MagicStick /></el-icon>
+            <span>Campaign规划</span>
           </el-menu-item>
         </el-sub-menu>
 
@@ -117,10 +125,6 @@
           <el-menu-item index="/people">
             <el-icon><UserFilled /></el-icon>
             <span>人脉管理</span>
-          </el-menu-item>
-          <el-menu-item index="/campaigns">
-            <el-icon><MagicStick /></el-icon>
-            <span>运营活动</span>
           </el-menu-item>
           <el-menu-item index="/ecosystem">
             <el-icon><Share /></el-icon>
@@ -152,6 +156,10 @@
               <el-menu-item index="/workload">
                 <el-icon><TrendCharts /></el-icon>
                 <span>工作量总览</span>
+              </el-menu-item>
+              <el-menu-item index="/audit-logs">
+                <el-icon><List /></el-icon>
+                <span>审计日志</span>
               </el-menu-item>
             </template>
           </el-sub-menu>

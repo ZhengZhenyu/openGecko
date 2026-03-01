@@ -595,7 +595,14 @@ When coverage falls below 80%, prioritize adding tests for:
 - Write commit messages in Chinese
 
 ### Commit Guidelines
-- Do NOT add `Co-Authored-By:` in commit messages
+- If code was generated or significantly assisted by an AI coding tool, add an `Assisted-by:` trailer in the commit message body to indicate which tool was used. For example:
+  ```
+  Assisted-by: GitHub Copilot
+  ```
+  or
+  ```
+  Assisted-by: Claude (Anthropic)
+  ```
 - Make atomic commits (one logical change per commit)
 - Run tests before committing
 - **Run linting before committing** — execute `cd backend && ruff check app/` and fix all errors before creating a commit. CI enforces ruff with `--output-format=github`; any violation will fail the workflow.

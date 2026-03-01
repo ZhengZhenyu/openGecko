@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.models.community import Community
 from app.models.committee import Committee
 from app.models.content import Content
+from app.models.event import ChecklistItem, Event, EventTask
 from app.models.meeting import Meeting
 from app.models.user import User
 
@@ -691,3 +692,215 @@ class TestOverdueStatsCalculation:
         assert len(user_entries) >= 1
         # The overdue user should have exactly 1 overdue content item
         assert user_entries[0]["content_stats"]["overdue"] == 1
+
+
+# ─── CampaignTask 在工作台的覆盖率测试 ──────────────────────────────────────────
+
+class TestCampaignTasksInDashboard:
+    """覆盖 dashboard.py 中未覆盖的 CampaignTask / ChecklistItem 路径。"""
+
+    def test_dashboard_with_campaign_tasks(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """用户被分配运营活动任务时工作台应返回任务列表（覆盖 lines 123-124, 155-156）"""
+        from app.models.campaign import Campaign, CampaignTask
+
+        camp = Campaign(
+            community_id=test_community.id,
+            owner_ids=[test_user.id],
+            name="工作台测试活动",
+            type="promotion",
+            status="active",
+        )
+        db_session.add(camp)
+        db_session.commit()
+        db_session.refresh(camp)
+
+        task = CampaignTask(
+            campaign_id=camp.id,
+            title="工作台测试任务",
+            status="in_progress",
+            priority="high",
+            assignee_ids=[test_user.id],
+        )
+        db_session.add(task)
+        db_session.commit()
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "campaign_tasks" in data
+        assert len(data["campaign_tasks"]) >= 1
+        ct = data["campaign_tasks"][0]
+        assert ct["title"] == "工作台测试任务"
+        assert ct["campaign_name"] == "工作台测试活动"
+
+    def test_dashboard_with_event_task_assigned(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """用户被分配 EventTask 时工作台中应有 event_tasks 且 event_title 填充
+        （覆盖 lines 88-89：event_ids 非空时的额外 Event 名称预查询）"""
+        evt = Event(
+            community_id=test_community.id,
+            title="任务所属活动",
+            event_type="offline",
+            status="planning",
+        )
+        db_session.add(evt)
+        db_session.commit()
+        db_session.refresh(evt)
+
+        et = EventTask(
+            event_id=evt.id,
+            title="个人工作台事件任务",
+            status="not_started",
+            assignee_ids=[test_user.id],
+        )
+        db_session.add(et)
+        db_session.commit()
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "event_tasks" in data
+        assert len(data["event_tasks"]) >= 1
+        assert data["event_tasks"][0]["event_title"] == "任务所属活动"
+
+    def test_dashboard_with_checklist_item_extra_event_lookup(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """有清单项且该清单项所属活动与 EventTask 活动不同时，触发额外事件名称查询
+        （覆盖 lines 88-89）"""
+        # 创建活动以附加清单项（无 EventTask，确保 checklist_event_ids 非空）
+        evt = Event(
+            community_id=test_community.id,
+            title="清单测试活动",
+            event_type="offline",
+            status="planning",
+        )
+        db_session.add(evt)
+        db_session.commit()
+        db_session.refresh(evt)
+
+        item = ChecklistItem(
+            event_id=evt.id,
+            phase="pre",
+            title="清单测试项",
+            assignee_ids=[test_user.id],
+        )
+        db_session.add(item)
+        db_session.commit()
+
+        response = client.get("/api/users/me/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "checklist_items" in data
+        assert len(data["checklist_items"]) >= 1
+        assert data["checklist_items"][0]["event_title"] == "清单测试活动"
+
+    def test_workload_overview_with_campaign_and_event_tasks(
+        self,
+        client: TestClient,
+        superuser_auth_headers: dict,
+        test_community: Community,
+        test_user: User,
+        db_session: Session,
+    ):
+        """工作负载概览中包含运营活动任务与活动清单项统计（覆盖 lines 422, 432-458, 515-551）"""
+        from app.models.campaign import Campaign, CampaignTask
+
+        # 创建 Meeting 并分配给 test_user（覆盖 line 422：meeting_rows 循环）
+        meeting = _create_meeting(db_session, test_community, test_user, "工作负载会议")
+
+        # 创建 EventTask 分配给 test_user
+        evt = Event(
+            community_id=test_community.id,
+            title="工作负载测试活动",
+            event_type="offline",
+            status="planning",
+        )
+        db_session.add(evt)
+        db_session.commit()
+        db_session.refresh(evt)
+
+        et = EventTask(
+            event_id=evt.id,
+            title="工作负载事件任务",
+            status="in_progress",
+            assignee_ids=[test_user.id],
+            end_date=(datetime.utcnow() - timedelta(days=3)).date(),  # 逾期：覆盖 lines 550-551
+        )
+        db_session.add(et)
+
+        # 创建 ChecklistItem 分配给 test_user
+        checklist = ChecklistItem(
+            event_id=evt.id,
+            phase="pre",
+            title="工作负载清单项",
+            assignee_ids=[test_user.id],
+        )
+        db_session.add(checklist)
+
+        # 创建 CampaignTask 分配给 test_user
+        camp = Campaign(
+            community_id=test_community.id,
+            owner_ids=[test_user.id],
+            name="工作负载活动",
+            type="promotion",
+            status="active",
+        )
+        db_session.add(camp)
+        db_session.commit()
+        db_session.refresh(camp)
+
+        ct = CampaignTask(
+            campaign_id=camp.id,
+            title="工作负载活动任务",
+            status="in_progress",
+            priority="medium",
+            assignee_ids=[test_user.id],
+        )
+        db_session.add(ct)
+        db_session.commit()
+
+        response = client.get("/api/users/me/workload-overview", headers=superuser_auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "users" in data
+
+        # 找到 test_user 的条目
+        user_entry = next(
+            (u for u in data["users"] if u["user_id"] == test_user.id), None
+        )
+        assert user_entry is not None, "test_user 应出现在工作负载概览中"
+
+        # campaign_task_stats 应有非零统计
+        ct_stats = user_entry["campaign_task_stats"]
+        assert ct_stats["in_progress"] >= 1
+
+        # event_task_stats 应有非零统计
+        et_stats = user_entry["event_task_stats"]
+        assert et_stats["in_progress"] >= 1
+
+        # checklist_item_stats 应有非零统计
+        cl_stats = user_entry["checklist_item_stats"]
+        assert cl_stats["planning"] >= 1
+
+        # meeting_stats 应有统计（meeting loop line 422）
+        m_stats = user_entry["meeting_stats"]
+        assert m_stats["planning"] >= 1 or m_stats["in_progress"] >= 1

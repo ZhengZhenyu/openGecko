@@ -11,6 +11,7 @@ export interface CommunityMetrics {
   total_members: number
   upcoming_meetings: number
   active_channels: number
+  active_campaigns: number
 }
 
 export interface MonthlyTrend {
@@ -42,6 +43,16 @@ export interface UpcomingMeetingItem {
   status: string
 }
 
+export interface RecentCampaignItem {
+  id: number
+  name: string
+  type: string
+  status: string
+  start_date: string | null
+  end_date: string | null
+  owner_name: string | null
+}
+
 export interface CalendarEvent {
   id: string
   type: string  // "meeting" | "publish" | "member_join"
@@ -58,6 +69,7 @@ export interface CommunityDashboardResponse {
   channel_stats: ChannelStats
   recent_contents: RecentContentItem[]
   upcoming_meetings: UpcomingMeetingItem[]
+  recent_campaigns: RecentCampaignItem[]
   calendar_events: CalendarEvent[]
 }
 

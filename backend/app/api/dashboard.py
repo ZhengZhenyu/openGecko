@@ -7,11 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, subqueryload
 
 from app.core.dependencies import get_current_active_superuser, get_current_user, get_db
+from app.models.campaign import Campaign, CampaignContact, CampaignTask
 from app.models.content import Content, content_assignees
 from app.models.event import ChecklistItem, Event, EventTask
 from app.models.meeting import Meeting, meeting_assignees
 from app.models.user import User
 from app.schemas.dashboard import (
+    AssignedCampaignTask,
     AssignedChecklistItem,
     AssignedEventTask,
     AssignedItem,
@@ -134,6 +136,38 @@ async def get_user_dashboard(
         for c in my_checklist_items
     ]
 
+    # 获取我负责的运营活动任务（Python 层过滤 JSON 数组）
+    all_campaign_tasks = (
+        db.query(CampaignTask)
+        .filter(CampaignTask.assignee_ids.isnot(None))
+        .order_by(CampaignTask.deadline.asc().nullslast())
+        .limit(200)
+        .all()
+    )
+    my_campaign_tasks = [
+        t for t in all_campaign_tasks
+        if current_user.id in (t.assignee_ids or [])
+    ]
+    # 预查询活动名称
+    campaign_ids = list({t.campaign_id for t in my_campaign_tasks})
+    campaign_names: dict[int, str] = {}
+    if campaign_ids:
+        campaigns = db.query(Campaign).filter(Campaign.id.in_(campaign_ids)).all()
+        campaign_names = {c.id: c.name for c in campaigns}
+
+    campaign_task_items = [
+        AssignedCampaignTask(
+            id=t.id,
+            title=t.title,
+            status=t.status,
+            priority=t.priority,
+            deadline=t.deadline,
+            campaign_id=t.campaign_id,
+            campaign_name=campaign_names.get(t.campaign_id),
+        )
+        for t in my_campaign_tasks
+    ]
+
     # 格式化响应数据
     content_items = [
         AssignedItem(
@@ -172,11 +206,18 @@ async def get_user_dashboard(
         meetings=meeting_items,
         event_tasks=event_task_items,
         checklist_items=checklist_items_out,
+        campaign_tasks=campaign_task_items,
         content_stats=content_stats,
         meeting_stats=meeting_stats,
         event_task_stats=_calculate_work_status_stats(my_event_tasks),
         checklist_item_stats=_calculate_work_status_stats(my_checklist_items),
-        total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks) + len(my_checklist_items),
+        campaign_task_stats=_calculate_work_status_stats(my_campaign_tasks),
+        care_contact_stats=_calculate_care_contact_stats(
+            db.query(CampaignContact)
+            .filter(CampaignContact.assigned_to_id == current_user.id)
+            .all()
+        ),
+        total_assigned_items=len(assigned_contents) + len(assigned_meetings) + len(my_event_tasks) + len(my_checklist_items) + len(my_campaign_tasks),
     )
 
 
@@ -409,17 +450,45 @@ async def get_workload_overview(
             if uid in set(user_ids):
                 user_checklist_items[uid].append(c)
 
+    # 一次性加载所有运营活动任务（JSON 过滤在 Python 层做）
+    all_campaign_tasks_wl = (
+        db.query(CampaignTask)
+        .filter(CampaignTask.assignee_ids.isnot(None))
+        .all()
+    )
+    user_campaign_tasks: dict[int, list] = defaultdict(list)
+    for t in all_campaign_tasks_wl:
+        for uid in (t.assignee_ids or []):
+            if uid in set(user_ids):
+                user_campaign_tasks[uid].append(t)
+
+    # 一次性加载关怀联系人（按 assigned_to_id 分组）
+    all_care_contacts_wl = (
+        db.query(CampaignContact)
+        .filter(CampaignContact.assigned_to_id.isnot(None))
+        .all()
+    )
+    user_care_contacts: dict[int, list] = defaultdict(list)
+    user_id_set = set(user_ids)
+    for c in all_care_contacts_wl:
+        if c.assigned_to_id in user_id_set:
+            user_care_contacts[c.assigned_to_id].append(c)
+
     result = []
     for user in users:
         assigned_contents = user_contents.get(user.id, [])
         assigned_meetings = user_meetings.get(user.id, [])
         assigned_event_tasks = user_event_tasks.get(user.id, [])
         assigned_checklist = user_checklist_items.get(user.id, [])
+        assigned_campaign_tasks = user_campaign_tasks.get(user.id, [])
+        assigned_care_contacts = user_care_contacts.get(user.id, [])
 
         content_stats = _calculate_work_status_stats(assigned_contents)
         meeting_stats = _calculate_work_status_stats(assigned_meetings)
         event_task_stats = _calculate_work_status_stats(assigned_event_tasks)
         checklist_item_stats = _calculate_work_status_stats(assigned_checklist)
+        campaign_task_stats = _calculate_work_status_stats(assigned_campaign_tasks)
+        care_contact_stats = _calculate_care_contact_stats(assigned_care_contacts)
 
         type_stats = {"contribution": 0, "release_note": 0, "event_summary": 0}
         for content in assigned_contents:
@@ -429,6 +498,7 @@ async def get_workload_overview(
 
         event_tasks_count = len(assigned_event_tasks)
         checklist_count = len(assigned_checklist)
+        campaign_task_count = len(assigned_campaign_tasks)
 
         result.append(UserWorkloadItem(
             user_id=user.id,
@@ -438,8 +508,10 @@ async def get_workload_overview(
             meeting_stats=meeting_stats,
             event_task_stats=event_task_stats,
             checklist_item_stats=checklist_item_stats,
+            campaign_task_stats=campaign_task_stats,
+            care_contact_stats=care_contact_stats,
             content_by_type=ContentByTypeStats(**type_stats),
-            total=len(assigned_contents) + len(assigned_meetings) + event_tasks_count + checklist_count,
+            total=len(assigned_contents) + len(assigned_meetings) + event_tasks_count + checklist_count + campaign_task_count + len(assigned_care_contacts),
         ))
 
     return WorkloadOverviewResponse(users=result)
@@ -472,6 +544,15 @@ def _calculate_work_status_stats(items) -> WorkStatusStats:
             }
             work_status = _et_map.get(item.status, "planning")
             deadline = item.end_date  # date | None
+        elif isinstance(item, CampaignTask):
+            _ct_map = {
+                "not_started": "planning",
+                "in_progress": "in_progress",
+                "completed": "completed",
+                "blocked": "in_progress",
+            }
+            work_status = _ct_map.get(item.status, "planning")
+            deadline = item.deadline  # date | None
         elif isinstance(item, Meeting):
             work_status = _map_meeting_status_to_work_status(item.status)
             deadline = getattr(item, "scheduled_at", None)
@@ -507,3 +588,18 @@ def _map_meeting_status_to_work_status(status: str) -> str:
         'cancelled': 'completed'  # 已取消的会议也算作已完成
     }
     return mapping.get(status, 'planning')
+
+
+def _calculate_care_contact_stats(contacts) -> WorkStatusStats:
+    """统计关怀联系人的工作状态（按 assigned_to_id 分配的联系人）:
+    pending   → planning（待联系）
+    contacted → in_progress（已联系）
+    blocked   → in_progress（阻塞中，仍属于进行中）
+    """
+    stats = WorkStatusStats()
+    for c in contacts:
+        if c.status == "pending":
+            stats.planning += 1
+        elif c.status in ("contacted", "blocked"):
+            stats.in_progress += 1
+    return stats

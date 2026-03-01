@@ -299,6 +299,7 @@
                   <el-button v-if="fb.status === 'open'" link type="primary" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'in_progress')">处理中</el-button>
                   <el-button v-if="fb.status === 'in_progress'" link type="success" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'closed')">关闭</el-button>
                   <el-button v-if="fb.status === 'closed'" link type="warning" size="small" @click="handleUpdateFeedbackStatus(fb.id, 'open')">重新打开</el-button>
+                  <el-button link type="info" size="small" @click="handleOpenLinkIssue(fb.id)">关联 Issue</el-button>
                 </div>
               </div>
               <p class="feedback-content">{{ fb.content }}</p>
@@ -479,6 +480,40 @@
       </template>
     </el-dialog>
 
+    <!-- Link Issue Dialog -->
+    <el-dialog v-model="showLinkIssueDialog" title="关联 Issue" width="480px" destroy-on-close>
+      <el-form :model="linkIssueForm" label-width="90px">
+        <el-form-item label="平台" required>
+          <el-select v-model="linkIssueForm.platform" style="width: 100%">
+            <el-option label="GitHub" value="github" />
+            <el-option label="Gitee" value="gitee" />
+            <el-option label="GitCode" value="gitcode" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="仓库" required>
+          <el-input v-model="linkIssueForm.repo" placeholder="例：opensourceways/openGecko" />
+        </el-form-item>
+        <el-form-item label="Issue 编号" required>
+          <el-input-number v-model="linkIssueForm.issue_number" :min="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="Issue URL">
+          <el-input v-model="linkIssueForm.issue_url" placeholder="可选，留空将自动生成" />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select v-model="linkIssueForm.issue_type" style="width: 100%">
+            <el-option label="Bug" value="bug" />
+            <el-option label="功能" value="feature" />
+            <el-option label="文档" value="docs" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showLinkIssueDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingIssueLink" @click="handleLinkIssue">关联</el-button>
+      </template>
+    </el-dialog>
+
     <!-- Add Feedback Dialog -->
     <el-dialog v-model="showAddFeedbackDialog" title="记录反馈" width="420px" destroy-on-close>
       <el-form :model="feedbackForm" label-width="80px">
@@ -524,6 +559,7 @@ import {
   listFeedback,
   createFeedback,
   updateFeedback,
+  linkIssue,
   listTasks,
   createTask,
   updateTask,
@@ -565,8 +601,18 @@ const communityUsers = ref<CommunityUser[]>([])
 const showTaskDialog = ref(false)
 const editingTask = ref<EventTask | null>(null)
 const showAddFeedbackDialog = ref(false)
+const showLinkIssueDialog = ref(false)
+const linkingFeedbackId = ref<number | null>(null)
 const savingTask = ref(false)
 const savingFeedback = ref(false)
+const savingIssueLink = ref(false)
+const linkIssueForm = ref({
+  platform: 'github',
+  repo: '',
+  issue_number: 1,
+  issue_url: '',
+  issue_type: 'other',
+})
 
 // Checklist item dialog
 const showChecklistItemDialog = ref(false)
@@ -970,6 +1016,41 @@ async function handleAddFeedback() {
     ElMessage.error('保存失败')
   } finally {
     savingFeedback.value = false
+  }
+}
+
+function handleOpenLinkIssue(fid: number) {
+  linkingFeedbackId.value = fid
+  linkIssueForm.value = { platform: 'github', repo: '', issue_number: 1, issue_url: '', issue_type: 'other' }
+  showLinkIssueDialog.value = true
+}
+
+async function handleLinkIssue() {
+  if (!eventId.value || !linkingFeedbackId.value) return
+  if (!linkIssueForm.value.repo.trim()) { ElMessage.warning('请填写仓库'); return }
+  savingIssueLink.value = true
+  try {
+    // Auto-generate URL if not provided
+    let url = linkIssueForm.value.issue_url.trim()
+    if (!url) {
+      const base: Record<string, string> = { github: 'https://github.com', gitee: 'https://gitee.com', gitcode: 'https://gitcode.com' }
+      url = `${base[linkIssueForm.value.platform] ?? 'https://github.com'}/${linkIssueForm.value.repo}/issues/${linkIssueForm.value.issue_number}`
+    }
+    const newLink = await linkIssue(eventId.value, linkingFeedbackId.value, {
+      platform: linkIssueForm.value.platform,
+      repo: linkIssueForm.value.repo,
+      issue_number: linkIssueForm.value.issue_number,
+      issue_url: url,
+      issue_type: linkIssueForm.value.issue_type,
+    })
+    const idx = feedback.value.findIndex(f => f.id === linkingFeedbackId.value)
+    if (idx !== -1) feedback.value[idx].issue_links.push(newLink)
+    showLinkIssueDialog.value = false
+    ElMessage.success('Issue 已关联')
+  } catch {
+    ElMessage.error('关联失败')
+  } finally {
+    savingIssueLink.value = false
   }
 }
 

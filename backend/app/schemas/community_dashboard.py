@@ -11,7 +11,7 @@ from pydantic import BaseModel
 # ── 指标卡片 ──────────────────────────────────────────────────────────
 
 class CommunityMetrics(BaseModel):
-    """工作台 8 项核心指标"""
+    """工作台核心指标"""
     # 内容指标
     total_contents: int = 0
     published_contents: int = 0
@@ -22,6 +22,8 @@ class CommunityMetrics(BaseModel):
     total_members: int = 0
     upcoming_meetings: int = 0
     active_channels: int = 0
+    # 运营活动
+    active_campaigns: int = 0
 
 
 # ── 趋势图 ──────────────────────────────────────────────────────────
@@ -67,6 +69,21 @@ class UpcomingMeetingItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── 近期运营活动 ─────────────────────────────────────────────────────
+
+class RecentCampaignItem(BaseModel):
+    """社区工作台运营活动列表项"""
+    id: int
+    name: str
+    type: str
+    status: str
+    start_date: str | None = None
+    end_date: str | None = None
+    owner_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # ── 日历事件 ────────────────────────────────────────────────────────
 
 class CalendarEvent(BaseModel):
@@ -103,6 +120,7 @@ class CommunityDashboardResponse(BaseModel):
     # 工作队列
     recent_contents: list[RecentContentItem] = []
     upcoming_meetings: list[UpcomingMeetingItem] = []
+    recent_campaigns: list[RecentCampaignItem] = []
 
     # 日历事件（近 30 天 + 未来 60 天）
     calendar_events: list[CalendarEvent] = []

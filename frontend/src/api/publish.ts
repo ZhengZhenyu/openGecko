@@ -72,6 +72,11 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   return data
 }
 
+export async function getPublishTrend(days = 30): Promise<{ items: { date: string; count: number }[]; days: number }> {
+  const { data } = await api.get('/analytics/trend/daily', { params: { days } })
+  return data
+}
+
 export async function getChannelConfigs(): Promise<ChannelConfig[]> {
   const { data } = await api.get('/analytics/settings/channels')
   return data
