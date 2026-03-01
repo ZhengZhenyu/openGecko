@@ -57,3 +57,4 @@ class User(Base):
         back_populates="assignees",
     )
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

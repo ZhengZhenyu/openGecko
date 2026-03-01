@@ -26,6 +26,7 @@ from app.api import (
     event_templates,
     events,
     meetings,
+    notifications,
     people,
     publish,
     upload,
@@ -201,6 +202,7 @@ if settings.ENABLE_INSIGHTS_MODULE:
     app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
     app.include_router(insights_router.router, prefix="/api/insights", tags=["Insights"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])

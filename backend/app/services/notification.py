@@ -5,11 +5,17 @@ from html import escape
 
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.core.timezone import utc_now
 from app.models.community import Community
 from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
+from app.models.notification import NotificationType
+from app.models.user import User
 from app.services.email import EmailAttachment, EmailMessage, get_sender_info, get_smtp_config, send_email
 from app.services.ics import build_meeting_ics
+from app.services.notify import create_notification
+
+logger = get_logger(__name__)
 
 
 def send_meeting_reminder(db: Session, reminder_id: int) -> MeetingReminder:
@@ -89,7 +95,32 @@ def send_meeting_reminder(db: Session, reminder_id: int) -> MeetingReminder:
         reminder.error_message = f"Error: {str(exc)}"
 
     db.commit()
+
+    # 站内通知：无论邮件是否成功，均为有账号的与会者创建站内提醒
+    _create_in_app_reminders(db, meeting, recipient_emails)
+
     return reminder
+
+
+def _create_in_app_reminders(db: Session, meeting: Meeting, recipient_emails: list[str]) -> None:
+    """根据与会者邮件列表查找系统用户，并创建站内会议提醒通知。"""
+    if not recipient_emails:
+        return
+    time_str = meeting.scheduled_at.strftime("%m-%d %H:%M")
+    users = db.query(User).filter(User.email.in_(recipient_emails)).all()
+    for user in users:
+        try:
+            create_notification(
+                db,
+                user_id=user.id,
+                ntype=NotificationType.MEETING_REMINDER,
+                title=f"会议即将开始：{meeting.title}",
+                body=f"开始时间：{time_str}，时长 {meeting.duration} 分钟",
+                resource_type="meeting",
+                resource_id=meeting.id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("创建会议站内提醒失败", extra={"user_id": user.id, "error": str(exc)})
 
 
 def _build_text_body(meeting: Meeting, community: Community) -> str:

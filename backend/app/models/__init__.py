@@ -17,6 +17,7 @@ from app.models.event import (
     IssueLink,
 )
 from app.models.meeting import Meeting, MeetingParticipant, MeetingReminder
+from app.models.notification import Notification, NotificationType
 from app.models.password_reset import PasswordResetToken
 from app.models.people import CommunityRole, PersonProfile
 from app.models.publish_record import PublishRecord
@@ -56,4 +57,6 @@ __all__ = [
     "EcosystemProject",
     "EcosystemContributor",
     "EcosystemSnapshot",
+    "Notification",
+    "NotificationType",
 ]

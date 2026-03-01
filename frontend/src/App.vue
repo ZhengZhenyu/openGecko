@@ -184,6 +184,50 @@
       <el-header class="app-header">
         <community-switcher v-if="showCommunitySwitcher" />
         <div class="header-right">
+          <!-- 通知铃铛 -->
+          <el-popover
+            v-model:visible="notifPopoverVisible"
+            placement="bottom-end"
+            :width="360"
+            trigger="click"
+            @show="onBellClick"
+          >
+            <template #reference>
+              <div class="notif-bell" :class="{ 'has-unread': notifStore.unreadCount > 0 }">
+                <el-icon size="18"><Bell /></el-icon>
+                <span v-if="notifStore.unreadCount > 0" class="notif-badge">
+                  {{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}
+                </span>
+              </div>
+            </template>
+            <div class="notif-panel">
+              <div class="notif-panel-header">
+                <span class="notif-panel-title">通知</span>
+                <el-button text size="small" @click="onMarkAllRead">全部已读</el-button>
+              </div>
+              <div v-if="notifStore.loading" class="notif-panel-empty">
+                <el-icon class="is-loading"><Loading /></el-icon>
+              </div>
+              <div v-else-if="notifStore.notifications.length === 0" class="notif-panel-empty">暂无通知</div>
+              <div v-else class="notif-list">
+                <div
+                  v-for="n in notifStore.notifications"
+                  :key="n.id"
+                  class="notif-item"
+                  :class="{ unread: !n.is_read }"
+                  @click="onNotifClick(n)"
+                >
+                  <div class="notif-item-dot" v-if="!n.is_read"></div>
+                  <div class="notif-item-content">
+                    <div class="notif-item-title">{{ n.title }}</div>
+                    <div v-if="n.body" class="notif-item-body">{{ n.body }}</div>
+                    <div class="notif-item-time">{{ formatAgo(n.created_at) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-popover>
+
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-icon><User /></el-icon>
@@ -214,19 +258,54 @@ import {
   Document, Promotion, Setting, Tools,
   OfficeBuilding, UserFilled, User, Stamp, DataLine, Avatar,
   Calendar, List, Checked, TrendCharts, House,
-  Flag, Connection, MagicStick, Share,
+  Flag, Connection, MagicStick, Share, Bell, Loading,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useCommunityStore } from './stores/community'
 import { useFeaturesStore } from './stores/features'
+import { useNotificationStore } from './stores/notifications'
 import { getUserInfo } from './api/auth'
 import CommunitySwitcher from './components/CommunitySwitcher.vue'
+import type { Notification } from './api/notifications'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
 const featuresStore = useFeaturesStore()
+const notifStore = useNotificationStore()
+
+// 通知面板
+const notifPopoverVisible = ref(false)
+
+function onBellClick() {
+  notifStore.fetchNotifications()
+}
+
+function formatAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return '刚刚'
+  if (mins < 60) return `${mins} 分钟前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  return `${days} 天前`
+}
+
+function onNotifClick(n: Notification) {
+  notifStore.markAsRead(n.id)
+  notifPopoverVisible.value = false
+  if (n.resource_type === 'meeting' && n.resource_id) {
+    router.push(`/meetings/${n.resource_id}`)
+  } else if (n.resource_type === 'event_task') {
+    router.push('/events')
+  }
+}
+
+function onMarkAllRead() {
+  notifStore.markAllAsRead()
+}
 
 const user = computed(() => authStore.user)
 const isSuperuser = computed(() => authStore.isSuperuser)
@@ -267,6 +346,7 @@ const showCommunitySwitcher = computed(() => {
 
 onMounted(async () => {
   if (authStore.isAuthenticated) {
+    notifStore.startPolling()
     // Always fetch user info and communities to ensure they're up to date
     if (!authStore.user || authStore.communities.length === 0) {
       try {
@@ -290,6 +370,7 @@ onMounted(async () => {
 
 function handleCommand(command: string) {
   if (command === 'logout') {
+    notifStore.stopPolling()
     authStore.clearAuth()
     router.push('/login')
   } else if (command === 'profile') {
@@ -444,6 +525,124 @@ body {
 
 .user-info:hover {
   color: #0095ff;
+}
+
+/* ── 通知铃铛 ─────────────────────────── */
+.notif-bell {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.notif-bell:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.notif-bell.has-unread {
+  color: #0095ff;
+}
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* ── 通知面板 ─────────────────────────── */
+.notif-panel {
+  padding: 0;
+}
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.notif-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.notif-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  color: #94a3b8;
+  font-size: 13px;
+  gap: 6px;
+}
+.notif-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.12s;
+}
+.notif-item:hover {
+  background: #f8fafc;
+}
+.notif-item.unread {
+  background: #eff6ff;
+}
+.notif-item.unread:hover {
+  background: #dbeafe;
+}
+.notif-item-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0095ff;
+  margin-top: 6px;
+}
+.notif-item-content {
+  flex: 1;
+  min-width: 0;
+}
+.notif-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-item-body {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-item-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
 }
 
 .app-main {
