@@ -90,3 +90,6 @@ export const listContributors = (pid: number, params?: {
 
 export const importContributorToPeople = (pid: number, handle: string) =>
   apiClient.post<{ action: string; person_id: number }>(`/ecosystem/${pid}/contributors/${handle}/import-person`).then(r => r.data)
+
+export const deleteProject = (pid: number) =>
+  apiClient.delete(`/ecosystem/${pid}`)

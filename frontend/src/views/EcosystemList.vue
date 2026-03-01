@@ -26,10 +26,27 @@
         @click="$router.push(`/ecosystem/${p.id}`)"
       >
         <div class="card-top">
-          <el-tag size="small" :type="p.platform === 'github' ? 'success' : 'info'">
-            {{ p.platform }}
-          </el-tag>
-          <el-tag v-if="!p.is_active" size="small" type="danger">已停用</el-tag>
+          <div class="card-tags">
+            <el-tag size="small" :type="p.platform === 'github' ? 'success' : 'info'">
+              {{ p.platform }}
+            </el-tag>
+            <el-tag v-if="!p.is_active" size="small" type="danger">已停用</el-tag>
+          </div>
+          <el-dropdown trigger="click" @command="handleCommand(p, $event)">
+            <el-button size="small" text class="card-action-btn" @click.stop>
+              <el-icon><MoreFilled /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="edit">
+                  <el-icon><EditPen /></el-icon>编辑
+                </el-dropdown-item>
+                <el-dropdown-item command="delete" class="danger-item">
+                  <el-icon><Delete /></el-icon>删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
         <h3 class="project-name">{{ p.name }}</h3>
         <p class="project-repo">{{ p.org_name }}{{ p.repo_name ? `/${p.repo_name}` : '' }}</p>
@@ -91,23 +108,59 @@
         <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- Edit Dialog -->
+    <el-dialog v-model="showEditDialog" title="编辑项目" width="480px" destroy-on-close>
+      <el-form :model="editForm" label-width="90px">
+        <el-form-item label="项目名称" required>
+          <el-input v-model="editForm.name" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="editForm.description" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="项目状态">
+          <el-switch v-model="editForm.is_active" active-text="启用" inactive-text="停用" />
+        </el-form-item>
+        <el-divider style="margin: 12px 0" />
+        <el-form-item label="自动采集">
+          <el-switch v-model="editForm.auto_sync_enabled" active-text="开启" inactive-text="关闭" />
+        </el-form-item>
+        <el-form-item v-if="editForm.auto_sync_enabled" label="采集间隔">
+          <el-input-number
+            v-model="editForm.sync_interval_hours"
+            :min="1"
+            :max="720"
+            style="width: 140px"
+          />
+          <span style="margin-left: 8px; color: var(--text-secondary); font-size: 13px">小时（留空使用全局默认）</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditDialog = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSaveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Plus, Connection, Refresh } from '@element-plus/icons-vue'
-import { listProjects, createProject, type EcosystemProject, type ProjectCreateData } from '../api/ecosystem'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Connection, Refresh, MoreFilled, EditPen, Delete } from '@element-plus/icons-vue'
+import {
+  listProjects, createProject, updateProject, deleteProject,
+  type EcosystemProject, type ProjectCreateData,
+} from '../api/ecosystem'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 const communities = computed(() => authStore.communities)
 const loading = ref(false)
 const projects = ref<EcosystemProject[]>([])
+
+// ── Create ──────────────────────────────────────────────────────────────────
 const showCreateDialog = ref(false)
 const creating = ref(false)
-
 const createForm = ref({
   name: '',
   platform: 'github',
@@ -115,6 +168,18 @@ const createForm = ref({
   repo_name: '',
   description: '',
   community_id: null as number | null,
+  auto_sync_enabled: true,
+  sync_interval_hours: null as number | null,
+})
+
+// ── Edit ────────────────────────────────────────────────────────────────────
+const showEditDialog = ref(false)
+const saving = ref(false)
+const editingId = ref<number | null>(null)
+const editForm = ref({
+  name: '',
+  description: '',
+  is_active: true,
   auto_sync_enabled: true,
   sync_interval_hours: null as number | null,
 })
@@ -134,6 +199,13 @@ async function loadProjects() {
   }
 }
 
+// ── 卡片操作分发 ─────────────────────────────────────────────────────────────
+function handleCommand(p: EcosystemProject, cmd: string) {
+  if (cmd === 'edit') openEditDialog(p)
+  else if (cmd === 'delete') handleDelete(p)
+}
+
+// ── 创建 ─────────────────────────────────────────────────────────────────────
 function openCreateDialog() {
   createForm.value = { name: '', platform: 'github', org_name: '', repo_name: '', description: '', community_id: null, auto_sync_enabled: true, sync_interval_hours: null }
   showCreateDialog.value = true
@@ -164,6 +236,65 @@ async function handleCreate() {
     ElMessage.error('添加失败')
   } finally {
     creating.value = false
+  }
+}
+
+// ── 编辑 ─────────────────────────────────────────────────────────────────────
+function openEditDialog(p: EcosystemProject) {
+  editingId.value = p.id
+  editForm.value = {
+    name: p.name,
+    description: p.description || '',
+    is_active: p.is_active,
+    auto_sync_enabled: p.auto_sync_enabled,
+    sync_interval_hours: p.sync_interval_hours,
+  }
+  showEditDialog.value = true
+}
+
+async function handleSaveEdit() {
+  if (!editForm.value.name.trim()) {
+    ElMessage.warning('项目名称不能为空')
+    return
+  }
+  saving.value = true
+  try {
+    const updated = await updateProject(editingId.value!, {
+      name: editForm.value.name,
+      description: editForm.value.description || undefined,
+      is_active: editForm.value.is_active,
+      auto_sync_enabled: editForm.value.auto_sync_enabled,
+      sync_interval_hours: editForm.value.sync_interval_hours || null,
+    })
+    const idx = projects.value.findIndex(x => x.id === editingId.value)
+    if (idx !== -1) projects.value[idx] = { ...projects.value[idx], ...updated }
+    ElMessage.success('项目已更新')
+    showEditDialog.value = false
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── 删除（风险提醒） ──────────────────────────────────────────────────────────
+async function handleDelete(p: EcosystemProject) {
+  try {
+    await ElMessageBox.confirm(
+      `即将永久删除项目「${p.name}」。\n\n⚠️ 此操作不可撤销，将同时清除：\n  • 所有贡献者采集数据\n  • 所有历史快照数据（趋势分析依赖）\n\n请确认是否继续。`,
+      '删除项目',
+      {
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger',
+      }
+    )
+    await deleteProject(p.id)
+    projects.value = projects.value.filter(x => x.id !== p.id)
+    ElMessage.success('项目已删除')
+  } catch {
+    // 用户取消，静默处理
   }
 }
 
@@ -236,8 +367,26 @@ onMounted(loadProjects)
 
 .card-top {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 4px;
+}
+
+.card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-action-btn {
+  color: #94a3b8;
+  padding: 2px 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.project-card:hover .card-action-btn {
+  opacity: 1;
 }
 
 .project-name {
@@ -280,5 +429,15 @@ onMounted(loadProjects)
 
 .sync-time.muted {
   color: #94a3b8;
+}
+</style>
+
+<style>
+/* 删除菜单项全局样式（scoped 无法穿透 el-dropdown teleport） */
+.danger-item {
+  color: #ef4444 !important;
+}
+.danger-item:hover {
+  background-color: #fef2f2 !important;
 }
 </style>
