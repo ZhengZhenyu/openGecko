@@ -82,7 +82,10 @@
                 {{ row.display_name.charAt(0).toUpperCase() }}
               </el-avatar>
               <div class="person-info">
-                <span class="person-name">{{ row.display_name }}</span>
+                <div class="person-name-row">
+                  <span class="person-name">{{ row.display_name }}</span>
+                  <span class="person-id">#{{ row.id }}</span>
+                </div>
                 <span v-if="row.github_handle" class="person-handle">@{{ row.github_handle }}</span>
               </div>
             </div>
@@ -98,6 +101,19 @@
         <el-table-column label="公司 / 组织" prop="company" min-width="150">
           <template #default="{ row }">
             <span class="cell-secondary">{{ row.company ?? '-' }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="所在社区" min-width="160">
+          <template #default="{ row }">
+            <template v-if="row.community_names.length">
+              <span
+                v-for="name in row.community_names"
+                :key="name"
+                class="community-tag"
+              >{{ name }}</span>
+            </template>
+            <span v-else class="cell-secondary">-</span>
           </template>
         </el-table-column>
 
@@ -679,10 +695,20 @@ onMounted(() => loadPeople())
   flex-direction: column;
   gap: 2px;
 }
+.person-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .person-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+.person-id {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 .person-handle {
   font-size: 12px;
@@ -691,6 +717,18 @@ onMounted(() => loadPeople())
 .cell-secondary {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* Community tag */
+.community-tag {
+  display: inline-block;
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 2px 7px;
+  margin: 1px 2px 1px 0;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 500;
 }
 
 /* Source badge */
@@ -735,11 +773,11 @@ onMounted(() => loadPeople())
   font-weight: 500;
   transition: all 0.15s ease;
 }
-:deep(.el-button--primary) {
+:deep(.el-button--primary:not(.is-link)) {
   background: var(--blue);
   border-color: var(--blue);
 }
-:deep(.el-button--primary:hover) {
+:deep(.el-button--primary:not(.is-link):hover) {
   background: #0080e6;
   border-color: #0080e6;
 }

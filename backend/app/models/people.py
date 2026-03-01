@@ -34,6 +34,10 @@ class PersonProfile(Base):
     community_roles = relationship("CommunityRole", back_populates="person", cascade="all, delete-orphan")
     event_attendances = relationship("EventAttendee", back_populates="person")
 
+    @property
+    def community_names(self) -> list[str]:
+        return [r.community_name for r in self.community_roles]
+
 
 class CommunityRole(Base):
     """人脉的社区身份记录"""

@@ -88,6 +88,7 @@ class PersonListOut(BaseModel):
     company: str | None
     source: str
     created_at: datetime
+    community_names: list[str] = []
 
     model_config = {"from_attributes": True}
 

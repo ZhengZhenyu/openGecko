@@ -110,13 +110,42 @@
     </el-dialog>
 
     <!-- Edit Dialog -->
-    <el-dialog v-model="showEditDialog" title="编辑项目" width="480px" destroy-on-close>
+    <el-dialog v-model="showEditDialog" title="编辑项目" width="520px" destroy-on-close>
       <el-form :model="editForm" label-width="90px">
         <el-form-item label="项目名称" required>
           <el-input v-model="editForm.name" />
         </el-form-item>
+        <el-form-item label="平台" required>
+          <el-select v-model="editForm.platform" style="width: 100%">
+            <el-option label="GitHub" value="github" />
+            <el-option label="Gitee" value="gitee" />
+            <el-option label="GitCode" value="gitcode" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="组织名" required>
+          <el-input v-model="editForm.org_name" />
+        </el-form-item>
+        <el-form-item label="仓库名">
+          <el-input v-model="editForm.repo_name" placeholder="留空=整个组织" />
+        </el-form-item>
+        <el-form-item label="关联社区">
+          <el-select v-model="editForm.community_id" placeholder="可选" clearable style="width: 100%">
+            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="editForm.description" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-select
+            v-model="editForm.tags"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="输入后回车添加标签"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="项目状态">
           <el-switch v-model="editForm.is_active" active-text="启用" inactive-text="停用" />
@@ -178,7 +207,12 @@ const saving = ref(false)
 const editingId = ref<number | null>(null)
 const editForm = ref({
   name: '',
+  platform: 'github',
+  org_name: '',
+  repo_name: '' as string | null,
+  community_id: null as number | null,
   description: '',
+  tags: [] as string[],
   is_active: true,
   auto_sync_enabled: true,
   sync_interval_hours: null as number | null,
@@ -244,7 +278,12 @@ function openEditDialog(p: EcosystemProject) {
   editingId.value = p.id
   editForm.value = {
     name: p.name,
+    platform: p.platform,
+    org_name: p.org_name,
+    repo_name: p.repo_name || '',
+    community_id: p.community_id,
     description: p.description || '',
+    tags: [...(p.tags || [])],
     is_active: p.is_active,
     auto_sync_enabled: p.auto_sync_enabled,
     sync_interval_hours: p.sync_interval_hours,
@@ -253,15 +292,20 @@ function openEditDialog(p: EcosystemProject) {
 }
 
 async function handleSaveEdit() {
-  if (!editForm.value.name.trim()) {
-    ElMessage.warning('项目名称不能为空')
+  if (!editForm.value.name.trim() || !editForm.value.org_name.trim()) {
+    ElMessage.warning('项目名称和组织名不能为空')
     return
   }
   saving.value = true
   try {
     const updated = await updateProject(editingId.value!, {
       name: editForm.value.name,
+      platform: editForm.value.platform,
+      org_name: editForm.value.org_name,
+      repo_name: editForm.value.repo_name || null,
+      community_id: editForm.value.community_id || null,
       description: editForm.value.description || undefined,
+      tags: editForm.value.tags,
       is_active: editForm.value.is_active,
       auto_sync_enabled: editForm.value.auto_sync_enabled,
       sync_interval_hours: editForm.value.sync_interval_hours || null,

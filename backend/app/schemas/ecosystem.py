@@ -18,6 +18,10 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     name: str | None = None
+    platform: str | None = None
+    org_name: str | None = None
+    repo_name: str | None = None
+    community_id: int | None = None
     description: str | None = None
     tags: list[str] | None = None
     is_active: bool | None = None
@@ -31,6 +35,9 @@ class ProjectListOut(BaseModel):
     platform: str
     org_name: str
     repo_name: str | None
+    community_id: int | None
+    description: str | None
+    tags: list[str]
     is_active: bool
     last_synced_at: datetime | None
     created_at: datetime

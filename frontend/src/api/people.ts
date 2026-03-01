@@ -23,6 +23,7 @@ export interface PersonListOut {
   company: string | null
   source: string
   created_at: string
+  community_names: string[]
 }
 
 export interface PersonOut {

@@ -6,8 +6,9 @@ export interface EcosystemProject {
   platform: string
   org_name: string
   repo_name: string | null
+  community_id: number | null
   description: string | null
-  tags: string[] | null
+  tags: string[]
   is_active: boolean
   last_synced_at: string | null
   added_by_id: number | null
@@ -58,6 +59,10 @@ export interface ProjectCreateData {
 
 export interface ProjectUpdateData {
   name?: string
+  platform?: string
+  org_name?: string
+  repo_name?: string | null
+  community_id?: number | null
   description?: string
   tags?: string[]
   is_active?: boolean
