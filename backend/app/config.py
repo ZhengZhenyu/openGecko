@@ -118,6 +118,13 @@ class Settings(BaseSettings):
                     "IANA 时区列表: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
     )
 
+    # ── Feature Modules ────────────────────────────────────────────────
+    ENABLE_INSIGHTS_MODULE: bool = Field(
+        default=True,
+        description="启用「洞察与人脉」模块（人脉管理 + 生态洞察）。"
+                    "设为 false 则不加载相关 API 路由，前端自动隐藏对应菜单。",
+    )
+
     # ── Server ─────────────────────────────────────────────────────────
     HOST: str = Field(default="0.0.0.0", description="服务监听地址")
     PORT: int = Field(default=8000, description="服务监听端口")

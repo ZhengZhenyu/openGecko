@@ -177,14 +177,21 @@ app.include_router(committees.router, prefix="/api/committees", tags=["Governanc
 app.include_router(meetings.router, prefix="/api/meetings", tags=["Governance"])
 app.include_router(community_dashboard.router, prefix="/api/communities", tags=["Community Dashboard"])
 app.include_router(wechat_stats.router, prefix="/api/wechat-stats", tags=["WeChat Statistics"])
-app.include_router(people.router, prefix="/api/people", tags=["People"])
+if settings.ENABLE_INSIGHTS_MODULE:
+    app.include_router(people.router, prefix="/api/people", tags=["People"])
+    app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
-app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "app": settings.APP_NAME}
+
+
+@app.get("/api/config/features")
+def get_features():
+    """返回各可选功能模块的开关状态（无需认证，前端启动时拉取）"""
+    return {"insights_module": settings.ENABLE_INSIGHTS_MODULE}

@@ -229,3 +229,80 @@ class TestImportContributorToPeople:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+# ─── Auto Sync Config ─────────────────────────────────────────────────────────
+
+class TestAutoSyncConfig:
+    def test_create_project_default_auto_sync(self, client: TestClient, auth_headers):
+        """创建项目时，auto_sync_enabled 默认为 True，sync_interval_hours 默认为 None"""
+        resp = client.post("/api/ecosystem", headers=auth_headers, json={
+            "name": "默认采集项目",
+            "platform": "github",
+            "org_name": "defaultorg",
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["auto_sync_enabled"] is True
+        assert data["sync_interval_hours"] is None
+
+    def test_create_project_auto_sync_disabled(self, client: TestClient, auth_headers):
+        """创建项目时可以显式关闭自动采集"""
+        resp = client.post("/api/ecosystem", headers=auth_headers, json={
+            "name": "无采集项目",
+            "platform": "github",
+            "org_name": "nosynorg",
+            "auto_sync_enabled": False,
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["auto_sync_enabled"] is False
+        assert data["sync_interval_hours"] is None
+
+    def test_create_project_with_custom_interval(self, client: TestClient, auth_headers):
+        """创建项目时可以指定自定义采集间隔"""
+        resp = client.post("/api/ecosystem", headers=auth_headers, json={
+            "name": "自定义间隔项目",
+            "platform": "github",
+            "org_name": "intervalorg",
+            "auto_sync_enabled": True,
+            "sync_interval_hours": 48,
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["auto_sync_enabled"] is True
+        assert data["sync_interval_hours"] == 48
+
+    def test_update_auto_sync_config(self, client: TestClient, auth_headers, test_project):
+        """PATCH 可以更新 auto_sync_enabled 和 sync_interval_hours"""
+        resp = client.patch(f"/api/ecosystem/{test_project.id}", headers=auth_headers, json={
+            "auto_sync_enabled": False,
+            "sync_interval_hours": 12,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["auto_sync_enabled"] is False
+        assert data["sync_interval_hours"] == 12
+
+    def test_update_auto_sync_reset_interval(self, client: TestClient, auth_headers, test_project):
+        """sync_interval_hours 可以被重置为 None（使用全局默认值）"""
+        # 先设置间隔
+        client.patch(f"/api/ecosystem/{test_project.id}", headers=auth_headers, json={
+            "sync_interval_hours": 24,
+        })
+        # 再重置为 None
+        resp = client.patch(f"/api/ecosystem/{test_project.id}", headers=auth_headers, json={
+            "sync_interval_hours": None,
+        })
+        assert resp.status_code == 200
+        assert resp.json()["sync_interval_hours"] is None
+
+    def test_list_projects_includes_sync_config(self, client: TestClient, auth_headers, test_project):
+        """列表接口也应包含 auto_sync_enabled 和 sync_interval_hours 字段"""
+        resp = client.get("/api/ecosystem", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) >= 1
+        item = next(p for p in data if p["id"] == test_project.id)
+        assert "auto_sync_enabled" in item
+        assert "sync_interval_hours" in item

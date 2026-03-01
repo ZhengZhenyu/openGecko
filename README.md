@@ -212,6 +212,13 @@ SMTP_PORT=587
 SMTP_USER=your-email@example.com
 SMTP_PASSWORD=your-email-password
 SMTP_FROM_EMAIL=noreply@example.com
+
+# （可选）功能模块开关 — 设为 false 则禁用「洞察与人脉」菜单及 API
+# ENABLE_INSIGHTS_MODULE=true
+
+# （可选）生态洞察自动采集 — 启用 collector 服务时填写
+# GITHUB_TOKEN=ghp_xxxx
+# COLLECTOR_SYNC_INTERVAL_HOURS=24
 ```
 
 完整配置说明见 [docs/CONFIGURATION.md](docs/CONFIGURATION.md)。
@@ -235,7 +242,7 @@ openGecko/
 ├── frontend/
 │   └── src/
 │       ├── api/          # Axios 请求模块（自动附加 JWT + X-Community-Id）
-│       ├── stores/       # Pinia 状态（auth、community、user）
+│       ├── stores/       # Pinia 状态（auth、community、user、features）
 │       ├── views/        # 页面组件（21 个）
 │       ├── components/   # 共享组件
 │       └── router/       # Vue Router（含路由守卫）

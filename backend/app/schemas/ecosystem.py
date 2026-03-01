@@ -12,6 +12,8 @@ class ProjectCreate(BaseModel):
     community_id: int | None = None
     description: str | None = None
     tags: list[str] = []
+    auto_sync_enabled: bool = True
+    sync_interval_hours: int | None = None   # None = 使用全局默认值
 
 
 class ProjectUpdate(BaseModel):
@@ -19,6 +21,8 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     tags: list[str] | None = None
     is_active: bool | None = None
+    auto_sync_enabled: bool | None = None
+    sync_interval_hours: int | None = None
 
 
 class ProjectListOut(BaseModel):
@@ -30,6 +34,8 @@ class ProjectListOut(BaseModel):
     is_active: bool
     last_synced_at: datetime | None
     created_at: datetime
+    auto_sync_enabled: bool
+    sync_interval_hours: int | None
 
     model_config = {"from_attributes": True}
 

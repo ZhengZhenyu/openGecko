@@ -129,6 +129,25 @@
             <span class="info-label">状态</span>
             <el-switch v-model="projectActive" @change="toggleActive" />
           </div>
+          <!-- 采集配置 -->
+          <div class="info-divider">自动采集配置</div>
+          <div class="info-item">
+            <span class="info-label">自动采集</span>
+            <el-switch v-model="autoSyncEnabled" @change="saveAutoSync" active-text="开启" inactive-text="关闭" />
+          </div>
+          <div v-if="autoSyncEnabled" class="info-item">
+            <span class="info-label">采集间隔</span>
+            <div style="display: flex; align-items: center; gap: 8px">
+              <el-input-number
+                v-model="syncIntervalHours"
+                :min="1"
+                :max="720"
+                style="width: 130px"
+                @change="saveSyncInterval"
+              />
+              <span style="color: var(--text-secondary); font-size: 13px">小时（留空 = 全局默认）</span>
+            </div>
+          </div>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -157,6 +176,8 @@ const activeTab = ref('contributors')
 const project = ref<EcosystemProject | null>(null)
 const syncing = ref(false)
 const projectActive = ref(true)
+const autoSyncEnabled = ref(true)
+const syncIntervalHours = ref<number | null>(null)
 
 // Contributors
 const contributors = ref<EcosystemContributor[]>([])
@@ -185,6 +206,8 @@ async function loadProject() {
   try {
     project.value = await getProject(pid)
     projectActive.value = project.value?.is_active ?? true
+    autoSyncEnabled.value = project.value?.auto_sync_enabled ?? true
+    syncIntervalHours.value = project.value?.sync_interval_hours ?? null
   } catch {
     ElMessage.error('项目信息加载失败')
   }
@@ -229,6 +252,25 @@ async function toggleActive(val: boolean) {
   } catch {
     projectActive.value = !val
     ElMessage.error('状态更新失败')
+  }
+}
+
+async function saveAutoSync(val: boolean) {
+  try {
+    await updateProject(pid, { auto_sync_enabled: val })
+    ElMessage.success(val ? '自动采集已开启' : '自动采集已关闭')
+  } catch {
+    autoSyncEnabled.value = !val
+    ElMessage.error('设置保存失败')
+  }
+}
+
+async function saveSyncInterval(val: number | null) {
+  try {
+    await updateProject(pid, { sync_interval_hours: val || null })
+    ElMessage.success('采集间隔已保存')
+  } catch {
+    ElMessage.error('设置保存失败')
   }
 }
 
@@ -400,5 +442,16 @@ onBeforeUnmount(() => {
   font-size: 14px;
   color: #1e293b;
   font-weight: 500;
+}
+
+.info-divider {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
 }
 </style>

@@ -208,6 +208,43 @@ services:
       - postgres_data:/var/lib/postgresql/data
 ```
 
+## 可选功能模块
+
+### 洞察与人脉模块
+
+该模块包含「人脉管理」和「生态洞察」功能，相对独立，可按需启用或禁用。
+
+```env
+# 禁用「洞察与人脉」模块（默认 true = 启用）
+ENABLE_INSIGHTS_MODULE=false
+```
+
+关闭后效果：
+- 后端不注册 `/api/people` 和 `/api/ecosystem` 路由（返回 404）
+- 前端侧边栏隐藏「洞察与人脉」菜单
+- 直接访问 `/people`、`/ecosystem` 等 URL 自动跳转至首页
+- 数据库表保留，随时可重新开启
+
+### 生态洞察自动采集服务（可选容器）
+
+需单独启动 `collector` profile：
+
+```bash
+# 启动完整版（含自动采集）
+docker compose --profile collector up -d
+```
+
+相关环境变量：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `GITHUB_TOKEN` | 空 | GitHub Personal Access Token；不填则受 60 req/h 匿名限速 |
+| `GITEE_TOKEN` | 空 | Gitee 私人令牌（可选） |
+| `COLLECTOR_SYNC_INTERVAL_HOURS` | `24` | 全局默认采集间隔（小时），各项目可单独覆盖 |
+| `COLLECTOR_MAX_PROJECTS_PER_RUN` | `20` | 每次运行最多同步项目数，防止触发 API 速率限制 |
+
+各项目的采集间隔可在「生态洞察 → 项目信息」页面单独设置，`null` 表示使用全局默认值。
+
 ## 故障排查
 
 ### 数据库连接失败

@@ -20,6 +20,10 @@ class EcosystemProject(Base):
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     added_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
+    # 采集配置（为独立 collector 服务预留）
+    auto_sync_enabled = Column(Boolean, default=True, nullable=False)
+    # null 表示使用全局默认值（COLLECTOR_SYNC_INTERVAL_HOURS）
+    sync_interval_hours = Column(Integer, nullable=True)
 
     contributors = relationship(
         "EcosystemContributor",
