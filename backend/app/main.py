@@ -36,6 +36,7 @@ from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.database import init_db
 from app.insights import router as insights_router
+from app.services.ecosystem.sync_worker import sync_projects_due
 from app.services.issue_sync import run_issue_sync
 
 # 初始化日志系统
@@ -51,8 +52,9 @@ async def lifespan(app: FastAPI):
     logger.info("openGecko 服务启动", extra={"app": settings.APP_NAME, "debug": settings.DEBUG})
     init_db()
 
-    # 每日 02:00 同步 GitHub Issue 状态（测试环境下跳过）
+    # 定时任务
     try:
+        # 每日 02:00 同步 GitHub Issue 状态
         _scheduler.add_job(
             run_issue_sync,
             trigger="cron",
@@ -61,6 +63,22 @@ async def lifespan(app: FastAPI):
             id="issue_sync",
             replace_existing=True,
         )
+        # 生态采集器（嵌入模式）：每小时检查哪些项目到期
+        if settings.COLLECTOR_EMBEDDED:
+            def _run_ecosystem_sync() -> None:
+                sync_projects_due(settings.GITHUB_TOKEN)
+
+            _scheduler.add_job(
+                _run_ecosystem_sync,
+                trigger="interval",
+                hours=1,
+                id="ecosystem_sync",
+                replace_existing=True,
+            )
+            logger.info("采集器：嵌入模式（每 1h 检查到期项目）")
+        else:
+            logger.info("采集器：独立模式（请单独运行 python run_collector.py）")
+
         _scheduler.start()
         logger.info("APScheduler 已启动")
     except Exception as exc:
