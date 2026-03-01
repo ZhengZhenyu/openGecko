@@ -26,6 +26,7 @@ from app.database import Base
 from app.models import content, channel, publish_record  # noqa: F401
 from app.models import user, community, audit  # noqa: F401
 from app.models import password_reset  # noqa: F401
+from app.models import notification  # noqa: F401
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

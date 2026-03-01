@@ -18,6 +18,7 @@ from app.models.event import (
     FeedbackItem,
     IssueLink,
 )
+from app.models.notification import NotificationType
 from app.schemas.event import (
     ChecklistItemCreate,
     ChecklistItemOut,
@@ -40,6 +41,7 @@ from app.schemas.event import (
     PersonnelConfirmUpdate,
     TaskReorderRequest,
 )
+from app.services.notify import create_notification
 
 router = APIRouter()
 
@@ -470,6 +472,18 @@ def create_task(
     db.commit()
     db.refresh(task)
     task.children = []
+    # 通知：任务被指派（不通知自己）
+    for uid in task.assignee_ids or []:
+        if uid != current_user.id:
+            create_notification(
+                db,
+                user_id=uid,
+                ntype=NotificationType.TASK_ASSIGNED,
+                title=f"你被指派了任务：{task.title}",
+                body=f"活动：{event.title}",
+                resource_type="event_task",
+                resource_id=task.id,
+            )
     return task
 
 
@@ -486,11 +500,28 @@ def update_task(
     ).first()
     if not task:
         raise HTTPException(404, "任务不存在")
+    old_assignee_ids = set(task.assignee_ids or [])
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(task, key, value)
     db.commit()
     db.refresh(task)
     task.children = []
+    # 通知：新增的 assignee（不通知自己）
+    new_assignee_ids = set(task.assignee_ids or [])
+    added_ids = new_assignee_ids - old_assignee_ids
+    if added_ids:
+        event = db.query(Event).filter(Event.id == event_id).first()
+        for uid in added_ids:
+            if uid != current_user.id:
+                create_notification(
+                    db,
+                    user_id=uid,
+                    ntype=NotificationType.TASK_ASSIGNED,
+                    title=f"你被指派了任务：{task.title}",
+                    body=f"活动：{event.title}" if event else None,
+                    resource_type="event_task",
+                    resource_id=task.id,
+                )
     return task
 
 

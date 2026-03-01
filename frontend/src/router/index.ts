@@ -231,6 +231,13 @@ const router = createRouter({
     },
     // Phase 4d 生态洞察路由
     {
+      path: '/insights',
+      name: 'InsightsDashboard',
+      component: () => import('../views/InsightsDashboard.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: insightsGuard,
+    },
+    {
       path: '/ecosystem',
       name: 'EcosystemList',
       component: () => import('../views/EcosystemList.vue'),

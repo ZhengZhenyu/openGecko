@@ -343,3 +343,90 @@ class TestCorporateEndpoints:
         assert resp.status_code == 200
         companies = [c["company"] for c in resp.json()]
         assert "GhostCorp" not in companies
+
+    def test_corporate_no_auth(self, client: TestClient):
+        """/insights/corporate 无鉴权应返回 401。"""
+        resp = client.get("/api/insights/corporate")
+        assert resp.status_code == 401
+
+    def test_corporate_limit(self, client: TestClient, auth_headers, test_project, make_contributor):
+        """limit=1 时最多返回 1 条企业记录。"""
+        make_contributor(test_project, github_handle="lim1", company="LimCorp1", commit_count_90d=10)
+        make_contributor(test_project, github_handle="lim2", company="LimCorp2", commit_count_90d=10)
+        resp = client.get("/api/insights/corporate?limit=1", headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) <= 1
+
+    def test_corporate_commit_share_in_range(
+        self, client: TestClient, auth_headers, test_project, make_contributor
+    ):
+        """commit_share 应在 [0, 1] 范围内，不应是百分比值（> 1）。"""
+        make_contributor(test_project, github_handle="s1", company="ShareCorp", commit_count_90d=60)
+        make_contributor(test_project, github_handle="s2", company="ShareCorp", commit_count_90d=40)
+        resp = client.get("/api/insights/corporate", headers=auth_headers)
+        assert resp.status_code == 200
+        corp = next(c for c in resp.json() if c["company"] == "ShareCorp")
+        for p in corp["projects"]:
+            assert 0.0 <= p["commit_share"] <= 1.0
+
+
+class TestPeopleAuth:
+    """认证与权限边界测试（people 端点）。"""
+
+    def test_people_no_auth(self, client: TestClient):
+        """/insights/people 无鉴权应返回 401。"""
+        resp = client.get("/api/insights/people")
+        assert resp.status_code == 401
+
+    def test_person_detail_no_auth(self, client: TestClient):
+        """/insights/people/{handle} 无鉴权应返回 401。"""
+        resp = client.get("/api/insights/people/anyuser")
+        assert resp.status_code == 401
+
+    def test_list_people_limit(self, client: TestClient, auth_headers, test_project, make_contributor):
+        """limit=1 时最多返回 1 条记录。"""
+        make_contributor(test_project, github_handle="limA", commit_count_90d=20)
+        make_contributor(test_project, github_handle="limB", commit_count_90d=15)
+        resp = client.get("/api/insights/people?limit=1", headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) <= 1
+
+
+class TestTrendsMomentumFilter:
+    """趋势动量筛选的额外覆盖。"""
+
+    def test_filter_growing_momentum(
+        self, client: TestClient, auth_headers, test_project, make_snapshot
+    ):
+        """momentum=growing 过滤时只返回 growing 类项目。"""
+        # 创造 growing 条件：contributors 10 → 11，其余轻微增长
+        make_snapshot(test_project, offset_days=30, stars=100, active_contributors_30d=10, pr_merged_30d=10, commits_30d=20)
+        make_snapshot(test_project, offset_days=0,  stars=108, active_contributors_30d=11, pr_merged_30d=11, commits_30d=21)
+
+        resp = client.get("/api/insights/trends?momentum=growing", headers=auth_headers)
+        assert resp.status_code == 200
+        for item in resp.json():
+            assert item["momentum"] == "growing"
+
+    def test_filter_declining_momentum(
+        self, client: TestClient, auth_headers, test_project, make_snapshot
+    ):
+        """momentum=declining 过滤时只返回 declining 类项目。"""
+        make_snapshot(test_project, offset_days=30, stars=500, active_contributors_30d=20, pr_merged_30d=15, commits_30d=50)
+        make_snapshot(test_project, offset_days=0,  stars=490, active_contributors_30d=13, pr_merged_30d=9,  commits_30d=30)
+
+        resp = client.get("/api/insights/trends?momentum=declining", headers=auth_headers)
+        assert resp.status_code == 200
+        for item in resp.json():
+            assert item["momentum"] == "declining"
+
+    def test_filter_no_match_returns_empty(
+        self, client: TestClient, auth_headers, test_project, make_snapshot
+    ):
+        """当过滤条件与实际动量不符时，返回空列表。"""
+        # 只有一个快照 → insufficient_data
+        make_snapshot(test_project, offset_days=0, stars=100)
+
+        resp = client.get("/api/insights/trends?momentum=accelerating", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
