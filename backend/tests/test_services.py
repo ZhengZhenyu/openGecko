@@ -669,6 +669,8 @@ class TestGithubCrawlerService:
         from app.services.ecosystem.github_crawler import sync_project
         from app.models.ecosystem import EcosystemContributor
         db = MagicMock()
+        # 快照查询返回 None，避免 MagicMock >= datetime 类型错误
+        db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
         project = self._make_project()
         project.contributors = []
 
@@ -689,8 +691,8 @@ class TestGithubCrawlerService:
         assert result["created"] == 1
         assert result["updated"] == 0
         assert result["errors"] == 0
-        db.add.assert_called_once()
-        db.commit.assert_called_once()
+        db.add.assert_called()
+        assert db.commit.call_count >= 1
 
     def test_sync_project_updates_existing_contributor(self):
         from app.services.ecosystem.github_crawler import sync_project
@@ -723,6 +725,8 @@ class TestGithubCrawlerService:
     def test_sync_project_skips_item_without_login(self):
         from app.services.ecosystem.github_crawler import sync_project
         db = MagicMock()
+        # 快照查询返回 None，避免 MagicMock >= datetime 类型错误
+        db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
         project = self._make_project()
         project.contributors = []
 

@@ -95,7 +95,7 @@ def trigger_sync(
     project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
     if not project:
         raise HTTPException(404, "项目不存在")
-    token = getattr(settings, "GITHUB_PAT", None)
+    token = settings.GITHUB_TOKEN
     result = sync_project(db, project, token)
     return result
 

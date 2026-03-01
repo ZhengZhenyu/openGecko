@@ -118,6 +118,29 @@ class Settings(BaseSettings):
                     "IANA 时区列表: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
     )
 
+    # ── GitHub Collector ───────────────────────────────────────────────
+    GITHUB_TOKEN: str | None = Field(
+        default=None,
+        description="GitHub Personal Access Token。格式: ghp_xxxx；不填则受 60 req/h 匿名限速",
+    )
+    COLLECTOR_SYNC_INTERVAL_HOURS: int = Field(
+        default=24,
+        description="项目默认采集间隔（小时）。项目级 sync_interval_hours 字段优先",
+    )
+    COLLECTOR_MAX_WORKERS: int = Field(
+        default=4,
+        description="并发采集线程数",
+    )
+    COLLECTOR_CHECK_INTERVAL_SECONDS: int = Field(
+        default=3600,
+        description="独立采集器主循环检查间隔（秒）。默认 1 小时检查一次哪些项目到期",
+    )
+    COLLECTOR_EMBEDDED: bool = Field(
+        default=True,
+        description="True = 采集器嵌入 FastAPI 进程（APScheduler），适合单节点部署；"
+                    "False = 关闭嵌入调度，由外部 `python run_collector.py` 独立进程接管，适合生产容器化",
+    )
+
     # ── Feature Modules ────────────────────────────────────────────────
     ENABLE_INSIGHTS_MODULE: bool = Field(
         default=True,

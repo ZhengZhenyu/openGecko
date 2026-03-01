@@ -59,8 +59,12 @@ class ContributorOut(BaseModel):
     role: str | None
     commit_count_90d: int | None
     pr_count_90d: int | None
+    review_count_90d: int | None
     star_count: int | None
     followers: int | None
+    company: str | None
+    location: str | None
+    first_contributed_at: datetime | None
     person_id: int | None
     last_synced_at: datetime
 
