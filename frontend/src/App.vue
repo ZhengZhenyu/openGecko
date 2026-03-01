@@ -104,11 +104,15 @@
           </template>
           <el-menu-item index="/events">
             <el-icon><List /></el-icon>
-            <span>活动列表</span>
+            <span>社区活动</span>
           </el-menu-item>
           <el-menu-item index="/event-templates">
             <el-icon><Document /></el-icon>
             <span>SOP 模板</span>
+          </el-menu-item>
+          <el-menu-item index="/campaigns">
+            <el-icon><MagicStick /></el-icon>
+            <span>Campaign规划</span>
           </el-menu-item>
         </el-sub-menu>
 
@@ -121,10 +125,6 @@
           <el-menu-item index="/people">
             <el-icon><UserFilled /></el-icon>
             <span>人脉管理</span>
-          </el-menu-item>
-          <el-menu-item index="/campaigns">
-            <el-icon><MagicStick /></el-icon>
-            <span>运营活动</span>
           </el-menu-item>
           <el-menu-item index="/ecosystem">
             <el-icon><Share /></el-icon>
