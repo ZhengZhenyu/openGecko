@@ -116,8 +116,8 @@
           </el-menu-item>
         </el-sub-menu>
 
-        <!-- 洞察与人脉 -->
-        <el-sub-menu index="insights">
+        <!-- 洞察与人脉（可选模块） -->
+        <el-sub-menu v-if="featuresStore.insightsModule" index="insights">
           <template #title>
             <el-icon><Connection /></el-icon>
             <span>洞察与人脉</span>
@@ -214,6 +214,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/auth'
 import { useCommunityStore } from './stores/community'
+import { useFeaturesStore } from './stores/features'
 import { getUserInfo } from './api/auth'
 import CommunitySwitcher from './components/CommunitySwitcher.vue'
 
@@ -221,6 +222,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
+const featuresStore = useFeaturesStore()
 
 const user = computed(() => authStore.user)
 const isSuperuser = computed(() => authStore.isSuperuser)

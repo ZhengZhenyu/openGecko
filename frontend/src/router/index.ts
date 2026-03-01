@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCommunityStore } from '../stores/community'
+import { useFeaturesStore } from '../stores/features'
+
+function insightsGuard() {
+  if (!useFeaturesStore().insightsModule) return { name: 'Dashboard' }
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -202,12 +207,14 @@ const router = createRouter({
       name: 'People',
       component: () => import('../views/People.vue'),
       meta: { requiresAuth: true },
+      beforeEnter: insightsGuard,
     },
     {
       path: '/people/:id',
       name: 'PeopleDetail',
       component: () => import('../views/PeopleDetail.vue'),
       meta: { requiresAuth: true },
+      beforeEnter: insightsGuard,
     },
     // Phase 4c 运营活动路由
     {
@@ -228,12 +235,14 @@ const router = createRouter({
       name: 'EcosystemList',
       component: () => import('../views/EcosystemList.vue'),
       meta: { requiresAuth: true },
+      beforeEnter: insightsGuard,
     },
     {
       path: '/ecosystem/:id',
       name: 'EcosystemDetail',
       component: () => import('../views/EcosystemDetail.vue'),
       meta: { requiresAuth: true },
+      beforeEnter: insightsGuard,
     },
     // Phase 5 数据分析 & 审计日志
     {

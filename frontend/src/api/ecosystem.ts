@@ -12,6 +12,8 @@ export interface EcosystemProject {
   last_synced_at: string | null
   added_by_id: number | null
   created_at: string
+  auto_sync_enabled: boolean
+  sync_interval_hours: number | null
 }
 
 export interface EcosystemContributor {
@@ -50,6 +52,8 @@ export interface ProjectCreateData {
   community_id?: number | null
   description?: string
   tags?: string[]
+  auto_sync_enabled?: boolean
+  sync_interval_hours?: number | null
 }
 
 export interface ProjectUpdateData {
@@ -57,6 +61,8 @@ export interface ProjectUpdateData {
   description?: string
   tags?: string[]
   is_active?: boolean
+  auto_sync_enabled?: boolean
+  sync_interval_hours?: number | null
 }
 
 export const listProjects = () =>

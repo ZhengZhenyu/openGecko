@@ -71,6 +71,20 @@
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="2" />
         </el-form-item>
+        <el-divider style="margin: 12px 0" />
+        <el-form-item label="自动采集">
+          <el-switch v-model="createForm.auto_sync_enabled" active-text="开启" inactive-text="关闭" />
+        </el-form-item>
+        <el-form-item v-if="createForm.auto_sync_enabled" label="采集间隔">
+          <el-input-number
+            v-model="createForm.sync_interval_hours"
+            :min="1"
+            :max="720"
+            :placeholder="'留空=全局默认'"
+            style="width: 140px"
+          />
+          <span style="margin-left: 8px; color: var(--text-secondary); font-size: 13px">小时（留空使用全局默认）</span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -101,6 +115,8 @@ const createForm = ref({
   repo_name: '',
   description: '',
   community_id: null as number | null,
+  auto_sync_enabled: true,
+  sync_interval_hours: null as number | null,
 })
 
 function formatDate(iso: string) {
@@ -119,7 +135,7 @@ async function loadProjects() {
 }
 
 function openCreateDialog() {
-  createForm.value = { name: '', platform: 'github', org_name: '', repo_name: '', description: '', community_id: null }
+  createForm.value = { name: '', platform: 'github', org_name: '', repo_name: '', description: '', community_id: null, auto_sync_enabled: true, sync_interval_hours: null }
   showCreateDialog.value = true
 }
 
@@ -135,6 +151,8 @@ async function handleCreate() {
       platform: createForm.value.platform,
       org_name: createForm.value.org_name,
       community_id: createForm.value.community_id || null,
+      auto_sync_enabled: createForm.value.auto_sync_enabled,
+      sync_interval_hours: createForm.value.sync_interval_hours || null,
     }
     if (createForm.value.repo_name) payload.repo_name = createForm.value.repo_name
     if (createForm.value.description) payload.description = createForm.value.description
