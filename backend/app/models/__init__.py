@@ -4,7 +4,7 @@ from app.models.channel import ChannelConfig
 from app.models.committee import Committee, CommitteeMember
 from app.models.community import Community
 from app.models.content import Content
-from app.models.ecosystem import EcosystemContributor, EcosystemProject
+from app.models.ecosystem import EcosystemContributor, EcosystemProject, EcosystemSnapshot
 from app.models.event import (
     ChecklistItem,
     ChecklistTemplateItem,
@@ -55,4 +55,5 @@ __all__ = [
     "CampaignActivity",
     "EcosystemProject",
     "EcosystemContributor",
+    "EcosystemSnapshot",
 ]
