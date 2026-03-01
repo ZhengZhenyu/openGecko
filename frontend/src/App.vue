@@ -122,13 +122,17 @@
             <el-icon><Connection /></el-icon>
             <span>洞察与人脉</span>
           </template>
+          <el-menu-item index="/insights">
+            <el-icon><TrendCharts /></el-icon>
+            <span>洞察仪表板</span>
+          </el-menu-item>
           <el-menu-item index="/people">
             <el-icon><UserFilled /></el-icon>
             <span>人脉管理</span>
           </el-menu-item>
           <el-menu-item index="/ecosystem">
             <el-icon><Share /></el-icon>
-            <span>生态洞察</span>
+            <span>生态项目</span>
           </el-menu-item>
         </el-sub-menu>
 
