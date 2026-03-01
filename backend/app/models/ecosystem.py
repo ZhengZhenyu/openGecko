@@ -30,6 +30,12 @@ class EcosystemProject(Base):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    snapshots = relationship(
+        "EcosystemSnapshot",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="EcosystemSnapshot.snapshot_at",
+    )
 
 
 class EcosystemContributor(Base):
@@ -48,6 +54,37 @@ class EcosystemContributor(Base):
     # 关联到人脉库
     person_id = Column(Integer, ForeignKey("person_profiles.id", ondelete="SET NULL"), nullable=True, index=True)
     last_synced_at = Column(DateTime(timezone=True), default=utc_now)
+    # 情报分析字段（由采集器填充，初始为 null）
+    review_count_90d = Column(Integer, nullable=True)           # code review 次数
+    company = Column(String(200), nullable=True)                # GitHub profile company
+    location = Column(String(200), nullable=True)               # GitHub profile location
+    first_contributed_at = Column(DateTime(timezone=True), nullable=True)  # 首次贡献时间
 
     project = relationship("EcosystemProject", back_populates="contributors")
     person = relationship("PersonProfile")
+
+
+class EcosystemSnapshot(Base):
+    """项目时序快照，每次采集写入一条，用于趋势动量分析。"""
+
+    __tablename__ = "ecosystem_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(
+        Integer, ForeignKey("ecosystem_projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    snapshot_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+
+    # 平台指标
+    stars = Column(Integer, nullable=True)
+    forks = Column(Integer, nullable=True)
+    open_issues = Column(Integer, nullable=True)
+    open_prs = Column(Integer, nullable=True)
+
+    # 活跃度指标（30 天窗口）
+    commits_30d = Column(Integer, nullable=True)
+    pr_merged_30d = Column(Integer, nullable=True)
+    active_contributors_30d = Column(Integer, nullable=True)
+    new_contributors_30d = Column(Integer, nullable=True)
+
+    project = relationship("EcosystemProject", back_populates="snapshots")

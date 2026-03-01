@@ -35,6 +35,7 @@ from app.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.core.rate_limit import limiter
 from app.database import init_db
+from app.insights import router as insights_router
 from app.services.issue_sync import run_issue_sync
 
 # 初始化日志系统
@@ -180,6 +181,7 @@ app.include_router(wechat_stats.router, prefix="/api/wechat-stats", tags=["WeCha
 if settings.ENABLE_INSIGHTS_MODULE:
     app.include_router(people.router, prefix="/api/people", tags=["People"])
     app.include_router(ecosystem.router, prefix="/api/ecosystem", tags=["Ecosystem"])
+    app.include_router(insights_router.router, prefix="/api/insights", tags=["Insights"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(event_templates.router, prefix="/api/event-templates", tags=["Event Templates"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
