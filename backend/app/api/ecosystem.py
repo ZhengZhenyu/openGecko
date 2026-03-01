@@ -83,6 +83,20 @@ def update_project(
     return project
 
 
+@router.delete("/{pid}", status_code=204)
+def delete_project(
+    pid: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """删除生态项目，级联清除贡献者与快照数据。"""
+    project = db.query(EcosystemProject).filter(EcosystemProject.id == pid).first()
+    if not project:
+        raise HTTPException(404, "项目不存在")
+    db.delete(project)
+    db.commit()
+
+
 # ─── Sync ─────────────────────────────────────────────────────────────────────
 
 @router.post("/{pid}/sync", response_model=SyncResult)
