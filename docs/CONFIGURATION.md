@@ -1,33 +1,42 @@
 # 配置指南
 
-本文档详细说明 openGecko 的配置选项。
+本文档详细说明 openGecko 的所有环境变量（`.env` 配置项）。
+配置由 `backend/app/config.py`（Pydantic Settings）统一管理；模板文件可通过以下命令从源代码自动生成：
+
+```bash
+cd backend
+python scripts/generate_env_example.py          # 重新生成 .env.example
+python scripts/generate_env_example.py --prod   # 重新生成 .env.prod.example
+python scripts/generate_env_example.py --check  # CI 用：检测 .env.example 是否过时
+```
+
+## 快速开始
+
+```bash
+# 开发环境
+cp backend/.env.example backend/.env
+
+# 生产环境（必须逐项填写 REPLACE_WITH_... 占位符后再部署）
+cp backend/.env.prod.example backend/.env
+```
 
 ## 环境变量配置
 
 ### 基础配置
 
-复制示例配置文件：
-```bash
-cp backend/.env.example backend/.env
-```
-
 编辑 `backend/.env`：
 
 ```env
-# 应用配置
-APP_NAME=openGecko
-DEBUG=False
+# 数据库（开发用 SQLite，生产换 PostgreSQL）
+DATABASE_URL=sqlite:///./data/opengecko.db
 
-# 数据库配置
-DATABASE_URL=sqlite:///./opengecko.db
+# JWT 密钥（⚠️ 生产必须替换：openssl rand -hex 32）
+JWT_SECRET_KEY=change-me-in-production-please-use-a-strong-secret-key
+ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 天 = 10080 分钟
 
-# JWT 认证配置
-JWT_SECRET_KEY=your-super-secret-key-change-me-in-production
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 days
-
-# CORS 配置
-CORS_ORIGINS=["http://localhost:3000"]
+# CORS（逗号分隔字符串，非 JSON 数组）
+# 开发默认值已内置，生产环境必须显式指定
+CORS_ORIGINS=https://your-domain.com
 ```
 
 ### 数据库配置
@@ -41,42 +50,36 @@ DATABASE_URL=sqlite:///./opengecko.db
 #### 生产环境 (PostgreSQL)
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/opengecko
+DATABASE_URL=postgresql://opengecko:YOUR_PASSWORD@db:5432/opengecko
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=20
+DB_POOL_RECYCLE=1800
 ```
 
-### 微信公众号配置
-
-在 [微信公众平台](https://mp.weixin.qq.com/) 获取 AppID 和 AppSecret：
+### 速率限制
 
 ```env
-WECHAT_APP_ID=your_app_id
-WECHAT_APP_SECRET=your_app_secret
+# 登录端点（防暴力破解），格式：<次数>/<单位>（second/minute/hour）
+RATE_LIMIT_LOGIN=10/minute
+# 所有 API 默认限制
+RATE_LIMIT_DEFAULT=120/minute
 ```
 
-配置后可通过 API 创建草稿并获取预览链接。
+### 渠道配置说明
 
-### Hugo 博客配置
+> **⚠️ 注意**：微信、Hugo、CSDN、知乎等渠道凭证**不是环境变量**，
+> 而是 **per-community 数据库配置**，存储在 `channel_configs` 表中（Fernet 加密）。
 
-```env
-HUGO_REPO_PATH=/path/to/your/hugo/repo
-HUGO_CONTENT_DIR=content/posts
-HUGO_AUTHOR_NAME=Your Name
-```
+通过 UI「设置」→「渠道配置」页面为每个社区单独配置：
 
-发布时自动：
-- 生成 front matter (标题、日期、分类、标签)
-- 提取并保存图片到 `static/images/`
-- 支持 `git commit` 和 `git push` 自动化
+| 渠道 | 所需凭证 | 获取方式 |
+|------|---------|----------|
+| 微信公众号 | AppID + AppSecret | 微信公众平台 → 开发 → 基本配置 |
+| Hugo | 博客仓库绝对路径 + 内容目录 | 本地 Hugo 仓库路径 |
+| CSDN | Cookie | 浏览器 DevTools → Application → Cookies |
+| 知乎 | Cookie | 浏览器 DevTools → Application → Cookies |
 
-### CSDN/知乎配置
-
-CSDN 和知乎暂不支持 API 自动发布，系统提供格式化后的内容，支持一键复制：
-
-```env
-# 可选：配置默认作者信息
-CSDN_USERNAME=your_username
-ZHIHU_USERNAME=your_username
-```
+所有凭证经 Fernet 对称加密后入库，API 返回时末 4 位脱敏，不以明文传输。
 
 ## 社区配置
 
@@ -153,34 +156,44 @@ openssl rand -hex 32
 
 ### CORS 配置
 
-生产环境配置实际的前端域名：
+生产环境配置实际的前端域名（**逗号分隔字符串，非 JSON 数组**）：
 
 ```env
-CORS_ORIGINS=["https://your-domain.com"]
+CORS_ORIGINS=https://your-domain.com,https://admin.your-domain.com
 ```
 
 ## 日志配置
 
-配置日志级别和输出：
-
 ```env
-LOG_LEVEL=INFO
-LOG_FILE=logs/opengecko.log
+# 可选：debug / info / warning / error / critical
+LOG_LEVEL=warning
 ```
 
-日志级别: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+> `LOG_FILE` 不支持环境变量配置。运行时默认输出到 stdout/stderr，
+> 建议由 Docker logging driver 或 Nginx 收集日志，生产环境可考虑接入 Loki。
 
-## 文件上传配置
+## 文件存储配置
 
 ```env
-# 上传文件大小限制 (MB)
-MAX_UPLOAD_SIZE=10
+# 存储后端：local（本地文件系统，开发默认）或 s3（S3 兼容对象存储，生产推荐）
+STORAGE_BACKEND=local
 
-# 上传文件保存路径
-UPLOAD_DIR=uploads
+# 单次上传大小上限（字节），默认 50MB
+MAX_UPLOAD_SIZE=52428800
+```
 
-# 允许的文件类型
-ALLOWED_EXTENSIONS=["jpg", "jpeg", "png", "gif", "docx", "md"]
+> `UPLOAD_DIR` 无需手动设置，由 `config.py` 自动解析为 `backend/uploads/`。
+> 允许的文件类型通过代码白名单（`ALLOWED_MIME_TYPES`）控制，不走环境变量。
+
+### S3 / MinIO 对象存储（生产推荐）
+
+```env
+STORAGE_BACKEND=s3
+S3_ENDPOINT_URL=http://minio:9000       # MinIO Docker 内网；AWS S3 改为 https://s3.amazonaws.com
+S3_ACCESS_KEY=YOUR_ACCESS_KEY
+S3_SECRET_KEY=YOUR_SECRET_KEY
+S3_BUCKET=opengecko
+S3_PUBLIC_URL=http://minio:9000/opengecko  # nginx /uploads/ 代理目标
 ```
 
 ## Docker 配置
@@ -209,6 +222,30 @@ services:
 ```
 
 ## 可选功能模块
+
+### SMTP 邮件（密码重置和会议通知）
+
+```env
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587              # 587=STARTTLS，465=SSL
+SMTP_USER=noreply@your-domain.com
+SMTP_PASSWORD=YOUR_SMTP_PASSWORD
+SMTP_FROM_EMAIL=noreply@your-domain.com
+SMTP_USE_TLS=true
+# 前端地址，用于密码重置邮件中的跳转链接
+FRONTEND_URL=https://your-domain.com
+```
+
+`SMTP_HOST` 留空则禁用邮件功能（不会报错，仅记录警告日志）。
+
+### 时区配置
+
+```env
+APP_TIMEZONE=Asia/Shanghai   # 影响 ICS 日历和邮件通知中的时间显示
+```
+
+数据库始终存储 UTC，此配置仅控制服务端输出内容的本地化时区。
+IANA 时区列表： https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 ### 洞察与人脉模块
 
@@ -267,26 +304,23 @@ psql $DATABASE_URL
 
 ### Hugo 发布失败
 
-- 检查 HUGO_REPO_PATH 是否正确
-- 确认有 Git 仓库写入权限
-- 验证 HUGO_CONTENT_DIR 目录存在
+- 检查「设置」→「渠道配置」中 Hugo 仓库路径是否为绝对路径
+- 确认 FastAPI 进程用户对该目录有读写权限
+- 验证目标目录中存在有效 Git 仓库（`git -C /path/to/repo status`）
 
 ## 性能优化
 
 ### 数据库连接池
 
 ```env
-DB_POOL_SIZE=20
-DB_MAX_OVERFLOW=10
-DB_POOL_TIMEOUT=30
+DB_POOL_SIZE=10        # 常驻连接数
+DB_MAX_OVERFLOW=20     # pool_size 耗尽后最多新开的连接
+DB_POOL_TIMEOUT=30     # 等待连接超时（秒）
+DB_POOL_RECYCLE=1800   # 30 分钟回收连接，防止 DB 断开
 ```
 
-### 缓存配置
-
-```env
-CACHE_ENABLED=True
-CACHE_TTL=3600
-```
+> 当前版本无独立缓存层（无 Redis），热点数据直接走 DB，需确保连接池配置合理。
+> 扩展阶段可引入 Redis 缓存，详见架构设计文档。
 
 ## 备份配置
 
